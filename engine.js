@@ -261,15 +261,23 @@ BACKGROUND TYPES:
 "gradient-green" = hope, solution
 "gradient-gold" = consequence, big reveal
 
+IMAGE SEARCH KEYWORDS (CRITICAL FOR VISUAL QUALITY):
+Each slide MUST include an "image_query" field — a 2-4 word search query for finding a relevant stock photo background.
+- Make it VISUAL and CONCRETE. Think: what would look dramatic as a background image?
+- GOOD: "empty office desk", "robot factory assembly", "crowded city skyline", "person holding cash"
+- BAD: "economics", "future", "crisis" (too abstract, bad search results)
+- Each slide should have a DIFFERENT image_query. Variety is key.
+
 BEFORE OUTPUTTING: Check each slide body:
 □ 2-3 sentences?
 □ Each sentence under 15 words?
 □ Zero corporate words?
 □ Does it tell a single chronological story?
 □ Cliffhanger creates real curiosity?
+□ image_query is concrete and visual?
 
 Output ONLY strict JSON:
-{ "slides": [ { "slide_number": 1, "title": "...", "body_text": "...", "bg_type": "..." }, ... ] }`;
+{ "slides": [ { "slide_number": 1, "title": "...", "body_text": "...", "bg_type": "...", "image_query": "..." }, ... ] }`;
 
     const groqClient = getGroqClient();
     const chatResponse = await groqClient.chat.completions.create({

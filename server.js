@@ -29,6 +29,31 @@ app.post('/api/brainstorm', async (req, res) => {
     }
 });
 
+// Pexels image search — returns an array of image URLs
+app.get('/api/images', async (req, res) => {
+    const query = req.query.q;
+    if (!query) return res.json({ images: [] });
+
+    const PEXELS_KEY = process.env.PEXELS_API_KEY;
+    if (!PEXELS_KEY) {
+        console.warn('PEXELS_API_KEY not set — returning empty images');
+        return res.json({ images: [] });
+    }
+
+    try {
+        const response = await fetch(
+            `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=1&orientation=portrait`,
+            { headers: { Authorization: PEXELS_KEY } }
+        );
+        const data = await response.json();
+        const images = (data.photos || []).map(p => p.src.large2x || p.src.large);
+        res.json({ images });
+    } catch (err) {
+        console.error('Pexels API error:', err.message);
+        res.json({ images: [] });
+    }
+});
+
 // SSE endpoint: streams status updates then returns the script JSON
 app.get('/api/generate-stream', async (req, res) => {
     const topic = req.query.topic;

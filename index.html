@@ -433,7 +433,7 @@
       transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    /* Each slide inside the phone — 1:1 square (standard IG carousel ratio) */
+    /* Each slide inside the phone — photo background + text overlay */
     .ig-slide {
       flex-shrink: 0;
       width: 100%;
@@ -442,6 +442,41 @@
       flex-direction: column;
       position: relative;
       overflow: hidden;
+      background-color: #0a0a12;
+    }
+    .ig-slide-bg {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center;
+      z-index: 0;
+    }
+    /* Heavy gradient overlay for text readability */
+    .ig-slide-bg::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to bottom,
+        rgba(0,0,0,0.15) 0%,
+        rgba(0,0,0,0.3) 30%,
+        rgba(0,0,0,0.75) 65%,
+        rgba(0,0,0,0.92) 100%
+      );
+      z-index: 1;
+    }
+    /* Color tint per bg_type */
+    .ig-slide[data-mood="red"] .ig-slide-bg::after {
+      background: linear-gradient(to bottom, rgba(100,0,0,0.1) 0%, rgba(60,0,0,0.3) 30%, rgba(30,0,0,0.75) 65%, rgba(10,0,0,0.95) 100%);
+    }
+    .ig-slide[data-mood="purple"] .ig-slide-bg::after {
+      background: linear-gradient(to bottom, rgba(40,0,80,0.1) 0%, rgba(30,0,60,0.3) 30%, rgba(15,0,40,0.75) 65%, rgba(5,0,15,0.95) 100%);
+    }
+    .ig-slide[data-mood="green"] .ig-slide-bg::after {
+      background: linear-gradient(to bottom, rgba(0,60,20,0.1) 0%, rgba(0,40,10,0.3) 30%, rgba(0,20,5,0.75) 65%, rgba(0,5,2,0.95) 100%);
+    }
+    .ig-slide[data-mood="gold"] .ig-slide-bg::after {
+      background: linear-gradient(to bottom, rgba(80,60,0,0.1) 0%, rgba(60,40,0,0.3) 30%, rgba(30,20,0,0.75) 65%, rgba(10,5,0,0.95) 100%);
     }
 
     .ig-slide-content {
@@ -450,52 +485,55 @@
       flex: 1;
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
-      padding: 1.4rem 1.2rem 0.8rem;
+      justify-content: flex-end;
+      padding: 1.2rem;
     }
 
-    .ig-slide-top { }
-    .ig-slide-accent {
-      width: 28px; height: 3px;
-      background: var(--cyan); border-radius: 2px;
-      margin-bottom: 0.5rem;
-    }
-    .ig-slide-number {
-      font-size: 0.55rem;
-      font-weight: 700;
-      letter-spacing: 2px;
+    .ig-slide-category {
+      position: absolute;
+      top: 1rem;
+      left: 1.2rem;
+      z-index: 3;
+      font-size: 0.5rem;
+      font-weight: 800;
+      letter-spacing: 2.5px;
       text-transform: uppercase;
       color: var(--cyan);
-      opacity: 0.75;
+      background: rgba(0,0,0,0.5);
+      padding: 0.25rem 0.6rem;
+      border-radius: 4px;
+      backdrop-filter: blur(4px);
     }
-    .ig-slide-main {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-    }
+
     .ig-slide-title {
-      font-size: 1.25rem;
+      font-size: 1.2rem;
       font-weight: 900;
-      line-height: 1.2;
+      line-height: 1.18;
       color: #fff;
-      margin-bottom: 0.6rem;
-      letter-spacing: -0.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 0.4rem;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+    }
+    .ig-slide-title .highlight {
+      color: var(--cyan);
     }
     .ig-slide-body {
-      font-size: 0.78rem;
-      line-height: 1.55;
-      color: rgba(255,255,255,0.85);
+      font-size: 0.72rem;
+      line-height: 1.5;
+      color: rgba(255,255,255,0.88);
       font-weight: 500;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.5);
     }
     .ig-slide-footer {
       flex-shrink: 0;
-      padding: 0.35rem 1.2rem;
-      background: rgba(0,0,0,0.6);
+      padding: 0.3rem 1.2rem;
+      background: rgba(0,0,0,0.7);
       display: flex;
       justify-content: space-between;
       align-items: center;
-      border-top: 1px solid rgba(0,229,255,0.12);
+      position: relative;
+      z-index: 2;
     }
     .ig-slide-footer span {
       font-size: 0.45rem;
@@ -506,29 +544,12 @@
     }
     .ig-slide-footer .handle { color: var(--cyan); opacity: 0.7; }
 
-    /* Gradient backgrounds (same as before) */
+    /* Gradient backgrounds (fallback when no image) */
     .bg-gradient-blue   { background: linear-gradient(160deg, #0a0f1e 0%, #0d2137 50%, #0a3d6b 100%); }
     .bg-gradient-purple { background: linear-gradient(160deg, #0d0a1e 0%, #1a0d3d 50%, #2d0b6b 100%); }
     .bg-gradient-red    { background: linear-gradient(160deg, #1e0a0a 0%, #3d0d0d 50%, #6b1212 100%); }
     .bg-gradient-green  { background: linear-gradient(160deg, #0a1e0d 0%, #0d3d14 50%, #0b6b20 100%); }
     .bg-gradient-gold   { background: linear-gradient(160deg, #1e180a 0%, #3d300d 50%, #6b500b 100%); }
-
-    /* Noise overlay */
-    .ig-slide::before {
-      content: '';
-      position: absolute; inset: 0;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
-      opacity: 0.15;
-      pointer-events: none;
-    }
-    .ig-slide::after {
-      content: '';
-      position: absolute; inset: 0;
-      background-image: linear-gradient(rgba(0,229,255,0.04) 1px, transparent 1px),
-                        linear-gradient(90deg, rgba(0,229,255,0.04) 1px, transparent 1px);
-      background-size: 28px 28px;
-      pointer-events: none;
-    }
 
     /* Dot indicators */
     .ig-dots {
@@ -1181,8 +1202,23 @@
         if (payload.done && payload.script) {
           evtSource.close();
           currentScript = payload.script;
-          renderPhonePreview(payload.script);
-          buildRenderGrid(payload.script);
+          
+          setStatus('📸 Fetching high-quality backgrounds...', true);
+          
+          // Fetch images for each slide in parallel
+          await Promise.all(currentScript.map(async (slide) => {
+            if (!slide.image_query) return;
+            try {
+              const res = await fetch(`/api/images?q=${encodeURIComponent(slide.image_query)}`);
+              const data = await res.json();
+              if (data.images && data.images.length > 0) {
+                slide.bg_image = data.images[0];
+              }
+            } catch (e) { console.error('Image fetch error', e); }
+          }));
+
+          renderPhonePreview(currentScript);
+          buildRenderGrid(currentScript);
 
           if (payload.caption) {
             captionBox.value = payload.caption;
@@ -1216,6 +1252,16 @@
     /* ============================================================
        Render Instagram phone preview
     ============================================================ */
+    function formatTitle(title) {
+      // Highlight the last word or specific words for visual pop
+      const words = title.split(' ');
+      if (words.length > 1) {
+        const lastWord = words.pop();
+        return `${words.join(' ')} <span class="highlight">${lastWord}</span>`;
+      }
+      return title;
+    }
+
     function renderPhonePreview(slides) {
       igTrack.innerHTML = '';
       igDots.innerHTML  = '';
@@ -1223,19 +1269,21 @@
       currentSlide = 0;
 
       slides.forEach((slide, i) => {
+        const mood = slide.bg_type ? slide.bg_type.replace('gradient-', '') : 'blue';
         const bgClass = bgMap[slide.bg_type] || 'bg-gradient-blue';
+        const bgStyle = slide.bg_image ? `background-image: url('${slide.bg_image}')` : '';
+        const category = getGenre() || 'Insights';
 
         // Slide
         const el = document.createElement('div');
-        el.className = `ig-slide ${bgClass}`;
+        el.className = `ig-slide ${!slide.bg_image ? bgClass : ''}`;
+        el.dataset.mood = mood;
         el.innerHTML = `
+          <div class="ig-slide-bg" style="${bgStyle}"></div>
+          <div class="ig-slide-category">${category}</div>
           <div class="ig-slide-content">
-            <div class="ig-slide-top">
-              <div class="ig-slide-accent"></div>
-              <div class="ig-slide-number">Slide ${slide.slide_number} of ${totalSlides}</div>
-            </div>
             <div class="ig-slide-main">
-              <div class="ig-slide-title">${slide.title}</div>
+              <div class="ig-slide-title">${formatTitle(slide.title)}</div>
               <div class="ig-slide-body">${slide.body_text}</div>
             </div>
           </div>
@@ -1300,19 +1348,54 @@
     function buildRenderGrid(slides) {
       renderGrid.innerHTML = '';
       const numSlides = slides.length;
+      
+      // Update CSS for the off-screen grid to match the new style
+      if (!document.getElementById('render-grid-style')) {
+        const style = document.createElement('style');
+        style.id = 'render-grid-style';
+        style.innerHTML = `
+          #render-grid .slide-card { background-color: #0a0a12; }
+          #render-grid .slide-card-bg { position: absolute; inset: 0; background-size: cover; background-position: center; z-index: 0; }
+          #render-grid .slide-card-bg::after {
+            content: ''; position: absolute; inset: 0; z-index: 1;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.3) 30%, rgba(0,0,0,0.75) 65%, rgba(0,0,0,0.92) 100%);
+          }
+          #render-grid .slide-card[data-mood="red"] .slide-card-bg::after { background: linear-gradient(to bottom, rgba(100,0,0,0.1) 0%, rgba(60,0,0,0.3) 30%, rgba(30,0,0,0.75) 65%, rgba(10,0,0,0.95) 100%); }
+          #render-grid .slide-card[data-mood="purple"] .slide-card-bg::after { background: linear-gradient(to bottom, rgba(40,0,80,0.1) 0%, rgba(30,0,60,0.3) 30%, rgba(15,0,40,0.75) 65%, rgba(5,0,15,0.95) 100%); }
+          #render-grid .slide-card[data-mood="green"] .slide-card-bg::after { background: linear-gradient(to bottom, rgba(0,60,20,0.1) 0%, rgba(0,40,10,0.3) 30%, rgba(0,20,5,0.75) 65%, rgba(0,5,2,0.95) 100%); }
+          #render-grid .slide-card[data-mood="gold"] .slide-card-bg::after { background: linear-gradient(to bottom, rgba(80,60,0,0.1) 0%, rgba(60,40,0,0.3) 30%, rgba(30,20,0,0.75) 65%, rgba(10,5,0,0.95) 100%); }
+          #render-grid .slide-content { position: relative; z-index: 2; flex: 1; display: flex; flex-direction: column; justify-content: flex-end; padding: 2.5rem; }
+          #render-grid .slide-category {
+            position: absolute; top: 2rem; left: 2.5rem; z-index: 3;
+            font-size: 1.1rem; font-weight: 800; letter-spacing: 3.5px; text-transform: uppercase; color: var(--cyan);
+            background: rgba(0,0,0,0.5); padding: 0.5rem 1rem; border-radius: 6px;
+          }
+          #render-grid .slide-title { font-size: 2.6rem; font-weight: 900; line-height: 1.18; color: #fff; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.8rem; text-shadow: 0 2px 8px rgba(0,0,0,0.6); }
+          #render-grid .slide-title .highlight { color: var(--cyan); }
+          #render-grid .slide-body { font-size: 1.4rem; line-height: 1.5; color: rgba(255,255,255,0.88); font-weight: 500; text-shadow: 0 1px 4px rgba(0,0,0,0.5); }
+          #render-grid .slide-footer { flex-shrink: 0; padding: 0.8rem 2.5rem; background: rgba(0,0,0,0.7); display: flex; justify-content: space-between; align-items: center; position: relative; z-index: 2; }
+          #render-grid .slide-footer span { font-size: 0.9rem; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(255,255,255,0.35); font-weight: 600; }
+          #render-grid .slide-footer .handle { color: var(--cyan); opacity: 0.7; }
+        `;
+        document.head.appendChild(style);
+      }
+
       slides.forEach((slide, i) => {
+        const mood = slide.bg_type ? slide.bg_type.replace('gradient-', '') : 'blue';
         const bgClass = bgMap[slide.bg_type] || 'bg-gradient-blue';
+        const bgStyle = slide.bg_image ? `background-image: url('${slide.bg_image}')` : '';
+        const category = getGenre() || 'Insights';
+
         const card = document.createElement('div');
-        card.className = `slide-card ${bgClass}`;
+        card.className = `slide-card ${!slide.bg_image ? bgClass : ''}`;
+        card.dataset.mood = mood;
         card.id = `render-slide-${i + 1}`;
         card.innerHTML = `
+          <div class="slide-card-bg" style="${bgStyle}"></div>
+          <div class="slide-category">${category}</div>
           <div class="slide-content">
-            <div class="slide-top">
-              <div class="slide-accent"></div>
-              <div class="slide-number">Slide ${slide.slide_number} of ${numSlides}</div>
-            </div>
             <div class="slide-main">
-              <div class="slide-title">${slide.title}</div>
+              <div class="slide-title">${formatTitle(slide.title)}</div>
               <div class="slide-body">${slide.body_text}</div>
             </div>
           </div>
