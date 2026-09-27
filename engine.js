@@ -46,7 +46,7 @@ const GENRE_PROFILES = {
     'Personal Finance': `Teach one practical money concept such as budgeting, saving, borrowing, insurance, or investing. Use transparent assumptions and explain risk, fees, and time horizon when relevant. Avoid guaranteed returns, shame, or personalized financial advice; state that outcomes depend on circumstances.`,
     'Future of Work': `Examine a documented workplace change, job practice, or plausible scenario and who it affects. Separate current evidence from forecast, include both opportunities and tradeoffs, and avoid unsupported job-loss percentages or treating workers as interchangeable.`,
     'Psychology': `Explain a specific behavior, bias, or psychological idea with examples. Avoid pop-psych labels, armchair diagnosis, and claiming a single study explains everyone. Note context and individual differences; distinguish a useful model from settled fact.`,
-    'History & Hidden Facts': `NON-NEGOTIABLE SCOPE: tell a story about something that actually happened in the past. Center a real historical person, event, place, object, custom, or discovery; identify the who/what and when/where in the hook. Good angles include an overlooked origin, an unusual documented practice, a consequential decision, or how an object changed over time. A modern technology plus the words "history" or "hidden fact" is still off-topic. Do not pitch forecasts, imagined futures, modern job trends, or what something "will look like". Never invent anecdotes or dates; distinguish legends and disputed accounts from established evidence.`,
+    'History & Hidden Facts': `SCOPE: tell a vivid, evidence-grounded story about the human past. Default to ancient and premodern civilizations. Draw topics from kingdoms and empires; Indian history, including temples, dynasties, kings, and emperors; architecture and engineering; archaeology and excavations; inscriptions, coins, manuscripts, artifacts, and ruins; daily life, beliefs, trade, art, and consequential events. Choose one named person, place, object, discovery, or event, anchored to its civilization, region, or period. Prefer surprising, well-supported details over familiar summaries. In the script, distinguish archaeological evidence from interpretation, and established history from legend or uncertainty. Explore cultures and periods broadly rather than repeatedly selecting the same civilization.`,
     'Philosophy': `Explore one philosophical question or argument fairly. Define the key idea in everyday language, present a strong version of the reasoning and a meaningful objection, then leave room for the reader's judgment. Do not misrepresent a philosopher or pretend contested questions have settled answers.`,
     'Geopolitics': `Explain a specific international event, relationship, or policy with clear geography, actors, interests, and timeframe. Attribute claims, distinguish verified facts from each side's position, and provide context without propaganda, dehumanization, or false certainty about motives.`,
     'Parenting': `Give age-aware, compassionate guidance for a clearly defined parenting situation. Respect differences in children, families, disability, culture, and resources. Avoid shame, perfectionism, guarantees, or medical/developmental claims beyond reliable evidence.`,
@@ -63,12 +63,16 @@ export async function generateTopic(genre = null) {
     const generatePrompt = `You are an expert Instagram carousel idea editor.
 Suggest ONE specific, genuinely interesting subject for a short ${genre ? `${JSON.stringify(genre)}` : 'surprising general-knowledge'} carousel.
 
-PRIORITY 1 — TOPIC FIT: The selected genre defines the subject. Make the subject itself clearly belong to that genre; a genre-flavored phrase or suffix does not count. Do not jump to a familiar viral subject from another genre.
+PRIORITY 1 — TOPIC FIT: The selected genre defines the subject. Select a subject whose central person, event, object, process, or question belongs directly to that genre.
 GENRE-SPECIFIC BRIEF: ${getGenreGuidance(genre)}
+
+SILENT SELECTION WORKFLOW: First identify the genre boundary from its brief. Privately consider three distinct subject candidates that genuinely fit it. Choose the candidate with the clearest concrete subject and the strongest reliable factual basis. Then write the hook. Do not reveal the candidates or your reasoning.
 
 PRIORITY 2 — TRUST: Choose a well-established, explainable subject. Do not invent facts, statistics, quotes, causal links, or a false connection to the genre. If unsure, choose a simpler subject rather than making a more dramatic claim.
 
-PRIORITY 3 — HOOK: Write one clear, intriguing hook under 15 words. Name the subject or give a concrete anchor; avoid generic bait like "hidden truth nobody talks about". Do not append "hidden history" or similar wording to an unrelated claim.
+PRIORITY 3 — HOOK: Write one clear, intriguing hook under 15 words. Name the subject or give a concrete anchor. Make the hook accurately describe the subject the carousel will explain.
+
+FINAL SILENT AUDIT: Ask whether a reader can identify the selected genre from the subject itself, without relying on the genre label. Check that the subject and hook agree and that the claim is supportable. If any check fails, discard the draft and choose another candidate.
 
 Output only the hook, with no quotes or explanation.`;
 
@@ -85,8 +89,8 @@ Output only the hook, with no quotes or explanation.`;
             console.warn("Generated hook did not fit the history genre. Retrying.");
             const retry = await groqClient.chat.completions.create({
                 messages: [
-                    { role: 'system', content: `${generatePrompt}\n\nYour previous hook was off-genre. Generate a different hook that follows the history brief and is unmistakably about a real subject from the past.` },
-                    { role: 'user', content: `Off-genre hook to avoid: "${hook}"` }
+                    { role: 'system', content: `${generatePrompt}\n\nStart fresh from the history brief. Select a different subject from ancient or premodern history, then write its hook. Do not reuse any draft.` },
+                    { role: 'user', content: 'Create one new hook following the complete instructions.' }
                 ],
                 model: 'openai/gpt-oss-120b',
                 temperature: 0.7,
@@ -121,7 +125,7 @@ function isClearlyHistoricalHook(hook) {
     if (modernFutureTerms.test(text)) return false;
     if (hasFutureYear) return false;
     // "History" by itself is not evidence that the subject is historical.
-    const historicalAnchors = /\b(ancient|antiquity|medieval|renaissance|middle ages|century|centuries|bce|bc|ce|ad|empire|pharaoh|roman|ottoman|vikings?|samurai|dynasty|kingdom|historical|history of|war|revolution|apollo\s?\d+|moon landing|plague|siege|battle of|in the (?:\d{3,4}|\w+ century)|during the (?:\w+ )?century|\d{1,3}\s?(?:bce|bc|ce|ad)|\b(?:1[0-9]{3}|20(?:0\d|1\d|2[0-6]))\b)\b/i;
+    const historicalAnchors = /\b(ancient|antiquity|medieval|renaissance|middle ages|century|centuries|bce|bc|ce|ad|empires?|pharaohs?|roman|ottoman|vikings?|samurai|dynasties|kingdoms?|rulers?|kings?|queens?|emperors?|temples?|archaeolog\w*|excavat\w*|inscriptions?|coins?|manuscripts?|artifacts?|artefacts?|ruins?|forts?|palaces?|monuments?|tombs?|pyramids?|civilizations?|civilisations?|chola|maurya|gupta|mughal|ashoka|ellora|ajanta|hampi|konark|khajuraho|nalanda|harappa|indus|mesopotamia|sumer|babylon|egyptian|greek|aztec|inca|maya|minoan|wars?|revolutions?|apollo\s?\d+|moon landing|plagues?|sieges?|battle of|in the (?:\d{3,4}|\w+ century)|during the (?:\w+ )?century|\d{1,3}\s?(?:bce|bc|ce|ad)|\b(?:1[0-9]{3}|20(?:0\d|1\d|2[0-6]))\b)\b/i;
     return historicalAnchors.test(text);
 }
 
