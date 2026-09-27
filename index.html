@@ -1187,7 +1187,7 @@
       const genre = getGenre();
       const evtSource = new EventSource(`/api/generate-stream?topic=${encodeURIComponent(topic)}&genre=${encodeURIComponent(genre || '')}`);
 
-      evtSource.onmessage = (e) => {
+      evtSource.onmessage = async (e) => {
         const payload = JSON.parse(e.data);
 
         if (payload.error) {
