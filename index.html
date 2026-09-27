@@ -63,13 +63,13 @@
     }
     .parallax-shapes { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
     .parallax-shape { position: absolute; will-change: transform; }
-    .geometry-motion { display: block; width: 100%; height: 100%; animation: geometry-drift 27s ease-in-out infinite alternate; will-change: translate; }
-    .parallax-shape:nth-child(2n) .geometry-motion { animation-duration: 33s; animation-direction: alternate-reverse; }
-    .parallax-shape:nth-child(3n) .geometry-motion { animation-duration: 38s; }
+    .geometry-motion { display: block; width: 100%; height: 100%; animation: geometry-drift 22s ease-in-out infinite alternate; will-change: translate; }
+    .parallax-shape:nth-child(2n) .geometry-motion { animation-duration: 27s; animation-direction: alternate-reverse; }
+    .parallax-shape:nth-child(3n) .geometry-motion { animation-duration: 31s; }
     @keyframes geometry-drift {
-      0% { translate: -10px -8px; }
-      50% { translate: 10px 8px; }
-      100% { translate: -6px 10px; }
+      0% { translate: -26px -20px; }
+      50% { translate: 28px 22px; }
+      100% { translate: -18px 26px; }
     }
     .geometry-motion.parallax-ring { width: 100%; height: 100%; border: 1px solid rgba(0,229,255,0.48); border-radius: 50%; box-shadow: 0 0 12px rgba(0,229,255,0.16), inset 0 0 12px rgba(0,229,255,0.05); }
     .geometry-motion.ring-small { border-color: rgba(255,74,174,0.62); box-shadow: 0 0 12px rgba(255,74,174,0.2), inset 0 0 12px rgba(255,74,174,0.06); }
@@ -80,6 +80,10 @@
     .geometry-motion.parallax-cross::before { left: 0; right: 0; top: 18px; height: 2px; }
     .geometry-motion.parallax-cross::after { top: 0; bottom: 0; left: 18px; width: 2px; }
     .geometry-motion.parallax-glow { border-radius: 50%; filter: blur(95px); opacity: 0.12; background: #315d70; }
+    @media (max-width: 600px) {
+      .parallax-shape:nth-child(1), .parallax-shape:nth-child(3) { width: 180px !important; height: 180px !important; }
+      .parallax-shape:nth-child(2) { width: 82px !important; height: 82px !important; }
+    }
     .blob {
       position: absolute;
       filter: blur(80px);
@@ -1614,9 +1618,9 @@
           const offset = (initY + height / 2 - viewportCenter) / viewportHeight;
           const speedY = Number(element.dataset.parallaxSpeed) || 0.1;
           const speedX = Number(element.dataset.parallaxX) || 0;
-          const maxShiftY = Math.min(viewportHeight * 0.025, 22);
-          const maxShiftX = Math.min(window.innerWidth * 0.025, 28);
-          const edgeBuffer = 12;
+          const maxShiftY = Math.min(viewportHeight * 0.045, 38);
+          const maxShiftX = Math.min(window.innerWidth * 0.045, 48);
+          const edgeBuffer = 30;
           const minX = Math.max(-maxShiftX, edgeBuffer - Number(element.dataset.parallaxBaseLeft));
           const maxX = Math.min(maxShiftX, window.innerWidth - edgeBuffer - Number(element.dataset.parallaxBaseRight));
           const minY = Math.max(-maxShiftY, edgeBuffer - Number(element.dataset.parallaxBaseTop));
