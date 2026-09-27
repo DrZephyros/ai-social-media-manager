@@ -30,9 +30,10 @@ function wait(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function generateGeminiContent(systemInstruction, userContent, temperature = 0.7) {
+async function generateGeminiContent(systemInstruction, userContent, temperature = 0.7, options = {}) {
     const apiKey = getGeminiApiKey();
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+    const { thinkingLevel = 'high', timeoutMs = 45000, maxRetries = 3 } = options;
     for (let retry = 0; ; retry++) {
         let response;
         try {
@@ -45,14 +46,14 @@ async function generateGeminiContent(systemInstruction, userContent, temperature
                     generationConfig: {
                         responseMimeType: 'application/json',
                         temperature,
-                        thinkingConfig: { thinkingLevel: 'high' },
+                        thinkingConfig: { thinkingLevel },
                     },
                 }),
-                signal: AbortSignal.timeout(45000),
+                signal: AbortSignal.timeout(timeoutMs),
             });
         } catch (error) {
-            if (retry >= 3) throw new Error(`Gemini request failed: ${error.message}`);
-            console.warn(`Gemini network request failed; retrying (${retry + 1}/3): ${error.message}`);
+            if (retry >= maxRetries) throw new Error(`Gemini request failed: ${error.message}`);
+            console.warn(`Gemini network request failed; retrying (${retry + 1}/${maxRetries}): ${error.message}`);
             await wait(1000 * (retry + 1));
             continue;
         }
@@ -60,7 +61,7 @@ async function generateGeminiContent(systemInstruction, userContent, temperature
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) {
             const detail = payload?.error?.message || `Gemini returned HTTP ${response.status}.`;
-            if ([429, 500, 502, 503, 504].includes(response.status) && retry < 3) {
+            if ([429, 500, 502, 503, 504].includes(response.status) && retry < maxRetries) {
                 const retryInfo = payload?.error?.details?.find(detail => detail['@type']?.includes('RetryInfo'))?.retryDelay;
                 const retrySeconds = Number(retryInfo?.match(/[\d.]+/)?.[0]);
                 const retryAfter = Number(response.headers.get('retry-after'));
@@ -106,7 +107,7 @@ const GENRE_PROFILES = {
     'Personal Finance': `Teach one practical money concept such as budgeting, saving, borrowing, insurance, or investing. Use transparent assumptions and explain risk, fees, and time horizon when relevant. Avoid guaranteed returns, shame, or personalized financial advice; state that outcomes depend on circumstances.`,
     'Future of Work': `Examine a documented workplace change, job practice, or plausible scenario and who it affects. Separate current evidence from forecast, include both opportunities and tradeoffs, and avoid unsupported job-loss percentages or treating workers as interchangeable.`,
     'Psychology': `Explain a specific behavior, bias, or psychological idea with examples. Avoid pop-psych labels, armchair diagnosis, and claiming a single study explains everyone. Note context and individual differences; distinguish a useful model from settled fact.`,
-    'History & Hidden Facts': `SCOPE: tell a vivid, evidence-grounded story about the human past. Optimize for the general reader who is scrolling, not a history student. Start with a subject many people already recognize (a famous ruler, civilization, war, monument, invention, or turning point), or a universally understandable human stake (survival, power, betrayal, love, money, food, escape, or a costly mistake). The hook must make sense to someone who has never heard the proper noun: give enough context to understand who/what it is and why the outcome matters. Choose a specific documented surprise, consequential choice, reversal, strange-but-true detail, or popular myth corrected by evidence; make the curiosity gap about a clear answer, not mere obscurity. A famous name is a doorway, not the whole idea: explain the twist or consequence. Reject obscure rulers, inscriptions, archaeological terminology, and objects whose appeal depends on already knowing the subject, unless they connect directly to a famous story or relatable stake. Prefer “Cleopatra risked her throne to meet Caesar” over “What an inscription reveals about a forgotten ruler.” Do not assume any historical subject is inherently interesting just because it is old or unusual. Use lesser-known facts only when a reader can immediately understand why they matter. Base claims on reliable historical or archaeological evidence; do not invent secrets, motives, dialogue, or certainty. Distinguish evidence from interpretation and established history from legend or uncertainty. Explore cultures and periods broadly, but keep instant audience comprehension and human stakes as the selection filter. The subject must be historical in its own right, not a modern topic dressed up with the word history.`,
+    'History & Hidden Facts': `SCOPE: tell a vivid, evidence-grounded story about the human past. Optimize for a curious general reader, not a history student. Start with a widely recognized person, civilization, conflict, or event when possible (for example, Hitler, Alexander the Great, Ancient Greece, Rome, Cleopatra, or a famous war), and reveal a documented detail that changes what the reader thought they knew. The familiar name is only the doorway: make the angle a meaningful decision, rivalry, betrayal, reversal, unlikely alliance, personal cost, or consequence. Other cultures and periods are welcome when their story has an instantly graspable human stake. A reader must understand the hook without already knowing specialist names or archaeology. Reject obscure rulers, inscriptions, archaeological terminology, and objects whose appeal depends on prior knowledge unless they connect directly to a familiar story or relatable stakes. Do not choose an incident merely because it is strange; explain why its outcome mattered to people. Use evidence-grounded narrative tension and curiosity, not a list of facts. Do not invent motives, dialogue, secrets, or certainty; treat atrocities and dictators with historical seriousness rather than sensationalism. Distinguish evidence from interpretation and established history from legend or uncertainty. The subject must be historical in its own right, not a modern topic dressed up with the word history.`,
     'Philosophy': `Explore one philosophical question or argument fairly. Define the key idea in everyday language, present a strong version of the reasoning and a meaningful objection, then leave room for the reader's judgment. Do not misrepresent a philosopher or pretend contested questions have settled answers.`,
     'Geopolitics': `Explain a specific international event, relationship, or policy with clear geography, actors, interests, and timeframe. Attribute claims, distinguish verified facts from each side's position, and provide context without propaganda, dehumanization, or false certainty about motives.`,
     'Parenting': `Give age-aware, compassionate guidance for a clearly defined parenting situation. Respect differences in children, families, disability, culture, and resources. Avoid shame, perfectionism, guarantees, or medical/developmental claims beyond reliable evidence.`,
@@ -131,7 +132,7 @@ const TOPIC_BLUEPRINTS = {
     'Personal Finance': { types: ['money habit', 'financial product', 'saving concept', 'borrowing decision'], references: ['What a minimum card payment really costs', 'How compound interest affects monthly savings'], excluded: [] },
     'Future of Work': { types: ['workplace change', 'job practice', 'worker skill', 'organizational decision'], references: ['How a tool changes one workplace task', 'What workers need during a role redesign'], excluded: [] },
     'Psychology': { types: ['behavioral pattern', 'cognitive bias', 'decision process', 'social behavior'], references: ['Why unfinished tasks stay in memory', 'How framing changes a choice'], excluded: [] },
-    'History & Hidden Facts': { types: ['famous person', 'civilization', 'war or battle', 'turning point', 'monument', 'invention', 'consequential event', 'famous artifact'], references: ['Why Julius Caesar crossed the Rubicon—and what he risked', 'How the Titanic sank so quickly', 'The real reason the Berlin Wall fell', 'How one decision changed the outcome of a famous battle'], excluded: ['ai', 'artificial intelligence', 'algorithm', 'technology forecast', 'remote work', 'housing market', 'rent', 'paycheck', 'student loan', 'brain chip', 'neural implant', 'future', 'tomorrow'] },
+    'History & Hidden Facts': { types: ['famous person', 'civilization', 'war or battle', 'turning point', 'monument', 'invention', 'consequential event', 'famous artifact'], references: ['What Hitler misunderstood about Britain before invading the Soviet Union', 'The choice that made Alexander the Great king', 'How a rivalry reshaped Ancient Greece', 'Why Julius Caesar crossed the Rubicon—and what he risked'], excluded: ['ai', 'artificial intelligence', 'algorithm', 'technology forecast', 'remote work', 'housing market', 'rent', 'paycheck', 'student loan', 'brain chip', 'neural implant', 'future', 'tomorrow'] },
     'Philosophy': { types: ['philosophical question', 'argument', 'thinker', 'ethical dilemma'], references: ['What makes a choice fair when both options cause harm', 'Why Socrates distrusted certainty'], excluded: [] },
     'Geopolitics': { types: ['international relationship', 'border issue', 'trade route', 'foreign policy decision'], references: ['Why a narrow sea route matters to trade', 'How a border shapes two countries’ choices'], excluded: [] },
     'Parenting': { types: ['parenting situation', 'child development skill', 'family routine', 'caregiving challenge'], references: ['How to help a child name a big feeling', 'Why predictable routines can help children'], excluded: [] },
@@ -156,7 +157,7 @@ const GENRE_HOOK_LENSES = {
     'Personal Finance': 'Tie one overlooked fee, rule, or time effect to a concrete decision or consequence; make the stakes understandable without promising outcomes.',
     'Future of Work': 'Show a specific workplace change through the worker experience, an unexpected tradeoff, or a task being reshaped; label forecasts as forecasts.',
     'Psychology': 'Use a familiar behavior with a surprising explanation, a carefully framed bias, or a gap between what people think they do and what evidence suggests.',
-    'History & Hidden Facts': 'Choose for audience pull, not just historical novelty. Lead with a recognizable name/event or an instantly relatable human stake, then pose one crisp question about a documented surprise, consequential choice, reversal, myth, or consequence. A reader unfamiliar with the subject must still understand why to care from the hook alone. Do not use obscure names or archaeological detail as the only source of interest. Name the anchor and supply enough context to make the stakes clear; pay off the question with evidence, without inventing secrets.',
+    'History & Hidden Facts': 'Use a familiar historical figure/event as the entry point, then reveal a well-supported detail that changes a common assumption or tells a gripping human story. Build tension from a consequential choice, rivalry, betrayal, reversal, or personal cost. The audience should know the name or instantly understand the stakes, and feel a clear reason to keep reading. Avoid obscure history trivia, dry factoids, and shocking claims that are weakly supported.',
     'Philosophy': 'Frame a real dilemma, paradox, or clash of values in a way that makes the audience test their own intuition; do not pretend there is an easy settled answer.',
     'Geopolitics': 'Reveal the overlooked geography, incentive, historical context, or second-order consequence behind a consequential international decision; distinguish claims from verified facts.',
     'Parenting': 'Start from a recognizable family moment and offer a surprising, compassionate explanation or age-aware practical insight; avoid guilt and one-size-fits-all claims.',
@@ -212,13 +213,18 @@ NICHE DEFINITION:
 ${getGenreGuidance(genre)}
 
 VIRAL TOPIC AND HOOK PRINCIPLES:
-- No prompt can guarantee virality. Optimize for the signals behind strong social posts: an immediate stop-scroll idea, quick comprehension, emotional or practical relevance, specific novelty, curiosity that sustains attention, and a payoff worth saving or sharing.
+- Think like a sharp editor who knows human attention. People stop for people they recognize, problems they have felt, status and identity, love and conflict, fear and relief, money and power, survival, injustice, surprising reversals, and beliefs they want tested. Choose a topic that touches at least one of these instincts and explain that connection in the hook. A fact can be true and surprising but still be uninteresting if its subject and stakes mean nothing to the reader.
+- Optimize in this order: (1) instant relevance or recognition, (2) clear human/emotional/practical stakes, (3) a specific curiosity gap or belief-changing reveal, (4) a satisfying evidence-based payoff. Novelty alone is not a reason to care. The reader should immediately understand “why should I care?”
+- No prompt can guarantee virality. Aim for the signals behind strong social posts: instant comprehension, emotional or practical relevance, novelty in service of relevance, curiosity that sustains attention, and a payoff worth saving or sharing.
 - Choose one proven story shape that suits this niche: a surprising documented detail; a common belief corrected by evidence; a real mystery with competing explanations; a hidden cause or mechanism; a meaningful contradiction; a human consequence; or a practical insight with a clear payoff. Do not force every story into mystery or controversy.
 - Make the subject immediately understandable and concrete. Prefer a named person, place, object, behavior, event, decision, or everyday moment over an abstract trend.
 - Open a fair curiosity gap the carousel can actually close. The hook should make the audience want one specific answer; later slides must deliver it promptly.
 - Privately compare distinct candidates for one-second clarity, relevance to the chosen audience, novelty, emotional or practical stakes, evidence quality, and payoff. Choose the strongest combination; do not expose the scoring.
 - Make the hook concise, memorable, and easy to repeat or send to someone. Use a specific contrast, consequence, puzzle, or reveal where it fits. Do not rely on a generic shock phrase or a question with no satisfying answer.
-- AUDIENCE PULL TEST: Imagine this in a feed beside friends' posts. Would a non-specialist who has never heard the subject stop because they recognize the person/event, feel the human stakes, or need the answer to a clear surprising question? If the idea only interests someone already studying the topic, reject it. Familiar subject + unexpected consequence beats an obscure name + generic “mystery.” The subject's age, rarity, or scholarly importance is not itself a hook. Prefer concrete stakes people instinctively understand: life, power, love, betrayal, money, survival, status, escape, or a decision with consequences. For unfamiliar proper nouns, add a familiar anchor or enough context to make the relevance instant.
+- THREE-SECOND FRIEND TEST: Imagine telling the idea to a smart friend who is not interested in this niche. Would they understand the setup immediately, care what happens, and naturally ask “wait, why?” If not, reject it. Prefer familiar anchors plus a fresh implication, a recognizable personal problem plus an unexpected explanation, or an important choice with a human consequence. Do not mistake “I didn't know that” for “I want to know that.”
+- BELIEF-CHALLENGE TEST: When reliable evidence supports it, select a detail that corrects or complicates what people commonly assume. Do not invent a myth or claim “everyone believes” something. The hook should imply a meaningful answer, not just announce an unusual fact.
+- Story test: Can this be told as setup → pressure/choice → consequence → satisfying reveal? For human subjects, favor choices, rivalries, relationships, setbacks, risks, reversals, and consequences over disconnected facts. In practical genres, a recognizable frustration can be the setup and a useful action the payoff.
+- A recognizable subject is not enough on its own. State or imply the stakes and the open question. For unfamiliar proper nouns, provide a familiar anchor or enough context to make the relevance instant.
 - Never invent a named theory, technique, study, organization, discovery, date, statistic, causal result, or popular belief to make a hook sound more clickable. Do not present a forecast or disputed claim as fact. If a vivid detail is uncertain, choose a better-supported angle.
 - Keep curiosity honest: no fake urgency, exaggerated certainty, fear, shame, or promise beyond what the carousel can support. Write the hook in fewer than 15 words.
 
@@ -239,7 +245,7 @@ ${genre === 'History & Hidden Facts' ? `HISTORICAL ACCURACY CHECK:
 - If a surprising detail is uncertain, choose another documented detail. Curiosity must come from the evidence, not an unsupported claim.
 ` : ''}
 
-Privately develop several candidates, select the clearest accurate one, and self-check that a reader could recognize the niche from the subject alone. Never borrow a familiar trend from another genre; derive the idea from this niche's subject matter. Then return exactly one record. The hook must name the subject, be under 15 words, use no first-person creator voice, and describe the subject rather than a method used to discover it.
+Privately develop several candidates, then reject any that fail the audience pull, three-second friend, or evidence checks. Select the strongest accurate subject-hook combination for this audience. Never borrow a familiar trend from another genre; derive the idea from this niche's subject matter. Then return exactly one record. The hook must name the subject, be under 15 words, use no first-person creator voice, and describe the subject rather than a method used to discover it.
 
 Return only JSON: {"subject":"specific subject", "subject_type":"one allowed type", "angle":"specific accurate angle", "hook":"final hook"}.`;
 
@@ -248,6 +254,7 @@ Return only JSON: {"subject":"specific subject", "subject_type":"one allowed typ
             attempt === 0 ? generatePrompt : `${generatePrompt}\n\nYour last draft failed validation. Start over with a different, more specific subject in the selected niche.`,
             'Create one original topic record.',
             attempt === 0 ? 0.65 : 0.4,
+            { thinkingLevel: 'low', timeoutMs: 20000, maxRetries: 1 },
         );
 
         let candidate;
@@ -261,19 +268,6 @@ Return only JSON: {"subject":"specific subject", "subject_type":"one allowed typ
         let subject = typeof candidate.subject === 'string' ? candidate.subject.trim() : '';
         let subjectType = typeof candidate.subject_type === 'string' ? candidate.subject_type.trim().toLowerCase() : '';
         let angle = typeof candidate.angle === 'string' ? candidate.angle.trim() : '';
-        if (genre === 'History & Hidden Facts' && subject && angle && hook) {
-            try {
-                const reviewed = await reviewTopic(genre, blueprint, { subject, subject_type: subjectType, angle, hook });
-                if ([reviewed.subject, reviewed.subject_type, reviewed.angle, reviewed.hook].every(value => typeof value === 'string' && value.trim())) {
-                    subject = reviewed.subject.trim();
-                    subjectType = reviewed.subject_type.trim().toLowerCase();
-                    angle = reviewed.angle.trim();
-                    hook = reviewed.hook.trim();
-                }
-            } catch (error) {
-                console.warn(`Editorial review failed for ${JSON.stringify(genre)}; using the generated candidate:`, error.message);
-            }
-        }
         const combined = `${subject} ${angle} ${hook}`;
         const excluded = containsExcludedTerm(combined, blueprint.excluded);
         const checks = {
