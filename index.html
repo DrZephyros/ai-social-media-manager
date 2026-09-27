@@ -66,6 +66,104 @@
     }
     header p { color: var(--muted); margin-top: 0.5rem; font-size: 1rem; }
 
+    /* ---- Genre Picker ---- */
+    #genre-picker {
+      width: 100%;
+      max-width: 560px;
+      margin-bottom: 1.5rem;
+    }
+    #genre-picker h2 {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+    #genre-search-wrap {
+      position: relative;
+      margin-bottom: 1rem;
+    }
+    #genre-search-wrap svg {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      opacity: 0.4;
+      pointer-events: none;
+    }
+    #genre-search {
+      width: 100%;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.7rem 1rem 0.7rem 2.5rem;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    #genre-search:focus { border-color: var(--cyan); }
+    #genre-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .genre-chip {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.45rem 0.9rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      color: var(--muted);
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      user-select: none;
+      white-space: nowrap;
+    }
+    .genre-chip:hover {
+      border-color: var(--cyan);
+      color: var(--cyan);
+      background: rgba(0,229,255,0.07);
+    }
+    .genre-chip.active {
+      border-color: var(--cyan);
+      background: rgba(0,229,255,0.15);
+      color: var(--cyan);
+      box-shadow: 0 0 12px rgba(0,229,255,0.2);
+    }
+    .genre-chip.hidden { display: none; }
+    #custom-genre-row {
+      margin-top: 0.75rem;
+      display: none;
+      gap: 0.5rem;
+    }
+    #custom-genre-row.visible { display: flex; }
+    #custom-genre-input {
+      flex: 1;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.6rem 0.9rem;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.85rem;
+      outline: none;
+    }
+    #custom-genre-input:focus { border-color: var(--cyan); }
+    #genre-selected-label {
+      font-size: 0.78rem;
+      color: var(--cyan);
+      font-weight: 600;
+      margin-top: 0.5rem;
+      min-height: 1.1rem;
+    }
+
     /* ---- Control Panel ---- */
     #controls {
       background: var(--card);
@@ -749,8 +847,24 @@
     <p>Generate viral Instagram carousels in seconds · Powered by Groq</p>
   </header>
 
+  <!-- Genre Picker -->
+  <div id="genre-picker">
+    <h2>Choose your niche 🎯</h2>
+    <div id="genre-search-wrap">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="genre-search" placeholder="Search genres...">
+    </div>
+    <div id="genre-grid">
+      <!-- chips injected by JS -->
+    </div>
+    <div id="custom-genre-row">
+      <input type="text" id="custom-genre-input" placeholder="Type your own genre...">
+    </div>
+    <div id="genre-selected-label"></div>
+  </div>
+
   <div id="controls">
-    <button class="btn btn-brainstorm" id="btn-brainstorm">Brainstorm Viral Topic 🎯</button>
+    <button class="btn btn-brainstorm" id="btn-brainstorm" disabled>Brainstorm Viral Topic 🎯</button>
 
     <div id="topic-row">
       <input type="text" id="topic-input" placeholder="Edit the topic if you want...">
@@ -925,13 +1039,101 @@
     }
 
     /* ============================================================
+       Genre Picker
+    ============================================================ */
+    const GENRES = [
+      { label: 'Economics', icon: '💰' },
+      { label: 'Tech & AI', icon: '🤖' },
+      { label: 'Mental Health', icon: '🧠' },
+      { label: 'Physical Fitness', icon: '💪' },
+      { label: 'Health & Nutrition', icon: '🥗' },
+      { label: 'Bioengineering', icon: '🧬' },
+      { label: 'Student Life', icon: '🎓' },
+      { label: 'Entrepreneurship', icon: '🚀' },
+      { label: 'Climate & Environment', icon: '🌍' },
+      { label: 'Space & Astronomy', icon: '🔭' },
+      { label: 'Neuroscience', icon: '🧪' },
+      { label: 'Relationships', icon: '❤️' },
+      { label: 'Personal Finance', icon: '📈' },
+      { label: 'Future of Work', icon: '🏢' },
+      { label: 'Psychology', icon: '💭' },
+      { label: 'History & Hidden Facts', icon: '📜' },
+      { label: 'Philosophy', icon: '🔮' },
+      { label: 'Geopolitics', icon: '🌐' },
+      { label: 'Parenting', icon: '👶' },
+      { label: 'Food Science', icon: '🍕' },
+      { label: 'Crypto & Web3', icon: '🔗' },
+      { label: 'Other', icon: '✏️' },
+    ];
+
+    const genreGrid = document.getElementById('genre-grid');
+    const genreSearch = document.getElementById('genre-search');
+    const customGenreRow = document.getElementById('custom-genre-row');
+    const customGenreInput = document.getElementById('custom-genre-input');
+    const genreSelectedLabel = document.getElementById('genre-selected-label');
+    let selectedGenre = null;
+
+    GENRES.forEach(g => {
+      const chip = document.createElement('div');
+      chip.className = 'genre-chip';
+      chip.dataset.label = g.label;
+      chip.innerHTML = `<span>${g.icon}</span><span>${g.label}</span>`;
+      chip.addEventListener('click', () => {
+        document.querySelectorAll('.genre-chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        if (g.label === 'Other') {
+          customGenreRow.classList.add('visible');
+          customGenreInput.focus();
+          selectedGenre = customGenreInput.value.trim() || null;
+        } else {
+          customGenreRow.classList.remove('visible');
+          selectedGenre = g.label;
+        }
+        updateGenreLabel();
+        btnBrainstorm.disabled = !selectedGenre;
+      });
+      genreGrid.appendChild(chip);
+    });
+
+    customGenreInput.addEventListener('input', () => {
+      selectedGenre = customGenreInput.value.trim() || null;
+      updateGenreLabel();
+      btnBrainstorm.disabled = !selectedGenre;
+    });
+
+    genreSearch.addEventListener('input', () => {
+      const q = genreSearch.value.toLowerCase();
+      document.querySelectorAll('.genre-chip').forEach(chip => {
+        const match = chip.dataset.label.toLowerCase().includes(q);
+        chip.classList.toggle('hidden', !match);
+      });
+    });
+
+    function updateGenreLabel() {
+      genreSelectedLabel.textContent = selectedGenre
+        ? `✅ Niche: ${selectedGenre}`
+        : '';
+    }
+
+    function getGenre() {
+      if (selectedGenre) return selectedGenre;
+      const custom = customGenreInput.value.trim();
+      return custom || null;
+    }
+
+    /* ============================================================
        Step 1: Brainstorm
     ============================================================ */
     btnBrainstorm.addEventListener('click', async () => {
       btnBrainstorm.disabled = true;
-      setStatus('Groq is brainstorming a viral topic...', true);
+      const genre = getGenre();
+      setStatus(`Brainstorming a viral ${genre} topic...`, true);
       try {
-        const res  = await fetch('/api/brainstorm', { method: 'POST' });
+        const res  = await fetch('/api/brainstorm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ genre })
+        });
         const data = await res.json();
         if (data.topic) {
           topicInput.value = data.topic;
@@ -961,7 +1163,8 @@
       captionBox.value  = '';
       setStatus('Connecting to Groq...', true);
 
-      const evtSource = new EventSource(`/api/generate-stream?topic=${encodeURIComponent(topic)}`);
+      const genre = getGenre();
+      const evtSource = new EventSource(`/api/generate-stream?topic=${encodeURIComponent(topic)}&genre=${encodeURIComponent(genre || '')}`);
 
       evtSource.onmessage = (e) => {
         const payload = JSON.parse(e.data);

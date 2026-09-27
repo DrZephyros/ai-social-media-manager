@@ -20,7 +20,8 @@ let latestScript = null;
 
 app.post('/api/brainstorm', async (req, res) => {
     try {
-        const topic = await generateTopic();
+        const { genre } = req.body || {};
+        const topic = await generateTopic(genre);
         res.json({ topic });
     } catch (err) {
         console.error(err);
@@ -31,6 +32,7 @@ app.post('/api/brainstorm', async (req, res) => {
 // SSE endpoint: streams status updates then returns the script JSON
 app.get('/api/generate-stream', async (req, res) => {
     const topic = req.query.topic;
+    const genre = req.query.genre;
     if (!topic) return res.status(400).end();
 
     res.setHeader('Content-Type', 'text/event-stream');
@@ -43,7 +45,7 @@ app.get('/api/generate-stream', async (req, res) => {
     try {
         send({ status: '🧠 Groq AI is writing your carousel script...' });
 
-        const script = await generateScript(topic);
+        const script = await generateScript(topic, genre);
         latestScript = script;
 
         send({ status: '✍️ Writing the Instagram caption...' });

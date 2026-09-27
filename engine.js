@@ -82,7 +82,7 @@ async function fetchLiveTrends() {
     }
 }
 
-export async function generateTopic() {
+export async function generateTopic(genre = null) {
     // PROVEN VIRAL FORMATS — sentence structures that consistently go viral
     // The AI does NOT invent these. It only fills in the blanks.
     const FORMATS = [
@@ -153,7 +153,7 @@ export async function generateTopic() {
 
     // SINGLE AI call: just polish the grammar and make it flow naturally
     const polishPrompt = `Take this Instagram carousel hook and make it sound natural and punchy. 
-Fix any awkward grammar. Keep it under 15 words. Do NOT add jargon, buzzwords, or change the core meaning.
+${genre ? `Adapt it slightly to fit the genre/niche: "${genre}". ` : ''}Fix any awkward grammar. Keep it under 15 words. Do NOT add jargon, buzzwords, or change the core meaning.
 
 Raw hook: "${rawHook}"
 
@@ -182,9 +182,9 @@ Output ONLY the polished hook. No quotes, no explanation.`;
     return rawHook;
 }
 
-export async function generateScript(topic) {
+export async function generateScript(topic, genre = null) {
     const systemInstruction = `You write Instagram carousel scripts. Your style: conversational, insightful, and punchy. Like a smart friend texting you something wild they just found out.
-
+${genre ? `The target niche/genre is: ${genre}. Ensure the content fits this genre.` : ''}
 HARD RULES — violating any = failure:
 1. Carousel Length: Generate between 5 to 8 slides. Choose the length that best fits the story.
 2. Body text = 2 to 3 sentences. No more.
