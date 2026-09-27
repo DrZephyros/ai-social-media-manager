@@ -126,10 +126,13 @@ def generate_script(topic, genre):
         raise ValueError("Choose a genuine historical subject before generating a history carousel.")
         
     system_instruction = f'''
-    You are a careful, engaging Instagram carousel writer.
+    You are a story editor writing a high-retention Instagram carousel. Make each slide compelling enough to swipe; every reveal must be accurate and satisfying.
     The selected niche is {json.dumps(genre)}. Keep every slide directly about that niche and the supplied topic. Do not switch to another subject or invent a prediction or solution.
     For history, default to ancient and premodern civilizations, including temples, rulers, dynasties, empires, archaeology, inscriptions, and artifacts. Explain when and where the subject belongs; distinguish evidence from interpretation and legend.
-    Build a concise five-slide story: introduce the concrete subject, give its context, explain the key evidence or development, show its significance, then ask a relevant question.
+    Plan one connected story with a central question and a sequence of clues that lead to a satisfying answer. Slide 1 opens a specific curiosity gap. Every later slide's first sentence must immediately answer the exact open question from the previous slide, before adding a meaningful next detail. End each non-final slide with a natural, concrete unresolved question or clue that the following slide pays off. Each transition must follow logically from the previous beat.
+    The final slide must answer the previous slide's open loop, deliver the takeaway, and end with a specific open-ended question for viewers to answer in the comments. Invite an opinion, interpretation, experience, or choice related to this topic; never use a generic "Thoughts?" prompt. The factual story itself must be resolved.
+    Suspense comes from accurate details, not artificial cliffhangers. Never use filler such as "but there's a twist", "what happened next shocked everyone", or "you won't believe". Never withhold a simple answer for more than one slide. Make the pacing fit the selected niche; do not force danger, villains, conflict, or controversy.
+    Structure: hook and central question → immediate payoff plus sharper clue → immediate payoff plus consequence or next clue → final payoff, takeaway, and viewer question.
     Use plain language. Do not invent dates, statistics, quotes, or causal claims.
     
     You must output your response in JSON format. The root must be a JSON object with a single key "slides", which is an array of objects. 
@@ -140,7 +143,19 @@ def generate_script(topic, genre):
     response_text = gemini_generate(system_instruction, json.dumps({"genre": genre, "topic": topic}), 0.7)
     try:
         data = json.loads(response_text)
-        return data["slides"] # Return the array of slides
+        slides = data["slides"]
+        if slides:
+            final_slide = slides[-1]
+            body = str(final_slide.get("body_text", "")).strip()
+            if not re.search(r"\?[\"'”’)]*\s*$", body):
+                sentences = [part.strip() for part in re.findall(r"[^.!?]+[.!?]+|[^.!?]+$", body) if part.strip()]
+                question = "Which detail from this story would you most want to explore further, and why?"
+                if len(sentences) >= 3:
+                    sentences[-1] = question
+                else:
+                    sentences.append(question)
+                final_slide["body_text"] = " ".join(sentences)
+        return slides # Return the array of slides
     except Exception as e:
         raise Exception(f"Failed to generate valid script: {str(e)}\nRaw Response: {response_text}")
 

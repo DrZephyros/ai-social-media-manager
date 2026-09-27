@@ -311,13 +311,27 @@ function isClearlyHistoricalHook(hook) {
     return historicalAnchors.test(text);
 }
 
+function ensureFinalDiscussionQuestion(slides) {
+    if (!Array.isArray(slides) || slides.length === 0) return slides;
+    const finalSlide = slides[slides.length - 1];
+    const body = typeof finalSlide?.body_text === 'string' ? finalSlide.body_text.trim() : '';
+    if (/[?]["'”’)]*\s*$/.test(body)) return slides;
+
+    const sentences = body.match(/[^.!?]+[.!?]+|[^.!?]+$/g)?.map(sentence => sentence.trim()).filter(Boolean) || [];
+    const question = 'Which detail from this story would you most want to explore further, and why?';
+    if (sentences.length >= 3) sentences[sentences.length - 1] = question;
+    else sentences.push(question);
+    finalSlide.body_text = sentences.join(' ');
+    return slides;
+}
+
 export async function generateScript(topic, genre = null) {
     genre = requireGenre(genre);
     if (typeof topic !== 'string' || !topic.trim()) throw new Error('A topic is required to write the carousel.');
     if (genre === 'History & Hidden Facts' && !isClearlyHistoricalHook(topic)) {
         throw new Error('That topic is not a historical subject. Choose a topic about a civilization, ruler, temple, archaeological site, artifact, or historical event.');
     }
-    const systemInstruction = `You write Instagram carousel scripts. Your style: conversational, insightful, and punchy. Like a smart friend texting you something wild they just found out.
+    const systemInstruction = `You are a story editor who writes high-retention Instagram carousel scripts. Make each slide compelling enough to swipe, and make every reveal accurate and satisfying. Write conversationally, vividly, and with concrete details.
 ${genre ? `SELECTED GENRE: ${JSON.stringify(genre)}.
 GENRE-SPECIFIC BRIEF: ${getGenreGuidance(genre)}
 GENRE FIDELITY (top priority): The selected genre is the subject, not a decorative angle. Every slide must directly develop the same topic within this genre. Do not import unrelated topics just to create drama. If the supplied hook conflicts with the selected genre, preserve its core only if it fits; otherwise replace it with a clearly on-genre subject and tell that story. Do not default to familiar topics from another genre; stay with the concrete subject matter described in the brief.
@@ -332,15 +346,23 @@ HARD RULES:
 6. Titles = max 5 words. Make them clear and intriguing, not sensational or misleading.
 7. Avoid unsupported blame. Be accurate and fair. Discuss sensitive or political material only when central to the genre and topic; provide context and neutral, attributable claims.
 
-NARRATIVE FLOW:
-Tell one cohesive story about the actual supplied subject. Do not silently switch topics to make a stronger hook. Follow a sequence suited to the selected genre: history establishes when/where, explains the event or subject, then its context and consequences; science explains the question, evidence, and limits; advice gives practical steps and context; ideas fairly explains the claim and a meaningful counterpoint. Do not force a crisis, culprit, villain, or controversy. End with a specific question that follows from the story.
+STORY ENGINE — PLAN THE FULL CHAIN BEFORE WRITING:
+- Build one connected story with a central question, a sequence of clues or steps, and a satisfying answer. Keep every beat about the supplied subject.
+- Slide 1 must create an immediate, specific curiosity gap: show the surprising detail or stakes, then make clear what the reader is about to find out. Do not reveal the whole answer yet.
+- Slides 2 onward must pay off the previous slide's exact open question in the FIRST sentence. That payoff must be clear and substantive, never a vague tease or a new unrelated fact.
+- After paying it off, add a meaningful new detail that naturally raises the next question. End each non-final slide with that next question or unresolved clue, so the following slide has something concrete to answer.
+- Each transition must follow cause, evidence, consequence, or a logical next step. The reader should be able to see why the next reveal follows from the last one.
+- Final slide: first resolve the previous slide's open loop and deliver the story's takeaway. Its LAST sentence must be an open-ended, topic-specific question that invites viewers to share an opinion, interpretation, experience, or choice in the comments. Ask the audience a real question; never use a generic 'Thoughts?' prompt. Do not leave the factual story unresolved just to manufacture suspense.
+- The selected genre and subject determine what can feel suspenseful. In history, use a real puzzle, artifact, decision, clue, or consequence; in science, a question, test, result, or limitation; in advice, a recognizable problem followed by a useful step; in ideas, a tension between values or interpretations. Do not force crime, danger, villains, conflict, or controversy.
+- Suspense must come from accurate information and meaningful unanswered questions, not fake cliffhangers. Avoid filler such as 'but there's a twist', 'what happened next shocked everyone', 'you won't believe', 'the secret was...', and 'wait until you see'. Never withhold a simple answer for more than one slide.
+- Sequence example (structure only; do not copy content): intriguing clue and central question → immediate explanation of clue plus a sharper question → evidence answering that question plus its consequence → final payoff, takeaway, and audience question.
 
 WRITING QUALITY:
 - Use plain, vivid language and specific details. Explain necessary technical terms in everyday words.
 - Build curiosity from a real detail, then explain it promptly. Never rely on vague bait such as "the real surprise" or "hidden imbalance".
 - Keep claims factual and proportionate. Never invent statistics, quotes, motives, or causal links. If a detail is uncertain, omit it or qualify it.
-- Give each slide a useful role in the story; avoid repeating the hook or padding with generic engagement bait.
-- The final slide should deliver the takeaway and end with a relevant question for discussion.
+- Give each slide a distinct role: hook, payoff-plus-next-clue, payoff-plus-next-clue, and so on, then final payoff and audience question. Avoid repetition and generic engagement bait.
+- Make the title and first sentence work together as one beat; do not merely label the slide or repeat its title.
 
 BACKGROUND TYPES (choose the mood the facts support; do not manufacture drama):
 "gradient-blue" = explanation or reflection
@@ -364,13 +386,16 @@ BEFORE OUTPUTTING: Check each slide body:
 □ Does every slide stay about the same supplied subject?
 □ Does its story structure fit this genre instead of forcing a villain/problem narrative?
 □ image_query is concrete and visual?
+□ Does every non-final slide set up one concrete question or clue that the NEXT slide answers immediately?
+□ Does each slide pay off the previous slide before opening the next loop?
+□ Does the final slide resolve the story and end with a specific open question for viewers to answer?
 
 Output ONLY strict JSON:
 { "slides": [ { "slide_number": 1, "title": "...", "body_text": "...", "bg_type": "...", "image_query": "..." }, ... ] }`;
 
     const responseText = await generateGeminiContent(systemInstruction, JSON.stringify({ topic, genre }), 0.7);
     const data = JSON.parse(responseText);
-    return data.slides;
+    return ensureFinalDiscussionQuestion(data.slides);
 }
 
 export async function generateCaption(topic, script, genre = null) {
