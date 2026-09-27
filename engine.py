@@ -1,7 +1,6 @@
 import json
 import requests
 import os
-import random
 import re
 from PIL import Image, ImageDraw, ImageFont
 import urllib.parse
@@ -18,19 +17,10 @@ GENRES = [
     "Philosophy", "Geopolitics", "Parenting", "Food Science", "Crypto & Web3", "Other",
 ]
 
-HISTORY_TOPIC_CATALOG = [
-    "How the Kailasa Temple was carved from a single rock",
-    "The ancient water system that kept Hampi alive",
-    "What Ashoka wrote on stone across India",
-    "Why Harappan cities built drains beneath their streets",
-    "How Chola artists turned bronze into sacred sculpture",
-    "Why the Ajanta Caves were painted deep inside rock",
-    "How Nalanda became a major centre of learning",
-    "Why the Indus Valley standardized its weights",
-    "How the Great Stupa at Sanchi survived for centuries",
-    "Why Petra’s builders carved channels into stone",
-    "How Angkor’s engineers managed water on a vast scale",
-    "Why the Terracotta Army was buried with China’s first emperor",
+HISTORY_REFERENCE_EXAMPLES = [
+    "How an ancient temple was engineered",
+    "What an inscription reveals about a forgotten ruler",
+    "Why an archaeological excavation changed what historians thought about a civilization",
 ]
 
 def setup_client(api_key):
@@ -45,16 +35,16 @@ def generate_topic(genre):
         raise ValueError("Choose a niche before brainstorming a topic.")
 
     genre = genre.strip()
-    if genre == "History & Hidden Facts":
-        return random.choice(HISTORY_TOPIC_CATALOG)
-
     history_guidance = """
 For History & Hidden Facts, default to ancient and premodern civilizations. Choose from temples, kingdoms, dynasties, kings and emperors, architecture, archaeology, excavations, inscriptions, coins, manuscripts, artifacts, ruins, daily life, beliefs, trade, or art. Name a concrete historical person, place, object, or event and anchor it to its civilization or period. Distinguish documented evidence from legend or interpretation. Make the central subject historical in its own right.""" if genre == "History & Hidden Facts" else ""
+    references = "\n".join(f"- {example}" for example in HISTORY_REFERENCE_EXAMPLES) if genre == "History & Hidden Facts" else "- A concrete, accurate subject from the selected niche"
 
     prompt = f"""You are an Instagram carousel idea editor.
 The required niche is {json.dumps(genre)}. The subject itself must directly belong to this niche.
 Niche guidance: {history_guidance or 'Choose a specific, useful, accurate subject that directly fits the selected niche. Do not substitute a familiar trending topic.'}
+Reference examples: {references}
 
+The examples show the genre boundary only. Generate a different subject. Do not copy, paraphrase, combine, or add a new claim to an example.
 Privately consider three different candidate subjects from the selected niche. Choose the most concrete and well-supported one. Check that the central subject itself fits the niche, then write one clear hook under 15 words. Do not reveal your candidate list or reasoning. Do not invent claims, statistics, or dates.
 Return only the hook."""
     
@@ -70,8 +60,6 @@ Return only the hook."""
     return chat_completion.choices[0].message.content.strip()
 
 def is_history_topic(topic):
-    if topic in HISTORY_TOPIC_CATALOG:
-        return True
     anchors = r"\b(ancient|medieval|empire|dynasty|king|queen|emperor|temple|archaeolog\w*|excavat\w*|inscription|coin|manuscript|artifact|ruins?|fort|palace|monument|tomb|pyramid|civilization|chola|maurya|gupta|mughal|ashoka|hampi|ajanta|nalanda|harappa|indus|mesopotamia|egyptian|roman|greek|aztec|inca|maya|century|bce|bc|ce|ad)\b"
     return bool(re.search(anchors, topic, re.IGNORECASE))
 
