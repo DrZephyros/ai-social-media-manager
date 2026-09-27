@@ -74,7 +74,7 @@ app.get('/api/generate-stream', async (req, res) => {
         latestScript = script;
 
         send({ status: '✍️ Writing the Instagram caption...' });
-        const caption = await generateCaption(topic, script);
+        const caption = await generateCaption(topic, script, genre);
 
         send({ status: '✅ Script and caption complete! Rendering your slides...' });
         send({ done: true, script, caption });
