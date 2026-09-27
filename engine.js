@@ -2,11 +2,17 @@ import Groq from 'groq-sdk';
 import dotenv from 'dotenv';
 dotenv.config();
 
-const apiKey = process.env.GROQ_API_KEY;
-if (!apiKey) {
-  console.error("GROQ_API_KEY is not set in the environment variables.");
+let groq;
+function getGroqClient() {
+    if (!groq) {
+        const apiKey = process.env.GROQ_API_KEY;
+        if (!apiKey) {
+            throw new Error("GROQ_API_KEY is missing. Please add it to your Vercel Environment Variables.");
+        }
+        groq = new Groq({ apiKey });
+    }
+    return groq;
 }
-const groq = new Groq({ apiKey });
 
 // The exact few-shot examples used in the prompt.
 // Used by the deduplication guard to detect if the AI just echoed one back.
@@ -154,7 +160,8 @@ Raw hook: "${rawHook}"
 Output ONLY the polished hook. No quotes, no explanation.`;
 
     try {
-        const res = await groq.chat.completions.create({
+        const groqClient = getGroqClient();
+        const res = await groqClient.chat.completions.create({
             messages: [{ role: 'user', content: polishPrompt }],
             model: 'openai/gpt-oss-120b',
             temperature: 0.3,
@@ -263,7 +270,8 @@ BEFORE OUTPUTTING: Check each slide body:
 Output ONLY strict JSON:
 { "slides": [ { "slide_number": 1, "title": "...", "body_text": "...", "bg_type": "..." }, ... ] }`;
 
-    const chatResponse = await groq.chat.completions.create({
+    const groqClient = getGroqClient();
+    const chatResponse = await groqClient.chat.completions.create({
         messages: [
             { role: 'system', content: systemInstruction },
             { role: 'user', content: `Hook: "${topic}"` }
@@ -303,7 +311,8 @@ RULES:
 
 Output ONLY a JSON object: { "caption": "your multi-line caption here" }`;
 
-    const chatResponse = await groq.chat.completions.create({
+    const groqClient = getGroqClient();
+    const chatResponse = await groqClient.chat.completions.create({
         messages: [
             { role: 'system', content: systemInstruction },
             { role: 'user', content: `Topic: "${topic}"\n\nCarousel Script:\n${JSON.stringify(script)}` }
