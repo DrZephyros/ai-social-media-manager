@@ -24,9 +24,43 @@ const JARGON_BLACKLIST = [
     'tokenization', 'blockchain protocol', 'consensus mechanism'
 ];
 
+// History is a bounded editorial category, not a stylistic modifier for current events.
+// These subjects are deliberately concrete so an idea cannot drift into a modern trend.
+const HISTORY_TOPIC_CATALOG = [
+    'How the Kailasa Temple was carved from a single rock',
+    'The ancient water system that kept Hampi alive',
+    'What Ashoka wrote on stone across India',
+    'Why Harappan cities built drains beneath their streets',
+    'How Chola artists turned bronze into sacred sculpture',
+    'Why the Ajanta Caves were painted deep inside rock',
+    'How Nalanda became a major centre of learning',
+    'Why the Indus Valley standardized its weights',
+    'How the Great Stupa at Sanchi survived for centuries',
+    'Why Petra’s builders carved channels into stone',
+    'How Angkor’s engineers managed water on a vast scale',
+    'Why the Terracotta Army was buried with China’s first emperor',
+    'How Roman aqueducts carried water across valleys',
+    'What Pompeii’s graffiti reveals about everyday Roman life',
+    'How Egyptian scribes recorded the names of their dead',
+    'Why the Antikythera mechanism still puzzles historians',
+    'How Viking shipbuilders made voyages across the Atlantic',
+    'What the Rosetta Stone changed about ancient Egypt',
+    'How the Library of Ashurbanipal preserved Mesopotamian texts',
+    'Why Great Zimbabwe was built from stone without mortar',
+];
+let unservedHistoryTopics = [];
+
 function containsJargon(text) {
     const lower = text.toLowerCase();
     return JARGON_BLACKLIST.some(term => lower.includes(term));
+}
+
+function nextHistoryTopic() {
+    if (unservedHistoryTopics.length === 0) {
+        unservedHistoryTopics = [...HISTORY_TOPIC_CATALOG];
+    }
+    const index = Math.floor(Math.random() * unservedHistoryTopics.length);
+    return unservedHistoryTopics.splice(index, 1)[0];
 }
 
 // Shared guidance keeps topic brainstorming and carousel writing aligned by genre.
@@ -69,6 +103,9 @@ function requireGenre(genre) {
 
 export async function generateTopic(genre = null) {
     genre = requireGenre(genre);
+    if (genre === 'History & Hidden Facts') {
+        return nextHistoryTopic();
+    }
     const generatePrompt = `You are an expert Instagram carousel idea editor.
 Suggest ONE specific, genuinely interesting subject for a short ${genre ? `${JSON.stringify(genre)}` : 'surprising general-knowledge'} carousel.
 
@@ -127,6 +164,7 @@ async function isTopicOnGenre(groqClient, genre, hook) {
 }
 
 function isClearlyHistoricalHook(hook) {
+    if (HISTORY_TOPIC_CATALOG.includes(hook)) return true;
     const text = hook.toLowerCase();
     const currentYear = new Date().getUTCFullYear();
     const mentionedYears = [...text.matchAll(/\b(\d{4})\b/g)].map(match => Number(match[1]));
@@ -142,6 +180,9 @@ function isClearlyHistoricalHook(hook) {
 export async function generateScript(topic, genre = null) {
     genre = requireGenre(genre);
     if (typeof topic !== 'string' || !topic.trim()) throw new Error('A topic is required to write the carousel.');
+    if (genre === 'History & Hidden Facts' && !isClearlyHistoricalHook(topic)) {
+        throw new Error('That topic is not a historical subject. Choose a topic about a civilization, ruler, temple, archaeological site, artifact, or historical event.');
+    }
     const systemInstruction = `You write Instagram carousel scripts. Your style: conversational, insightful, and punchy. Like a smart friend texting you something wild they just found out.
 ${genre ? `SELECTED GENRE: ${JSON.stringify(genre)}.
 GENRE-SPECIFIC BRIEF: ${getGenreGuidance(genre)}

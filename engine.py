@@ -1,6 +1,8 @@
 import json
 import requests
 import os
+import random
+import re
 from PIL import Image, ImageDraw, ImageFont
 import urllib.parse
 from mistralai import Mistral
@@ -16,6 +18,21 @@ GENRES = [
     "Philosophy", "Geopolitics", "Parenting", "Food Science", "Crypto & Web3", "Other",
 ]
 
+HISTORY_TOPIC_CATALOG = [
+    "How the Kailasa Temple was carved from a single rock",
+    "The ancient water system that kept Hampi alive",
+    "What Ashoka wrote on stone across India",
+    "Why Harappan cities built drains beneath their streets",
+    "How Chola artists turned bronze into sacred sculpture",
+    "Why the Ajanta Caves were painted deep inside rock",
+    "How Nalanda became a major centre of learning",
+    "Why the Indus Valley standardized its weights",
+    "How the Great Stupa at Sanchi survived for centuries",
+    "Why Petra’s builders carved channels into stone",
+    "How Angkor’s engineers managed water on a vast scale",
+    "Why the Terracotta Army was buried with China’s first emperor",
+]
+
 def setup_client(api_key):
     global client
     client = Mistral(api_key=api_key)
@@ -28,6 +45,9 @@ def generate_topic(genre):
         raise ValueError("Choose a niche before brainstorming a topic.")
 
     genre = genre.strip()
+    if genre == "History & Hidden Facts":
+        return random.choice(HISTORY_TOPIC_CATALOG)
+
     history_guidance = """
 For History & Hidden Facts, default to ancient and premodern civilizations. Choose from temples, kingdoms, dynasties, kings and emperors, architecture, archaeology, excavations, inscriptions, coins, manuscripts, artifacts, ruins, daily life, beliefs, trade, or art. Name a concrete historical person, place, object, or event and anchor it to its civilization or period. Distinguish documented evidence from legend or interpretation. Make the central subject historical in its own right.""" if genre == "History & Hidden Facts" else ""
 
@@ -49,10 +69,18 @@ Return only the hook."""
     )
     return chat_completion.choices[0].message.content.strip()
 
+def is_history_topic(topic):
+    if topic in HISTORY_TOPIC_CATALOG:
+        return True
+    anchors = r"\b(ancient|medieval|empire|dynasty|king|queen|emperor|temple|archaeolog\w*|excavat\w*|inscription|coin|manuscript|artifact|ruins?|fort|palace|monument|tomb|pyramid|civilization|chola|maurya|gupta|mughal|ashoka|hampi|ajanta|nalanda|harappa|indus|mesopotamia|egyptian|roman|greek|aztec|inca|maya|century|bce|bc|ce|ad)\b"
+    return bool(re.search(anchors, topic, re.IGNORECASE))
+
 def generate_script(topic, genre):
     """Calls Mistral AI to generate a 5-slide script within the selected genre."""
     if not client:
         raise Exception("Mistral client not initialized.")
+    if genre == "History & Hidden Facts" and not is_history_topic(topic):
+        raise ValueError("Choose a genuine historical subject before generating a history carousel.")
         
     system_instruction = f'''
     You are a careful, engaging Instagram carousel writer.
