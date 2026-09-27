@@ -192,6 +192,7 @@ HARD RULES — violating any = failure:
 4. ZERO corporate/abstract words. Cut: "productivity", "imbalance", "firms", "sectors", "entities", "mechanisms", "dynamics", "paradigm", "leverage", "ecosystem".
 5. Stats: 1-2 stats max per slide. Make them feel real and specific (not round numbers like 40%).
 6. Titles = max 5 words. Thriller chapter energy.
+7. ABSOLUTELY NO POLITICS: Do NOT name, criticize, or blame any government, political party, politician, or public official. Do not frame any slide as "the government did this." Keep blame on systemic economic forces, market dynamics, or corporate behaviour. Slide titles and body text must NEVER be misleading — if the title says "Blame X", the body MUST be about X, not something else.
 
 NARRATIVE FLOW (CRITICAL):
 Your slides CANNOT just be a random list of facts on a topic. They must tell a cohesive story.
@@ -244,13 +245,13 @@ Body: "Investment firms bought 1 in 4 homes sold in America since 2020. And they
 bg_type: "gradient-purple"
 
 Slide 4 (The Escalation):
-Title: "The Law They Wrote"
-Body: "In 2012, Congress quietly made bulk home-buying legal for corporations. You were never supposed to find out."
+Title: "The Scale Of It"
+Body: "In some cities, investment companies now own 1 in every 3 rental properties. Regular buyers simply can't compete."
 bg_type: "gradient-red"
 
 Slide 5 (The Question):
 Title: "Ban Them Or Not?"
-Body: "Should governments ban corporations from buying houses? Drop your answer in the comments 👇"
+Body: "Should corporations be banned from buying residential homes? Drop your take in the comments 👇"
 bg_type: "gradient-gold"
 
 BACKGROUND TYPES:
