@@ -62,22 +62,23 @@
       transform: translate3d(0, calc(var(--parallax-shift, 0px) * 0.6), 0);
     }
     .parallax-shapes { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
-    .parallax-shape { position: absolute; will-change: transform; animation: geometry-drift 18s ease-in-out infinite alternate; }
-    .parallax-shape:nth-child(2n) { animation-duration: 24s; animation-direction: alternate-reverse; }
-    .parallax-shape:nth-child(3n) { animation-duration: 29s; }
+    .parallax-shape { position: absolute; will-change: transform; }
+    .geometry-motion { display: block; width: 100%; height: 100%; animation: geometry-drift 12s ease-in-out infinite alternate; will-change: translate; }
+    .parallax-shape:nth-child(2n) .geometry-motion { animation-duration: 17s; animation-direction: alternate-reverse; }
+    .parallax-shape:nth-child(3n) .geometry-motion { animation-duration: 21s; }
     @keyframes geometry-drift {
-      0% { translate: -12px -10px; }
-      50% { translate: 14px 12px; }
-      100% { translate: -8px 18px; }
+      0% { translate: -42px -30px; }
+      50% { translate: 48px 34px; }
+      100% { translate: -24px 46px; }
     }
-    .parallax-ring { width: 240px; aspect-ratio: 1; border: 1px solid rgba(0,229,255,0.16); border-radius: 50%; }
-    .parallax-ring.ring-small { width: 92px; border-color: rgba(170,110,255,0.22); }
-    .parallax-dot { width: 14px; aspect-ratio: 1; border-radius: 50%; background: rgba(0,229,255,0.38); box-shadow: 0 0 34px 8px rgba(0,229,255,0.13); }
-    .parallax-cross { width: 38px; height: 38px; opacity: 0.28; }
-    .parallax-cross::before, .parallax-cross::after { content: ''; position: absolute; background: #a56eff; }
-    .parallax-cross::before { left: 0; right: 0; top: 18px; height: 1px; }
-    .parallax-cross::after { top: 0; bottom: 0; left: 18px; width: 1px; }
-    .parallax-glow { width: 300px; aspect-ratio: 1; border-radius: 50%; filter: blur(85px); opacity: 0.18; background: #00b4db; }
+    .geometry-motion.parallax-ring { width: 100%; height: 100%; border: 2px solid rgba(0,229,255,0.28); border-radius: 50%; }
+    .geometry-motion.ring-small { border-color: rgba(170,110,255,0.34); }
+    .geometry-motion.parallax-dot { border-radius: 50%; background: rgba(0,229,255,0.55); box-shadow: 0 0 42px 12px rgba(0,229,255,0.2); }
+    .geometry-motion.parallax-cross { opacity: 0.42; }
+    .geometry-motion.parallax-cross::before, .geometry-motion.parallax-cross::after { content: ''; position: absolute; background: #a56eff; }
+    .geometry-motion.parallax-cross::before { left: 0; right: 0; top: 18px; height: 2px; }
+    .geometry-motion.parallax-cross::after { top: 0; bottom: 0; left: 18px; width: 2px; }
+    .geometry-motion.parallax-glow { border-radius: 50%; filter: blur(85px); opacity: 0.28; background: #00b4db; }
     .blob {
       position: absolute;
       filter: blur(80px);
@@ -95,8 +96,8 @@
       100% { transform: translate(0,0) scale(1); }
     }
     @media (prefers-reduced-motion: reduce) {
-      .blob, .parallax-shape { animation: none !important; }
-      .parallax-shape { translate: 0 0; }
+      .blob, .geometry-motion { animation: none !important; }
+      .geometry-motion { translate: 0 0; }
     }
 
     /* ---- Header ---- */
@@ -897,13 +898,13 @@
     <div class="blob blob2"></div>
     <div class="blob blob3"></div>
     <div class="parallax-shapes" aria-hidden="true">
-      <div class="parallax-shape parallax-ring" data-parallax-speed="0.35" data-parallax-x="0.12" style="top: 8%; left: -80px;"></div>
-      <div class="parallax-shape parallax-ring ring-small" data-parallax-speed="-0.25" data-parallax-x="-0.08" style="top: 26%; right: 12%;"></div>
-      <div class="parallax-shape parallax-ring" data-parallax-speed="0.48" data-parallax-x="-0.1" style="top: 64%; right: -120px;"></div>
-      <div class="parallax-shape parallax-dot" data-parallax-speed="-0.4" data-parallax-x="0.14" style="top: 35%; left: 18%;"></div>
-      <div class="parallax-shape parallax-dot" data-parallax-speed="0.28" data-parallax-x="-0.12" style="top: 78%; left: 68%; width: 9px;"></div>
-      <div class="parallax-shape parallax-cross" data-parallax-speed="0.32" data-parallax-x="0.1" style="top: 17%; right: 26%;"></div>
-      <div class="parallax-shape parallax-glow" data-parallax-speed="-0.18" style="top: 48%; left: 48%;"></div>
+      <div class="parallax-shape" data-parallax-speed="0.55" data-parallax-x="0.2" style="top: 8%; left: -80px; width: 280px; height: 280px;"><span class="geometry-motion parallax-ring"></span></div>
+      <div class="parallax-shape" data-parallax-speed="-0.42" data-parallax-x="-0.16" style="top: 26%; right: 12%; width: 110px; height: 110px;"><span class="geometry-motion parallax-ring ring-small"></span></div>
+      <div class="parallax-shape" data-parallax-speed="0.68" data-parallax-x="-0.18" style="top: 64%; right: -120px; width: 260px; height: 260px;"><span class="geometry-motion parallax-ring"></span></div>
+      <div class="parallax-shape" data-parallax-speed="-0.58" data-parallax-x="0.24" style="top: 35%; left: 18%; width: 18px; height: 18px;"><span class="geometry-motion parallax-dot"></span></div>
+      <div class="parallax-shape" data-parallax-speed="0.45" data-parallax-x="-0.2" style="top: 78%; left: 68%; width: 12px; height: 12px;"><span class="geometry-motion parallax-dot"></span></div>
+      <div class="parallax-shape" data-parallax-speed="0.48" data-parallax-x="0.18" style="top: 17%; right: 26%; width: 40px; height: 40px;"><span class="geometry-motion parallax-cross"></span></div>
+      <div class="parallax-shape" data-parallax-speed="-0.35" style="top: 48%; left: 48%; width: 340px; height: 340px;"><span class="geometry-motion parallax-glow"></span></div>
     </div>
   </div>
 
