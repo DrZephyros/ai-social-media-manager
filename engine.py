@@ -17,11 +17,32 @@ GENRES = [
     "Philosophy", "Geopolitics", "Parenting", "Food Science", "Crypto & Web3", "Other",
 ]
 
-HISTORY_REFERENCE_EXAMPLES = [
-    "How an ancient temple was engineered",
-    "What an inscription reveals about a forgotten ruler",
-    "Why an archaeological excavation changed what historians thought about a civilization",
-]
+# Positive, selected-genre-only examples teach the subject boundary without
+# exposing the model to unrelated niches as negative prompts.
+TOPIC_BRIEFS = {
+    "Economics": ("Explain an economic idea through prices, wages, jobs, trade, debt, housing, or inequality and its effect on ordinary people.", ["Why one supply shock changed grocery prices", "What a housing shortage means for renters"]),
+    "Tech & AI": ("Choose a real technology, capability, limitation, or documented use. Separate current evidence from speculation.", ["What a language model can and cannot infer", "Why a device needs a particular sensor"]),
+    "Mental Health": ("Choose a mental-health condition or experience, symptoms, stigma, coping, sleep, social support, therapy, help-seeking, or a daily habit that may affect wellbeing. Use compassionate, non-diagnostic language. Explain possible relationships carefully; do not promise cures or present general information as personal treatment.", ["What people misunderstand about depression", "How eating patterns may affect mood and energy", "Why grief can return long after a loss", "What burnout can feel like before you notice it"]),
+    "Physical Fitness": ("Focus on movement, strength, mobility, training, or recovery. Keep advice practical and adaptable.", ["Why rest days support strength gains", "How walking pace changes a workout"]),
+    "Health & Nutrition": ("Explain a nutrition or general-health question with balanced, evidence-aware language.", ["How fibre supports digestion", "Why meal timing can affect hunger"]),
+    "Bioengineering": ("Explain a biological engineering method, application, research challenge, or ethical question accessibly.", ["How engineered cells make insulin", "Why gene therapy delivery is difficult"]),
+    "Student Life": ("Address a recognizable student challenge or opportunity in studying, time, money, campus life, or transitions.", ["How to start an overwhelming assignment", "Why office hours can help students learn"]),
+    "Entrepreneurship": ("Focus on a customer problem, founder decision, business model, or operating lesson. Avoid guaranteed success claims.", ["How a founder tests an idea with customers", "What pricing can reveal about demand"]),
+    "Climate & Environment": ("Explain an ecosystem, environmental change, conservation practice, or local climate impact with place and evidence.", ["How mangroves protect coastal communities", "What wetlands do for a river"]),
+    "Space & Astronomy": ("Build around a real celestial object, mission, observation, or astronomical concept.", ["How astronomers find a planet they cannot see", "Why eclipses are not monthly"]),
+    "Neuroscience": ("Explain a brain or nervous-system process or finding, distinguishing early research from established evidence.", ["How sleep supports memory", "How the brain processes spoken language"]),
+    "Relationships": ("Explore a communication pattern, boundary, conflict skill, or social connection with empathy.", ["How to name a need during a disagreement", "Why repair matters after conflict"]),
+    "Personal Finance": ("Teach one practical money concept such as budgeting, saving, borrowing, insurance, or investing.", ["What a minimum card payment can cost", "How compound interest affects monthly savings"]),
+    "Future of Work": ("Examine a documented workplace change, job practice, worker skill, or organizational decision. Separate evidence from forecasts.", ["How a tool changes one workplace task", "What workers need during a role redesign"]),
+    "Psychology": ("Explain a behavior, cognitive bias, decision process, or social behavior without diagnosing people.", ["Why unfinished tasks stay in memory", "How framing changes a choice"]),
+    "History & Hidden Facts": ("Tell an evidence-grounded story about the human past. Prefer ancient and premodern civilizations, temples, rulers, dynasties, empires, archaeology, inscriptions, artifacts, daily life, and discoveries. Name a concrete person, place, object, or event and anchor it in period and place. Distinguish evidence from interpretation or legend.", ["A mystery surrounding King Tut's tomb", "An overlooked detail about Alexander the Great", "What an inscription reveals about a forgotten ruler", "An archaeological find that changed a civilization's story"]),
+    "Philosophy": ("Explore one philosophical question, argument, thinker, or ethical dilemma fairly.", ["What makes a choice fair when both options cause harm", "Why Socrates questioned certainty"]),
+    "Geopolitics": ("Explain an international event or relationship with clear geography, actors, interests, and timeframe.", ["Why a narrow sea route matters to trade", "How a border shapes neighboring countries' choices"]),
+    "Parenting": ("Give compassionate, age-aware guidance for a defined parenting situation while respecting family differences.", ["How to help a child name a big feeling", "Why predictable routines can help children"]),
+    "Food Science": ("Explain an ingredient, cooking process, food-safety question, or observable change.", ["Why bread rises in the oven", "How acidity changes a sauce"]),
+    "Crypto & Web3": ("Explain a specific digital asset, protocol, security risk, or network behavior without promoting investment.", ["What happens when a wallet recovery phrase is lost", "Why network fees rise when activity increases"]),
+    "Other": ("Use the custom genre as the boundary; select one concrete subject useful to its audience.", ["A specific question a curious beginner asks", "A practical process people often misunderstand"]),
+}
 
 def setup_client(api_key):
     global client
@@ -35,29 +56,28 @@ def generate_topic(genre):
         raise ValueError("Choose a niche before brainstorming a topic.")
 
     genre = genre.strip()
-    history_guidance = """
-For History & Hidden Facts, default to ancient and premodern civilizations. Choose from temples, kingdoms, dynasties, kings and emperors, architecture, archaeology, excavations, inscriptions, coins, manuscripts, artifacts, ruins, daily life, beliefs, trade, or art. Name a concrete historical person, place, object, or event and anchor it to its civilization or period. Distinguish documented evidence from legend or interpretation. Make the central subject historical in its own right.""" if genre == "History & Hidden Facts" else ""
-    references = "\n".join(f"- {example}" for example in HISTORY_REFERENCE_EXAMPLES) if genre == "History & Hidden Facts" else "- A concrete, accurate subject from the selected niche"
+    brief, examples = TOPIC_BRIEFS.get(genre, TOPIC_BRIEFS["Other"])
+    references = "\n".join(f"- {example}" for example in examples)
 
     prompt = f"""You are an Instagram carousel idea editor.
 The required niche is {json.dumps(genre)}. The subject itself must directly belong to this niche.
-Niche guidance: {history_guidance or 'Choose a specific, useful, accurate subject that directly fits the selected niche. Do not substitute a familiar trending topic.'}
-Reference examples: {references}
+Niche guidance: {brief}
+Reference directions (selected niche only): {references}
 
 The examples show the genre boundary only. Generate a different subject. Do not copy, paraphrase, combine, or add a new claim to an example.
 Privately consider three different candidate subjects from the selected niche. Choose the most concrete and well-supported one. Check that the central subject itself fits the niche, then write one clear hook under 15 words. Do not reveal your candidate list or reasoning. Do not invent claims, statistics, or dates.
 Return only the hook."""
     
-    chat_completion = client.chat.complete(
-        messages=[
-            {
-                "role": "user",
-                "content": prompt,
-            }
-        ],
-        model="mistral-large-latest",
-    )
-    return chat_completion.choices[0].message.content.strip()
+    for attempt in range(3):
+        chat_completion = client.chat.complete(
+            messages=[{"role": "user", "content": prompt + ("\nStart over with a different concrete subject if your previous answer drifted from the niche." if attempt else "")}],
+            model="mistral-large-latest",
+        )
+        topic = chat_completion.choices[0].message.content.strip().strip('"')
+        if topic and len(topic) <= 150 and not re.search(r"\b(i fed ai|i asked ai|ai analyzed|the answer surprised me|here's what ai found)\b", topic, re.I):
+            if genre != "History & Hidden Facts" or is_history_topic(topic):
+                return topic
+    raise ValueError(f"Could not create a topic that fits {genre}. Please try brainstorming again.")
 
 def is_history_topic(topic):
     anchors = r"\b(ancient|medieval|empire|dynasty|king|queen|emperor|temple|archaeolog\w*|excavat\w*|inscription|coin|manuscript|artifact|ruins?|fort|palace|monument|tomb|pyramid|civilization|chola|maurya|gupta|mughal|ashoka|hampi|ajanta|nalanda|harappa|indus|mesopotamia|egyptian|roman|greek|aztec|inca|maya|century|bce|bc|ce|ad)\b"
