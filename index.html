@@ -39,7 +39,38 @@
       z-index: -1;
       overflow: hidden;
       background: #080c12;
+      isolation: isolate;
     }
+    .bg-animation::before,
+    .bg-animation::after {
+      content: '';
+      position: absolute;
+      inset: -35% -15% auto;
+      height: 90vh;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: -1;
+      transform: translate3d(0, var(--parallax-shift, 0px), 0);
+      will-change: transform;
+    }
+    .bg-animation::before {
+      background: radial-gradient(ellipse at 30% 35%, rgba(0,229,255,0.11), transparent 58%);
+    }
+    .bg-animation::after {
+      inset: auto -15% -55%;
+      background: radial-gradient(ellipse at 70% 55%, rgba(131,58,180,0.13), transparent 58%);
+      transform: translate3d(0, calc(var(--parallax-shift, 0px) * 0.6), 0);
+    }
+    .parallax-shapes { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+    .parallax-shape { position: absolute; will-change: transform; }
+    .parallax-ring { width: 240px; aspect-ratio: 1; border: 1px solid rgba(0,229,255,0.16); border-radius: 50%; }
+    .parallax-ring.ring-small { width: 92px; border-color: rgba(170,110,255,0.22); }
+    .parallax-dot { width: 14px; aspect-ratio: 1; border-radius: 50%; background: rgba(0,229,255,0.38); box-shadow: 0 0 34px 8px rgba(0,229,255,0.13); }
+    .parallax-cross { width: 38px; height: 38px; opacity: 0.28; }
+    .parallax-cross::before, .parallax-cross::after { content: ''; position: absolute; background: #a56eff; }
+    .parallax-cross::before { left: 0; right: 0; top: 18px; height: 1px; }
+    .parallax-cross::after { top: 0; bottom: 0; left: 18px; width: 1px; }
+    .parallax-glow { width: 300px; aspect-ratio: 1; border-radius: 50%; filter: blur(85px); opacity: 0.18; background: #00b4db; }
     .blob {
       position: absolute;
       filter: blur(80px);
@@ -854,6 +885,15 @@
     <div class="blob blob1"></div>
     <div class="blob blob2"></div>
     <div class="blob blob3"></div>
+    <div class="parallax-shapes" aria-hidden="true">
+      <div class="parallax-shape parallax-ring" data-parallax-speed="0.35" data-parallax-x="0.12" style="top: 8%; left: -80px;"></div>
+      <div class="parallax-shape parallax-ring ring-small" data-parallax-speed="-0.25" data-parallax-x="-0.08" style="top: 26%; right: 12%;"></div>
+      <div class="parallax-shape parallax-ring" data-parallax-speed="0.48" data-parallax-x="-0.1" style="top: 64%; right: -120px;"></div>
+      <div class="parallax-shape parallax-dot" data-parallax-speed="-0.4" data-parallax-x="0.14" style="top: 35%; left: 18%;"></div>
+      <div class="parallax-shape parallax-dot" data-parallax-speed="0.28" data-parallax-x="-0.12" style="top: 78%; left: 68%; width: 9px;"></div>
+      <div class="parallax-shape parallax-cross" data-parallax-speed="0.32" data-parallax-x="0.1" style="top: 17%; right: 26%;"></div>
+      <div class="parallax-shape parallax-glow" data-parallax-speed="-0.18" style="top: 48%; left: 48%;"></div>
+    </div>
   </div>
 
   <header>
@@ -1527,6 +1567,61 @@
         s.onload = () => resolve(window.JSZip);
         s.onerror = reject;
         document.head.appendChild(s);
+      });
+    }
+
+    // Multi-speed scroll parallax, following the MyKatalog background pattern.
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    if (!reduceMotion.matches) {
+      const parallaxElements = [...document.querySelectorAll('[data-parallax-speed]')];
+      let ticking = false;
+      let viewportHeight = window.innerHeight;
+      let scrollY = window.scrollY;
+
+      const measureParallax = () => {
+        scrollY = window.scrollY;
+        viewportHeight = window.innerHeight;
+        parallaxElements.forEach(element => {
+          const rect = element.getBoundingClientRect();
+          element.dataset.parallaxInitY = String(rect.top + scrollY);
+          element.dataset.parallaxHeight = String(rect.height);
+        });
+      };
+
+      const updateParallax = () => {
+        scrollY = window.scrollY;
+        const viewportCenter = scrollY + viewportHeight / 2;
+        parallaxElements.forEach(element => {
+          const initY = Number(element.dataset.parallaxInitY || 0);
+          const height = Number(element.dataset.parallaxHeight || 0);
+          const offset = (initY + height / 2 - viewportCenter) / viewportHeight;
+          const speedY = Number(element.dataset.parallaxSpeed) || 0.1;
+          const speedX = Number(element.dataset.parallaxX) || 0;
+          const y = offset * speedY * viewportHeight * -1;
+          const x = offset * speedX * viewportHeight * -1;
+          element.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+        });
+        const shift = Math.min(scrollY * 0.22, 150);
+        document.querySelector('.bg-animation')?.style.setProperty('--parallax-shift', `${shift}px`);
+        ticking = false;
+      };
+
+      const requestParallaxUpdate = () => {
+        if (!ticking) {
+          requestAnimationFrame(updateParallax);
+          ticking = true;
+        }
+      };
+
+      measureParallax();
+      updateParallax();
+      window.addEventListener('scroll', requestParallaxUpdate, { passive: true });
+      window.addEventListener('resize', () => {
+        measureParallax();
+        requestParallaxUpdate();
+      }, { passive: true });
+      reduceMotion.addEventListener?.('change', event => {
+        if (event.matches) parallaxElements.forEach(element => { element.style.transform = ''; });
       });
     }
   </script>
