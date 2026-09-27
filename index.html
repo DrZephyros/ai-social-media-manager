@@ -865,7 +865,7 @@
 
   <header>
     <h1>AI Insta-Manager</h1>
-    <p>Generate viral Instagram carousels in seconds · Powered by Groq</p>
+    <p>Generate viral Instagram carousels in seconds · Powered by Gemini</p>
   </header>
 
   <!-- Genre Picker -->
@@ -1195,7 +1195,7 @@
       igDots.innerHTML  = '';
       hashtagChips.innerHTML = '';
       captionBox.value  = '';
-      setStatus('Connecting to Groq...', true);
+      setStatus('Connecting to Gemini...', true);
 
       const genre = getGenre();
       const evtSource = new EventSource(`/api/generate-stream?topic=${encodeURIComponent(topic)}&genre=${encodeURIComponent(genre || '')}`);

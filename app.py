@@ -15,20 +15,20 @@ if "draft_topic" not in st.session_state:
     st.session_state.draft_topic = None
 
 # Load credentials from the environment; never store API keys in source code.
-MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
-if not MISTRAL_API_KEY:
-    st.error("MISTRAL_API_KEY is not configured. Add it to the app environment to continue.")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+if not GEMINI_API_KEY:
+    st.error("GEMINI_API_KEY is not configured. Add it to the app environment to continue.")
     st.stop()
-engine.setup_client(MISTRAL_API_KEY)
+engine.setup_client(GEMINI_API_KEY)
 
 # --- SIDEBAR ---
 with st.sidebar:
     st.header("⚙️ Settings")
-    st.success("Mistral API Key Active!")
+    st.success("Gemini API Key Active!")
     
     st.markdown("---")
     st.markdown("### Powered By")
-    st.markdown("- **Brain:** Mistral Large")
+    st.markdown("- **Brain:** Gemini Flash")
     st.markdown("- **Art:** Pollinations AI")
 
 # --- MAIN UI ---
@@ -39,7 +39,7 @@ selected_genre = st.selectbox("Choose your niche", engine.GENRES, index=engine.G
 # STEP 1: Brainstorm Topic
 st.markdown("### Step 1: Idea Generation")
 if st.button("Brainstorm Viral Topic 🎯"):
-    with st.spinner("Mistral is brainstorming..."):
+    with st.spinner("Gemini is brainstorming..."):
         st.session_state.draft_topic = engine.generate_topic(selected_genre)
         
 # STEP 2: Approve & Edit

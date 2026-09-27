@@ -4,10 +4,10 @@ import os
 import re
 from PIL import Image, ImageDraw, ImageFont
 import urllib.parse
-from mistralai import Mistral
 
-# Global Mistral Client
+# Gemini API key configured by the app environment.
 client = None
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 
 GENRES = [
     "Economics", "Tech & AI", "Mental Health", "Physical Fitness",
@@ -46,12 +46,46 @@ TOPIC_BRIEFS = {
 
 def setup_client(api_key):
     global client
-    client = Mistral(api_key=api_key)
+    client = api_key
+
+def gemini_generate(system_instruction, user_content, temperature=0.7):
+    if not client:
+        raise Exception("Gemini API key not configured.")
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
+    response = requests.post(
+        url,
+        headers={"x-goog-api-key": client, "Content-Type": "application/json"},
+        json={
+            "systemInstruction": {"parts": [{"text": system_instruction}]},
+            "contents": [{"role": "user", "parts": [{"text": user_content}]}],
+            "generationConfig": {
+                "responseMimeType": "application/json",
+                "temperature": temperature,
+                "thinkingConfig": {"thinkingLevel": "high"},
+            },
+        },
+        timeout=45,
+    )
+    if not response.ok:
+        try:
+            detail = response.json().get("error", {}).get("message", "")
+        except ValueError:
+            detail = ""
+        if response.status_code in (400, 403):
+            raise Exception(f"Gemini rejected the request or API key: {detail or response.status_code}")
+        if response.status_code == 429:
+            raise Exception("Gemini usage is temporarily rate-limited. Please wait and try again.")
+        raise Exception(f"Gemini request failed: {detail or response.status_code}")
+    try:
+        parts = response.json()["candidates"][0]["content"]["parts"]
+        return "".join(part.get("text", "") for part in parts).strip()
+    except (KeyError, IndexError, TypeError) as exc:
+        raise Exception("Gemini returned no text. Check the prompt and API safety settings.") from exc
 
 def generate_topic(genre):
     """Generate a topic that is directly about the selected genre."""
     if not client:
-        raise Exception("Mistral client not initialized.")
+        raise Exception("Gemini API key not configured.")
     if not isinstance(genre, str) or not genre.strip():
         raise ValueError("Choose a niche before brainstorming a topic.")
 
@@ -65,15 +99,16 @@ Niche guidance: {brief}
 Reference directions (selected niche only): {references}
 
 The examples show the genre boundary only. Generate a different subject. Do not copy, paraphrase, combine, or add a new claim to an example.
+Virality principles: Choose a topic with immediate clarity, audience relevance, specific novelty, and an honest curiosity gap the carousel can pay off. Use the best-fitting angle: a documented surprise, misconception corrected by evidence, real mystery, hidden cause, meaningful contradiction, human consequence, or useful practical insight. Do not force controversy. Privately compare several ideas for stop-scroll clarity, emotional or practical stakes, shareability, evidence quality, and payoff. No prompt can guarantee virality. Never invent a named theory, technique, study, organization, discovery, date, statistic, or causal result to make a topic clickable.
 Privately consider three different candidate subjects from the selected niche. Choose the most concrete and well-supported one. Check that the central subject itself fits the niche, then write one clear hook under 15 words. Do not reveal your candidate list or reasoning. Do not invent claims, statistics, or dates.
-Return only the hook."""
+Return only JSON: {{"topic":"one final hook"}}"""
     
     for attempt in range(3):
-        chat_completion = client.chat.complete(
-            messages=[{"role": "user", "content": prompt + ("\nStart over with a different concrete subject if your previous answer drifted from the niche." if attempt else "")}],
-            model="mistral-large-latest",
-        )
-        topic = chat_completion.choices[0].message.content.strip().strip('"')
+        try:
+            result = json.loads(gemini_generate("You are an Instagram carousel idea editor. Follow the user's selected niche exactly.", prompt + ("\nStart over with a different concrete subject if your previous answer drifted from the niche." if attempt else ""), 0.7))
+            topic = result.get("topic", "").strip()
+        except (json.JSONDecodeError, AttributeError):
+            continue
         if topic and len(topic) <= 150 and not re.search(r"\b(i fed ai|i asked ai|ai analyzed|the answer surprised me|here's what ai found)\b", topic, re.I):
             if genre != "History & Hidden Facts" or is_history_topic(topic):
                 return topic
@@ -84,9 +119,9 @@ def is_history_topic(topic):
     return bool(re.search(anchors, topic, re.IGNORECASE))
 
 def generate_script(topic, genre):
-    """Calls Mistral AI to generate a 5-slide script within the selected genre."""
+    """Calls Gemini to generate a 5-slide script within the selected genre."""
     if not client:
-        raise Exception("Mistral client not initialized.")
+        raise Exception("Gemini API key not configured.")
     if genre == "History & Hidden Facts" and not is_history_topic(topic):
         raise ValueError("Choose a genuine historical subject before generating a history carousel.")
         
@@ -102,16 +137,7 @@ def generate_script(topic, genre):
     image_prompt should describe a cinematic, dark, highly aesthetic background without text.
     '''
     
-    chat_completion = client.chat.complete(
-        messages=[
-            {"role": "system", "content": system_instruction},
-            {"role": "user", "content": json.dumps({"genre": genre, "topic": topic})},
-        ],
-        model="mistral-large-latest",
-        response_format={"type": "json_object"}
-    )
-    
-    response_text = chat_completion.choices[0].message.content
+    response_text = gemini_generate(system_instruction, json.dumps({"genre": genre, "topic": topic}), 0.7)
     try:
         data = json.loads(response_text)
         return data["slides"] # Return the array of slides

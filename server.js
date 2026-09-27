@@ -76,7 +76,7 @@ app.get('/api/generate-stream', async (req, res) => {
     const send = (data) => res.write(`data: ${JSON.stringify(data)}\n\n`);
 
     try {
-        send({ status: '🧠 Groq AI is writing your carousel script...' });
+        send({ status: '🧠 Gemini is writing your carousel script...' });
 
         const script = await generateScript(topic, selectedGenre);
         latestScript = script;

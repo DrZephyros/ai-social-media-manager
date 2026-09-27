@@ -1,17 +1,12 @@
-import Groq from 'groq-sdk';
 import dotenv from 'dotenv';
 dotenv.config();
 
-let groq;
-function getGroqClient() {
-    if (!groq) {
-        const apiKey = process.env.GROQ_API_KEY;
-        if (!apiKey) {
-            throw new Error("GROQ_API_KEY is missing. Please add it to your Vercel Environment Variables.");
-        }
-        groq = new Groq({ apiKey });
-    }
-    return groq;
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+
+function getGeminiApiKey() {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) throw new Error('GEMINI_API_KEY is missing. Add it to your local .env and Vercel environment variables.');
+    return apiKey;
 }
 
 // Finance/tech jargon that kills virality — triggers a regeneration
@@ -35,26 +30,62 @@ function wait(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function createCompletionWithRetry(groqClient, options) {
+async function generateGeminiContent(systemInstruction, userContent, temperature = 0.7) {
+    const apiKey = getGeminiApiKey();
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
     for (let retry = 0; ; retry++) {
+        let response;
         try {
-            return await groqClient.chat.completions.create(options);
+            response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'content-type': 'application/json', 'x-goog-api-key': apiKey },
+                body: JSON.stringify({
+                    systemInstruction: { parts: [{ text: systemInstruction }] },
+                    contents: [{ role: 'user', parts: [{ text: userContent }] }],
+                    generationConfig: {
+                        responseMimeType: 'application/json',
+                        temperature,
+                        thinkingConfig: { thinkingLevel: 'high' },
+                    },
+                }),
+                signal: AbortSignal.timeout(45000),
+            });
         } catch (error) {
-            const isRateLimit = error?.status === 429 || error?.message?.includes('rate_limit_exceeded');
-            if (!isRateLimit) throw error;
-            if (/tokens per day|\bTPD\b/i.test(error.message)) {
-                throw new Error('Topic generation is temporarily unavailable because the Groq daily token limit has been reached. Please try again after it resets.');
-            }
-            if (retry >= 2) throw error;
-            const waitMatch = error.message.match(/try again in (?:(\d+(?:\.\d+)?)m)?\s*(?:(\d+(?:\.\d+)?)s)?/i);
-            const suggestedDelay = waitMatch ? (Number(waitMatch[1] || 0) * 60 + Number(waitMatch[2] || 0)) * 1000 : NaN;
-            if (Number.isFinite(suggestedDelay) && suggestedDelay > 30000) {
-                throw new Error('Topic generation is temporarily rate-limited by Groq. Please wait a little and try again.');
-            }
-            const delay = Number.isFinite(suggestedDelay) ? Math.ceil(suggestedDelay) + 300 : 5000 * (retry + 1);
-            console.warn(`Groq rate limit reached; retrying after ${delay}ms (retry ${retry + 1}/2).`);
-            await wait(delay);
+            if (retry >= 3) throw new Error(`Gemini request failed: ${error.message}`);
+            console.warn(`Gemini network request failed; retrying (${retry + 1}/3): ${error.message}`);
+            await wait(1000 * (retry + 1));
+            continue;
         }
+
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            const detail = payload?.error?.message || `Gemini returned HTTP ${response.status}.`;
+            if ([429, 500, 502, 503, 504].includes(response.status) && retry < 3) {
+                const retryInfo = payload?.error?.details?.find(detail => detail['@type']?.includes('RetryInfo'))?.retryDelay;
+                const retrySeconds = Number(retryInfo?.match(/[\d.]+/)?.[0]);
+                const retryAfter = Number(response.headers.get('retry-after'));
+                const delay = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : Number.isFinite(retrySeconds) ? retrySeconds * 1000 : 1000 * (retry + 1);
+                if (delay <= 10000) {
+                    console.warn(`Gemini is temporarily unavailable; retrying after ${delay}ms.`);
+                    await wait(delay);
+                    continue;
+                }
+            }
+            if (response.status === 400 || response.status === 403) {
+                throw new Error(`Gemini rejected the request or API key: ${detail}`);
+            }
+            if (response.status === 429) {
+                if (/per.?day|daily quota/i.test(JSON.stringify(payload))) {
+                    throw new Error('Gemini daily request or token quota has been reached. Please try again after it resets.');
+                }
+                throw new Error('Gemini usage is temporarily rate-limited. Please wait and try again.');
+            }
+            throw new Error(`Gemini request failed: ${detail}`);
+        }
+
+        const text = payload?.candidates?.[0]?.content?.parts?.map(part => part.text || '').join('').trim();
+        if (!text) throw new Error('Gemini returned no text. Check the prompt and API safety settings.');
+        return text;
     }
 }
 
@@ -155,21 +186,11 @@ function hookRepresentsSubject(hook, subject) {
     return words(hook).some(word => subjectWords.has(word));
 }
 
-async function reviewTopic(groqClient, genre, blueprint, candidate) {
+async function reviewTopic(genre, blueprint, candidate) {
     const historyReview = genre === 'History & Hidden Facts';
-    const response = await createCompletionWithRetry(groqClient, {
-        messages: [
-            {
-                role: 'system',
-                content: `You are a rigorous ${historyReview ? 'historical and archaeological' : 'genre and factual'} editor for social-media topics. Check that the subject itself belongs to the selected genre and that the hook's factual claims are well-supported by established knowledge. Do not accept a claim merely because it sounds plausible. Watch especially for invented names, techniques, studies, organizations, discoveries, dates, statistics, causal links, and outcomes. When a specific claim is doubtful, rewrite it using a safer, well-attested detail in the same genre. Keep an appealing curiosity gap, surprise, human relevance, or practical payoff; do not flatten the hook into a textbook label. For History, require a real subject from the past and an evidence-grounded angle; never invent a secret, inscription, feature, date, ritual, or purpose. For sensitive claims, qualify genuine uncertainty. Return JSON with exactly: {"subject":"...", "subject_type":"...", "angle":"...", "hook":"..."}. Use one allowed subject type. Keep the hook under 15 words and make it clearly about the subject.`
-            },
-            { role: 'user', content: JSON.stringify({ genre, genreBrief: getGenreGuidance(genre), allowedSubjectTypes: blueprint.types, viralLens: GENRE_HOOK_LENSES[genre] || GENRE_HOOK_LENSES.Other, candidate }) }
-        ],
-        model: 'openai/gpt-oss-120b',
-        response_format: { type: 'json_object' },
-        temperature: 0,
-    });
-    return JSON.parse(response.choices[0].message.content);
+    const systemInstruction = `You are a rigorous ${historyReview ? 'historical and archaeological' : 'genre and factual'} editor for social-media topics. Check that the subject itself belongs to the selected genre and that the hook's factual claims are well-supported by established knowledge. Do not accept a claim merely because it sounds plausible. Watch especially for invented names, techniques, studies, organizations, discoveries, dates, statistics, causal links, and outcomes. When a specific claim is doubtful, rewrite it using a safer, well-attested detail in the same genre. Keep an appealing curiosity gap, surprise, human relevance, or practical payoff; do not flatten the hook into a textbook label. For History, require a real subject from the past and an evidence-grounded angle; never invent a secret, inscription, feature, date, ritual, or purpose. For sensitive claims, qualify genuine uncertainty. Return JSON with exactly: {"subject":"...", "subject_type":"...", "angle":"...", "hook":"..."}. Use one allowed subject type. Keep the hook under 15 words and make it clearly about the subject.`;
+    const response = await generateGeminiContent(systemInstruction, JSON.stringify({ genre, genreBrief: getGenreGuidance(genre), allowedSubjectTypes: blueprint.types, viralLens: GENRE_HOOK_LENSES[genre] || GENRE_HOOK_LENSES.Other, candidate }), 0);
+    return JSON.parse(response);
 }
 
 function hasModernOrFutureFraming(value) {
@@ -182,7 +203,6 @@ function containsExcludedTerm(value, terms) {
 
 export async function generateTopic(genre = null) {
     genre = requireGenre(genre);
-    const groqClient = getGroqClient();
     const blueprint = TOPIC_BLUEPRINTS[genre] || TOPIC_BLUEPRINTS.Other;
     const generatePrompt = `You are an editorial planner for a ${JSON.stringify(genre)} Instagram carousel.
 
@@ -222,19 +242,15 @@ Privately develop several candidates, select the clearest accurate one, and self
 Return only JSON: {"subject":"specific subject", "subject_type":"one allowed type", "angle":"specific accurate angle", "hook":"final hook"}.`;
 
     for (let attempt = 0; attempt < 3; attempt++) {
-        const res = await createCompletionWithRetry(groqClient, {
-            messages: [
-                { role: 'system', content: attempt === 0 ? generatePrompt : `${generatePrompt}\n\nYour last draft failed validation. Start over with a different, more specific subject in the selected niche.` },
-                { role: 'user', content: 'Create one original topic record.' }
-            ],
-            model: 'openai/gpt-oss-120b',
-            response_format: { type: 'json_object' },
-            temperature: attempt === 0 ? 0.65 : 0.4,
-        });
+        const responseText = await generateGeminiContent(
+            attempt === 0 ? generatePrompt : `${generatePrompt}\n\nYour last draft failed validation. Start over with a different, more specific subject in the selected niche.`,
+            'Create one original topic record.',
+            attempt === 0 ? 0.65 : 0.4,
+        );
 
         let candidate;
         try {
-            candidate = JSON.parse(res.choices[0].message.content);
+            candidate = JSON.parse(responseText);
         } catch {
             console.warn(`Rejected malformed topic response on attempt ${attempt + 1} for ${JSON.stringify(genre)}.`);
             continue;
@@ -245,7 +261,7 @@ Return only JSON: {"subject":"specific subject", "subject_type":"one allowed typ
         let angle = typeof candidate.angle === 'string' ? candidate.angle.trim() : '';
         if (genre === 'History & Hidden Facts' && subject && angle && hook) {
             try {
-                const reviewed = await reviewTopic(groqClient, genre, blueprint, { subject, subject_type: subjectType, angle, hook });
+                const reviewed = await reviewTopic(genre, blueprint, { subject, subject_type: subjectType, angle, hook });
                 if ([reviewed.subject, reviewed.subject_type, reviewed.angle, reviewed.hook].every(value => typeof value === 'string' && value.trim())) {
                     subject = reviewed.subject.trim();
                     subjectType = reviewed.subject_type.trim().toLowerCase();
@@ -352,18 +368,8 @@ BEFORE OUTPUTTING: Check each slide body:
 Output ONLY strict JSON:
 { "slides": [ { "slide_number": 1, "title": "...", "body_text": "...", "bg_type": "...", "image_query": "..." }, ... ] }`;
 
-    const groqClient = getGroqClient();
-    const chatResponse = await groqClient.chat.completions.create({
-        messages: [
-            { role: 'system', content: systemInstruction },
-            { role: 'user', content: JSON.stringify({ topic, genre }) }
-        ],
-        model: 'openai/gpt-oss-120b',
-        response_format: { type: 'json_object' },
-        temperature: 0.7,
-    });
-
-    const data = JSON.parse(chatResponse.choices[0].message.content);
+    const responseText = await generateGeminiContent(systemInstruction, JSON.stringify({ topic, genre }), 0.7);
+    const data = JSON.parse(responseText);
     return data.slides;
 }
 
@@ -389,17 +395,7 @@ RULES:
 
 Output ONLY a JSON object: { "caption": "your multi-line caption here" }`;
 
-    const groqClient = getGroqClient();
-    const chatResponse = await groqClient.chat.completions.create({
-        messages: [
-            { role: 'system', content: systemInstruction },
-            { role: 'user', content: JSON.stringify({ topic, genre, script }) }
-        ],
-        model: 'openai/gpt-oss-120b',
-        response_format: { type: 'json_object' },
-        temperature: 0.7,
-    });
-
-    const data = JSON.parse(chatResponse.choices[0].message.content);
+    const responseText = await generateGeminiContent(systemInstruction, JSON.stringify({ topic, genre, script }), 0.7);
+    const data = JSON.parse(responseText);
     return data.caption;
 }
