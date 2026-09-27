@@ -194,6 +194,15 @@
     .btn-brainstorm { background: linear-gradient(135deg, #00b4db, var(--cyan)); color: #000; }
     .btn-generate   { background: #ffffff; color: #000; }
 
+    #controls.has-generated #btn-brainstorm,
+    #controls.has-generated #btn-generate { display: none; }
+
+    #post-generate-actions { display: none; flex-direction: column; gap: 0.75rem; }
+    #post-generate-actions.visible { display: flex; }
+    #post-generate-actions .action-row { width: 100%; }
+    #post-generate-actions .action-btn { min-height: 50px; }
+    .btn-regenerate { background: #fff; color: #000; }
+
     #topic-row { display: none; flex-direction: column; gap: 0.75rem; }
     #topic-row.visible { display: flex; }
 
@@ -876,6 +885,14 @@
       <button class="btn btn-generate" id="btn-generate">Approve & Generate Slides 🚀</button>
     </div>
 
+    <div id="post-generate-actions">
+      <div class="action-row">
+        <button class="action-btn btn-download" id="btn-download-top">⬇️ Download Slides</button>
+        <button class="action-btn btn-copy" id="btn-copy-top">📋 Copy Caption</button>
+      </div>
+      <button class="btn btn-regenerate" id="btn-regenerate">🔄 Regenerate Slides</button>
+    </div>
+
     <div id="status"></div>
   </div>
 
@@ -975,15 +992,6 @@
 
       <div class="hashtag-preview" id="hashtag-chips"></div>
 
-      <div class="action-row">
-        <button class="action-btn btn-copy" id="btn-copy">
-          📋 Copy Caption
-        </button>
-        <button class="action-btn btn-download" id="btn-download">
-          ⬇️ Download Slides
-        </button>
-      </div>
-
       <div class="copied-badge" id="copied-badge">
         ✅ Copied to clipboard!
       </div>
@@ -1023,7 +1031,11 @@
     const captionBox    = document.getElementById('caption-box');
     const hashtagChips  = document.getElementById('hashtag-chips');
     const btnCopy       = document.getElementById('btn-copy');
-    const btnDownload   = document.getElementById('btn-download');
+    const controls      = document.getElementById('controls');
+    const postGenerateActions = document.getElementById('post-generate-actions');
+    const btnDownloadTop = document.getElementById('btn-download-top');
+    const btnCopyTop = document.getElementById('btn-copy-top');
+    const btnRegenerate = document.getElementById('btn-regenerate');
     const copiedBadge   = document.getElementById('copied-badge');
     const renderGrid    = document.getElementById('render-grid');
 
@@ -1126,6 +1138,8 @@
       topicInput.value = '';
       topicRow.classList.remove('visible');
       outputSection.classList.remove('visible');
+      controls.classList.remove('has-generated');
+      postGenerateActions.classList.remove('visible');
       setStatus('');
     }
 
@@ -1234,6 +1248,8 @@
           }
 
           outputSection.classList.add('visible');
+          controls.classList.add('has-generated');
+          postGenerateActions.classList.add('visible');
           setStatus('✅ Carousel ready! Scroll the preview → then download or copy caption.');
           btnGenerate.disabled = false;
         }
@@ -1425,6 +1441,13 @@
         });
     });
 
+    btnCopyTop.addEventListener('click', () => btnCopy.click());
+    btnRegenerate.addEventListener('click', () => {
+      controls.classList.remove('has-generated');
+      postGenerateActions.classList.remove('visible');
+      btnGenerate.click();
+    });
+
     function showCopied() {
       copiedBadge.classList.remove('show');
       void copiedBadge.offsetWidth; // reflow to restart animation
@@ -1435,9 +1458,9 @@
     /* ============================================================
        Download Slides as individual JPEGs in a ZIP
     ============================================================ */
-    btnDownload.addEventListener('click', async () => {
-      btnDownload.disabled = true;
-      btnDownload.textContent = '⏳ Preparing...';
+    async function downloadSlides(button) {
+      button.disabled = true;
+      button.textContent = '⏳ Preparing...';
 
       try {
         // Load dependencies
@@ -1491,9 +1514,11 @@
         alert('Download failed: ' + err.message);
       }
 
-      btnDownload.disabled = false;
-      btnDownload.innerHTML = '⬇️ Download Slides';
-    });
+      button.disabled = false;
+      button.innerHTML = '⬇️ Download Slides';
+    }
+
+    btnDownloadTop.addEventListener('click', () => downloadSlides(btnDownloadTop));
 
     function loadJSZip() {
       return new Promise((resolve, reject) => {
