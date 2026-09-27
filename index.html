@@ -67,9 +67,9 @@
     .parallax-shape:nth-child(2n) .geometry-motion { animation-duration: 33s; animation-direction: alternate-reverse; }
     .parallax-shape:nth-child(3n) .geometry-motion { animation-duration: 38s; }
     @keyframes geometry-drift {
-      0% { translate: -14px -10px; }
-      50% { translate: 16px 12px; }
-      100% { translate: -8px 15px; }
+      0% { translate: -10px -8px; }
+      50% { translate: 10px 8px; }
+      100% { translate: -6px 10px; }
     }
     .geometry-motion.parallax-ring { width: 100%; height: 100%; border: 1px solid rgba(0,229,255,0.48); border-radius: 50%; box-shadow: 0 0 12px rgba(0,229,255,0.16), inset 0 0 12px rgba(0,229,255,0.05); }
     .geometry-motion.ring-small { border-color: rgba(255,74,174,0.62); box-shadow: 0 0 12px rgba(255,74,174,0.2), inset 0 0 12px rgba(255,74,174,0.06); }
@@ -899,9 +899,9 @@
     <div class="blob blob2"></div>
     <div class="blob blob3"></div>
     <div class="parallax-shapes" aria-hidden="true">
-      <div class="parallax-shape" data-parallax-speed="0.16" data-parallax-x="0.05" style="top: 8%; left: -80px; width: 280px; height: 280px;"><span class="geometry-motion parallax-ring"></span></div>
+      <div class="parallax-shape" data-parallax-speed="0.16" data-parallax-x="0.05" style="top: 8%; left: 7vw; width: 280px; height: 280px;"><span class="geometry-motion parallax-ring"></span></div>
       <div class="parallax-shape" data-parallax-speed="-0.12" data-parallax-x="-0.04" style="top: 26%; right: 12%; width: 110px; height: 110px;"><span class="geometry-motion parallax-ring ring-small"></span></div>
-      <div class="parallax-shape" data-parallax-speed="0.19" data-parallax-x="-0.05" style="top: 64%; right: -120px; width: 260px; height: 260px;"><span class="geometry-motion parallax-ring"></span></div>
+      <div class="parallax-shape" data-parallax-speed="0.19" data-parallax-x="-0.05" style="top: 60%; right: 7vw; width: 220px; height: 220px;"><span class="geometry-motion parallax-ring"></span></div>
       <div class="parallax-shape" data-parallax-speed="-0.15" data-parallax-x="0.06" style="top: 35%; left: 18%; width: 18px; height: 18px;"><span class="geometry-motion parallax-dot"></span></div>
       <div class="parallax-shape" data-parallax-speed="0.12" data-parallax-x="-0.05" style="top: 78%; left: 68%; width: 12px; height: 12px;"><span class="geometry-motion parallax-dot"></span></div>
       <div class="parallax-shape" data-parallax-speed="0.14" data-parallax-x="0.05" style="top: 17%; right: 26%; width: 40px; height: 40px;"><span class="geometry-motion parallax-cross"></span></div>
@@ -1598,6 +1598,10 @@
           const rect = element.getBoundingClientRect();
           element.dataset.parallaxInitY = String(rect.top + scrollY);
           element.dataset.parallaxHeight = String(rect.height);
+          element.dataset.parallaxBaseLeft = String(rect.left);
+          element.dataset.parallaxBaseRight = String(rect.right);
+          element.dataset.parallaxBaseTop = String(rect.top);
+          element.dataset.parallaxBaseBottom = String(rect.bottom);
         });
       };
 
@@ -1610,8 +1614,17 @@
           const offset = (initY + height / 2 - viewportCenter) / viewportHeight;
           const speedY = Number(element.dataset.parallaxSpeed) || 0.1;
           const speedX = Number(element.dataset.parallaxX) || 0;
-          const y = offset * speedY * viewportHeight * -1;
-          const x = offset * speedX * viewportHeight * -1;
+          const maxShiftY = Math.min(viewportHeight * 0.025, 22);
+          const maxShiftX = Math.min(window.innerWidth * 0.025, 28);
+          const edgeBuffer = 12;
+          const minX = Math.max(-maxShiftX, edgeBuffer - Number(element.dataset.parallaxBaseLeft));
+          const maxX = Math.min(maxShiftX, window.innerWidth - edgeBuffer - Number(element.dataset.parallaxBaseRight));
+          const minY = Math.max(-maxShiftY, edgeBuffer - Number(element.dataset.parallaxBaseTop));
+          const maxY = Math.min(maxShiftY, viewportHeight - edgeBuffer - Number(element.dataset.parallaxBaseBottom));
+          const desiredY = offset * speedY * viewportHeight * -1;
+          const desiredX = offset * speedX * viewportHeight * -1;
+          const y = Math.max(minY, Math.min(maxY, desiredY));
+          const x = Math.max(minX, Math.min(maxX, desiredX));
           element.style.transform = `translate3d(${x}px, ${y}px, 0)`;
         });
         const shift = Math.min(scrollY * 0.08, 70);
