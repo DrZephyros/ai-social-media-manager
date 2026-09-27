@@ -67,7 +67,7 @@ const GENRE_PROFILES = {
     'Personal Finance': `Teach one practical money concept such as budgeting, saving, borrowing, insurance, or investing. Use transparent assumptions and explain risk, fees, and time horizon when relevant. Avoid guaranteed returns, shame, or personalized financial advice; state that outcomes depend on circumstances.`,
     'Future of Work': `Examine a documented workplace change, job practice, or plausible scenario and who it affects. Separate current evidence from forecast, include both opportunities and tradeoffs, and avoid unsupported job-loss percentages or treating workers as interchangeable.`,
     'Psychology': `Explain a specific behavior, bias, or psychological idea with examples. Avoid pop-psych labels, armchair diagnosis, and claiming a single study explains everyone. Note context and individual differences; distinguish a useful model from settled fact.`,
-    'History & Hidden Facts': `SCOPE: tell a vivid, evidence-grounded story about the human past. Default to ancient and premodern civilizations. Draw topics from kingdoms and empires; Indian history, including temples, dynasties, kings, and emperors; pharaohs and tombs such as King Tut; rulers such as Alexander the Great; architecture; archaeology and excavations; inscriptions, coins, manuscripts, artifacts, and ruins; daily life, beliefs, trade, art, and consequential events. These names are examples of the genre's breadth, not a required shortlist. Choose one named person, place, object, discovery, or event, anchored to its civilization, region, or period. Prefer surprising, well-supported details over familiar summaries. In the script, distinguish archaeological evidence from interpretation, and established history from legend or uncertainty. Explore cultures and periods broadly rather than repeatedly selecting the same civilization. The subject must be historical in its own right, not a modern topic dressed up with the word history.`,
+    'History & Hidden Facts': `SCOPE: tell a vivid, evidence-grounded story about the human past. Default to ancient and premodern civilizations. Draw topics from kingdoms and empires; Indian history, including temples, dynasties, kings, and emperors; pharaohs and tombs such as King Tut; rulers such as Alexander the Great; architecture; archaeology and excavations; inscriptions, coins, manuscripts, artifacts, and ruins; daily life, beliefs, trade, art, and consequential events. These names are examples of the genre's breadth, not a required shortlist. Choose one named person, place, object, discovery, or event, anchored to its civilization, region, or period. Build the hook around a well-attested historical detail that can be explained from reliable historical or archaeological evidence. Prefer a documented question or finding over an invented secret, disputed interpretation, or unsupported claim about an object's purpose. If a vivid claim is uncertain, choose a different detail. In the script, distinguish archaeological evidence from interpretation, and established history from legend or uncertainty. Explore cultures and periods broadly rather than repeatedly selecting the same civilization. The subject must be historical in its own right, not a modern topic dressed up with the word history.`,
     'Philosophy': `Explore one philosophical question or argument fairly. Define the key idea in everyday language, present a strong version of the reasoning and a meaningful objection, then leave room for the reader's judgment. Do not misrepresent a philosopher or pretend contested questions have settled answers.`,
     'Geopolitics': `Explain a specific international event, relationship, or policy with clear geography, actors, interests, and timeframe. Attribute claims, distinguish verified facts from each side's position, and provide context without propaganda, dehumanization, or false certainty about motives.`,
     'Parenting': `Give age-aware, compassionate guidance for a clearly defined parenting situation. Respect differences in children, families, disability, culture, and resources. Avoid shame, perfectionism, guarantees, or medical/developmental claims beyond reliable evidence.`,
@@ -122,6 +122,22 @@ function hookRepresentsSubject(hook, subject) {
     return words(hook).some(word => subjectWords.has(word));
 }
 
+async function verifyHistoryTopic(groqClient, candidate) {
+    const response = await createCompletionWithRetry(groqClient, {
+        messages: [
+            {
+                role: 'system',
+                content: `You are a cautious historical fact-check editor. Review the proposed subject, angle, and hook using well-established historical and archaeological knowledge. Do not reward a claim merely because it sounds plausible. If the hook makes a specific unsupported or doubtful claim, replace it with a safer, well-attested fact about the same subject. If the subject itself is dubious or not historical, choose a different, clearly documented historical subject. Preserve a compelling angle without inventing secrets, discoveries, dates, purposes, or evidence. Return JSON with exactly: {"subject":"...", "subject_type":"...", "angle":"...", "hook":"..."}. Keep the hook under 15 words, name the subject, and anchor it clearly in the past.`
+            },
+            { role: 'user', content: JSON.stringify(candidate) }
+        ],
+        model: 'openai/gpt-oss-120b',
+        response_format: { type: 'json_object' },
+        temperature: 0,
+    });
+    return JSON.parse(response.choices[0].message.content);
+}
+
 function hasModernOrFutureFraming(value) {
     return MODERN_OR_FUTURE_FRAMING.test(value);
 }
@@ -136,7 +152,7 @@ export async function generateTopic(genre = null) {
     const blueprint = TOPIC_BLUEPRINTS[genre] || TOPIC_BLUEPRINTS.Other;
     const generatePrompt = `You are an editorial planner for a ${JSON.stringify(genre)} Instagram carousel.
 
-Your sole job is to choose an original, specific subject that belongs directly to this niche. You are not an analyst character, a data tool, or a futurist. Never describe an AI workflow, your research process, a data dump, or your own reaction.
+Your sole job is to choose an original, specific subject that belongs directly to this niche. Keep the subject itself central; do not address the creator or describe your process.
 
 NICHE DEFINITION:
 ${getGenreGuidance(genre)}
@@ -146,6 +162,13 @@ ${blueprint.types.map(type => `- ${type}`).join('\n')}
 
 REFERENCE DIRECTIONS: These establish the niche boundary. Create a different subject. Do not copy, paraphrase, combine, or extend any reference.
 ${blueprint.references.map(reference => `- ${reference}`).join('\n')}
+
+${genre === 'History & Hidden Facts' ? `HISTORICAL ACCURACY CHECK:
+- Choose a real, identifiable person, place, object, event, or discovery from the past.
+- Base the hook on a well-attested fact that can be supported by historical or archaeological evidence.
+- Do not invent a secret, inscription, feature, date, ritual, or purpose. Avoid presenting a debated theory as established fact.
+- If a surprising detail is uncertain, choose another documented detail. Curiosity must come from the evidence, not an unsupported claim.
+` : ''}
 
 Privately develop several candidates, select the clearest accurate one, and self-check that a reader could recognize the niche from the subject alone. Never borrow a familiar trend from another genre; derive the idea from this niche's subject matter. Then return exactly one record. The hook must name the subject, be under 15 words, use no first-person creator voice, and describe the subject rather than a method used to discover it.
 
@@ -169,10 +192,23 @@ Return only JSON: {"subject":"specific subject", "subject_type":"one allowed typ
             console.warn(`Rejected malformed topic response on attempt ${attempt + 1} for ${JSON.stringify(genre)}.`);
             continue;
         }
-        const hook = typeof candidate.hook === 'string' ? candidate.hook.trim() : '';
-        const subject = typeof candidate.subject === 'string' ? candidate.subject.trim() : '';
-        const subjectType = typeof candidate.subject_type === 'string' ? candidate.subject_type.trim().toLowerCase() : '';
-        const angle = typeof candidate.angle === 'string' ? candidate.angle.trim() : '';
+        let hook = typeof candidate.hook === 'string' ? candidate.hook.trim() : '';
+        let subject = typeof candidate.subject === 'string' ? candidate.subject.trim() : '';
+        let subjectType = typeof candidate.subject_type === 'string' ? candidate.subject_type.trim().toLowerCase() : '';
+        let angle = typeof candidate.angle === 'string' ? candidate.angle.trim() : '';
+        if (genre === 'History & Hidden Facts' && subject && angle && hook) {
+            try {
+                const reviewed = await verifyHistoryTopic(groqClient, { subject, subject_type: subjectType, angle, hook });
+                if ([reviewed.subject, reviewed.subject_type, reviewed.angle, reviewed.hook].every(value => typeof value === 'string' && value.trim())) {
+                    subject = reviewed.subject.trim();
+                    subjectType = reviewed.subject_type.trim().toLowerCase();
+                    angle = reviewed.angle.trim();
+                    hook = reviewed.hook.trim();
+                }
+            } catch (error) {
+                console.warn('Historical claim review failed; using the generated candidate:', error.message);
+            }
+        }
         const combined = `${subject} ${angle} ${hook}`;
         const excluded = containsExcludedTerm(combined, blueprint.excluded);
         const checks = {
