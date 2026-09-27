@@ -83,103 +83,53 @@ async function fetchLiveTrends() {
 }
 
 export async function generateTopic(genre = null) {
-    // PROVEN VIRAL FORMATS — sentence structures that consistently go viral
-    // The AI does NOT invent these. It only fills in the blanks.
     const FORMATS = [
         "I asked AI {angle}. Here's what it found.",
         "Why {angle} — it's not what they tell you.",
         "{angle}. And nobody is talking about it.",
-        "I fed AI all the data on {angle_short}. The answer surprised me.",
-        "{angle_short} will look completely different by {year}. Here's why.",
+        "I fed AI all the data on {angle}. The answer surprised me.",
         "The real reason {angle}.",
         "{angle}. Explained in 5 slides.",
-        "What {angle_short} will look like in {year}. It's not what you expect.",
-        "Everyone is wrong about {angle_short}. Here's the data.",
+        "Everyone is wrong about {angle}. Here's the data.",
         "{angle}. I broke it down so you don't have to.",
-        "In {years} years, {angle_short} won't exist. Here's what replaces it.",
-        "I made AI analyze {angle_short}. It found something no one expected."
+        "I made AI analyze {angle}. It found something no one expected."
     ];
 
-    // SPECIFIC ANGLES — real, relatable, jargon-free topics
-    const ANGLES = [
-        { full: "why you still can't afford a house", short: "the housing market", category: "crisis" },
-        { full: "why grocery prices won't come back down", short: "food prices", category: "crisis" },
-        { full: "why your salary buys less every year", short: "wages vs. prices", category: "crisis" },
-        { full: "how AI is already replacing software engineers", short: "AI coding", category: "future" },
-        { full: "what hospitals will look like in 10 years", short: "AI healthcare", category: "future" },
-        { full: "why a college degree is worth less every year", short: "college education", category: "crisis" },
-        { full: "how student loans were designed to keep you in debt", short: "student debt", category: "crisis" },
-        { full: "why self-driving cars are always '5 years away'", short: "self-driving cars", category: "future" },
-        { full: "how gene editing could eliminate diseases before birth", short: "CRISPR gene editing", category: "future" },
-        { full: "why scientists think we could stop aging by 2045", short: "the aging cure", category: "future" },
-        { full: "why rent is rising even where apartments sit empty", short: "the rental crisis", category: "crisis" },
-        { full: "how robots are already cheaper than factory workers", short: "humanoid robots", category: "future" },
-        { full: "why your health insurance costs more but covers less", short: "healthcare costs", category: "crisis" },
-        { full: "how AI could replace 40% of jobs within a decade", short: "AI job replacement", category: "future" },
-        { full: "how brain chips could let you control devices with thoughts", short: "brain-computer interfaces", category: "future" },
-        { full: "why lab-grown meat still isn't in supermarkets", short: "lab-grown meat", category: "future" },
-        { full: "why remote work is quietly disappearing", short: "remote work", category: "crisis" },
-        { full: "how deepfakes will make it impossible to trust any video", short: "deepfake technology", category: "future" },
-        { full: "why small businesses are dying faster than ever", short: "small business survival", category: "crisis" },
-        { full: "how quantum computers will break every password ever made", short: "quantum computing", category: "future" }
-    ];
+    const generatePrompt = `You are a master hook writer for viral Instagram carousels.
+I need a single, punchy hook (under 15 words) about ${genre ? `the topic/niche of "${genre}"` : "a surprising economic, technological, or societal fact"}.
 
-    const YEARS = ["2028", "2030", "2032", "2035", "2040", "2045"];
-    const YEAR_SPANS = ["5", "8", "10", "15", "20"];
+Use one of these proven formats as a structural inspiration:
+${FORMATS.map(f => `- ${f}`).join('\n')}
 
-    // Pick random format + angle (avoid recent combos)
-    const format = FORMATS[Math.floor(Math.random() * FORMATS.length)];
-    let angle;
-    let attempts = 0;
-    do {
-        angle = ANGLES[Math.floor(Math.random() * ANGLES.length)];
-        attempts++;
-    } while (recentSeeds.includes(angle.short) && attempts < 10);
-
-    recentSeeds.push(angle.short);
-    if (recentSeeds.length > 8) recentSeeds.shift();
-
-    const year = YEARS[Math.floor(Math.random() * YEARS.length)];
-    const years = YEAR_SPANS[Math.floor(Math.random() * YEAR_SPANS.length)];
-
-    // Build the raw hook from the template
-    const rawHook = format
-        .replace("{angle}", angle.full)
-        .replace("{angle_short}", angle.short)
-        .replace("{year}", year)
-        .replace("{years}", years);
-
-    console.log("Template hook:", rawHook);
-
-    // SINGLE AI call: just polish the grammar and make it flow naturally
-    const polishPrompt = `Take this Instagram carousel hook and make it sound natural and punchy. 
-${genre ? `Adapt it slightly to fit the genre/niche: "${genre}". ` : ''}Fix any awkward grammar. Keep it under 15 words. Do NOT add jargon, buzzwords, or change the core meaning.
-
-Raw hook: "${rawHook}"
-
-Output ONLY the polished hook. No quotes, no explanation.`;
+RULES:
+1. Make it concrete and relatable.
+2. NO corporate/academic jargon (e.g., avoid "macroeconomics", "paradigm", "disruption", "yield curve").
+3. DO NOT output anything except the final hook itself. No quotes around it, no explanations.`;
 
     try {
         const groqClient = getGroqClient();
         const res = await groqClient.chat.completions.create({
-            messages: [{ role: 'user', content: polishPrompt }],
+            messages: [{ role: 'system', content: generatePrompt }],
             model: 'openai/gpt-oss-120b',
-            temperature: 0.3,
+            temperature: 0.8,
         });
-        const polished = res.choices[0].message.content.trim().replace(/^"|"$/g, '');
+        
+        let hook = res.choices[0].message.content.trim().replace(/^"|"$/g, '');
         
         // Final jargon check
-        if (!containsJargon(polished) && polished.length < 120) {
-            console.log("Final hook:", polished);
-            return polished;
+        if (!containsJargon(hook) && hook.length < 120) {
+            console.log("Dynamically generated hook:", hook);
+            return hook;
+        } else {
+            console.warn("Generated hook contained jargon or was too long. Falling back to default.");
         }
     } catch (e) {
-        console.error("Polish step failed:", e.message);
+        console.error("Hook generation failed:", e.message);
     }
 
-    // If AI polish fails or adds jargon, just use the raw template (it's already good)
-    console.log("Using raw template hook:", rawHook);
-    return rawHook;
+    // Fallback if AI fails
+    const defaultTopic = genre ? `The hidden truth about ${genre} nobody talks about.` : "Why your salary buys less every year — it's not what they tell you.";
+    return defaultTopic;
 }
 
 export async function generateScript(topic, genre = null) {
