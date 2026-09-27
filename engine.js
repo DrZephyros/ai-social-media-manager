@@ -41,9 +41,17 @@ async function createCompletionWithRetry(groqClient, options) {
             return await groqClient.chat.completions.create(options);
         } catch (error) {
             const isRateLimit = error?.status === 429 || error?.message?.includes('rate_limit_exceeded');
-            if (!isRateLimit || retry >= 2) throw error;
-            const seconds = Number(error.message.match(/try again in ([\d.]+)s/i)?.[1]);
-            const delay = Number.isFinite(seconds) ? Math.ceil(seconds * 1000) + 300 : 5000 * (retry + 1);
+            if (!isRateLimit) throw error;
+            if (/tokens per day|\bTPD\b/i.test(error.message)) {
+                throw new Error('Topic generation is temporarily unavailable because the Groq daily token limit has been reached. Please try again after it resets.');
+            }
+            if (retry >= 2) throw error;
+            const waitMatch = error.message.match(/try again in (?:(\d+(?:\.\d+)?)m)?\s*(?:(\d+(?:\.\d+)?)s)?/i);
+            const suggestedDelay = waitMatch ? (Number(waitMatch[1] || 0) * 60 + Number(waitMatch[2] || 0)) * 1000 : NaN;
+            if (Number.isFinite(suggestedDelay) && suggestedDelay > 30000) {
+                throw new Error('Topic generation is temporarily rate-limited by Groq. Please wait a little and try again.');
+            }
+            const delay = Number.isFinite(suggestedDelay) ? Math.ceil(suggestedDelay) + 300 : 5000 * (retry + 1);
             console.warn(`Groq rate limit reached; retrying after ${delay}ms (retry ${retry + 1}/2).`);
             await wait(delay);
         }
@@ -79,7 +87,7 @@ const GENRE_PROFILES = {
 const TOPIC_BLUEPRINTS = {
     'Economics': { types: ['price change', 'wage pattern', 'market event', 'public policy'], references: ['Why groceries cost more after one supply shock', 'What a housing shortage changes for renters'], excluded: [] },
     'Tech & AI': { types: ['technology', 'capability', 'limitation', 'use case'], references: ['What a language model can and cannot infer', 'Why a device needs a specific sensor'], excluded: [] },
-    'Mental Health': { types: ['mental health condition', 'symptom or experience', 'coping skill', 'daily habit', 'social support', 'treatment concept'], references: ['What people misunderstand about depression', 'How eating patterns may affect mood and energy', 'Why grief can return long after a loss', 'What burnout can feel like before you notice it'], excluded: ['ai', 'artificial intelligence', 'algorithm', 'data analysis', 'technology', 'brain chip', 'neural implant', 'remote work', 'housing market', 'rent', 'paycheck', 'student loan'] },
+    'Mental Health': { types: ['mental health condition', 'symptom or experience', 'coping skill', 'daily habit', 'social support', 'treatment concept'], references: ['What people misunderstand about depression', 'How eating patterns may affect mood and energy', 'Why grief can return long after a loss', 'What burnout can feel like before you notice it'], excluded: ['ai', 'artificial intelligence', 'algorithm', 'data analysis', 'technology', 'brain chip', 'neural implant', 'remote work', 'housing market', 'rent', 'paycheck', 'student loan', 'social media', 'smartphone', 'screen time', 'app'] },
     'Physical Fitness': { types: ['exercise method', 'training habit', 'recovery practice', 'movement skill'], references: ['Why rest days support strength gains', 'How walking pace changes a workout'], excluded: [] },
     'Health & Nutrition': { types: ['food', 'nutrient', 'eating habit', 'health behavior'], references: ['How fibre supports digestion', 'Why meal timing affects hunger'], excluded: [] },
     'Bioengineering': { types: ['biological method', 'medical application', 'research challenge', 'ethical question'], references: ['How engineered cells make insulin', 'Why gene therapy delivery is difficult'], excluded: [] },
@@ -99,6 +107,31 @@ const TOPIC_BLUEPRINTS = {
     'Food Science': { types: ['ingredient', 'cooking process', 'food safety question', 'texture change'], references: ['Why bread rises in the oven', 'How acidity changes a sauce'], excluded: [] },
     'Crypto & Web3': { types: ['digital asset', 'protocol', 'security risk', 'network behavior'], references: ['What happens when a wallet recovery phrase is lost', 'Why network fees rise during busy periods'], excluded: [] },
     'Other': { types: ['concrete subject', 'practical process', 'useful question', 'overlooked detail'], references: ['A specific question a curious beginner asks', 'A practical process people misunderstand'], excluded: [] },
+};
+
+const GENRE_HOOK_LENSES = {
+    'Economics': 'Make a big economic force legible through one everyday consequence, an unexpected cause, or a tradeoff people feel but rarely notice.',
+    'Tech & AI': 'Center a demonstrated capability, limitation, or design choice that changes what a person can do; contrast the real mechanism with a common assumption.',
+    'Mental Health': 'Start from a recognizable inner experience, a compassionate correction to a common misunderstanding, or a useful link between daily life and wellbeing. Keep the person, not a product, at the center.',
+    'Physical Fitness': 'Use a counterintuitive training or recovery insight, a technique detail with a clear payoff, or a common form misconception people can check for themselves.',
+    'Health & Nutrition': 'Lead with an evidence-based food or body process that overturns a familiar assumption or gives a practical reason to care; avoid miracle framing.',
+    'Bioengineering': 'Reveal the surprising biological mechanism, real-world possibility, or ethical tradeoff behind a specific intervention; make clear what exists now.',
+    'Student Life': 'Connect a familiar student frustration to one overlooked cause, workable tactic, or unexpected campus reality with an immediate practical payoff.',
+    'Entrepreneurship': 'Expose a consequential founder tradeoff, a counterintuitive customer insight, or a small decision that changes a business outcome; avoid success theater.',
+    'Climate & Environment': 'Make a large environmental process tangible through a local consequence, ecosystem relationship, unexpected feedback, or solution with measurable limits.',
+    'Space & Astronomy': 'Use a scale-defying observation, a real scientific puzzle, or a surprising property of a named object; separate open questions from settled facts.',
+    'Neuroscience': 'Translate a brain or nervous-system finding into a surprising, relatable consequence while making the evidence and its limits clear.',
+    'Relationships': 'Open on a recognizable moment of tension, a counterintuitive communication pattern, or a small behavior that changes how an interaction unfolds; avoid blame.',
+    'Personal Finance': 'Tie one overlooked fee, rule, or time effect to a concrete decision or consequence; make the stakes understandable without promising outcomes.',
+    'Future of Work': 'Show a specific workplace change through the worker experience, an unexpected tradeoff, or a task being reshaped; label forecasts as forecasts.',
+    'Psychology': 'Use a familiar behavior with a surprising explanation, a carefully framed bias, or a gap between what people think they do and what evidence suggests.',
+    'History & Hidden Facts': 'Prefer a genuine historical mystery, a new discovery, competing evidence-based interpretations, or a well-supported detail that challenges a popular belief. Name the person, place, object, or event; make the question answerable from evidence and pay it off without inventing secrets.',
+    'Philosophy': 'Frame a real dilemma, paradox, or clash of values in a way that makes the audience test their own intuition; do not pretend there is an easy settled answer.',
+    'Geopolitics': 'Reveal the overlooked geography, incentive, historical context, or second-order consequence behind a consequential international decision; distinguish claims from verified facts.',
+    'Parenting': 'Start from a recognizable family moment and offer a surprising, compassionate explanation or age-aware practical insight; avoid guilt and one-size-fits-all claims.',
+    'Food Science': 'Turn an observable kitchen result into a surprising mechanism, useful test, or myth correction; clearly distinguish cooking behavior from nutrition claims.',
+    'Crypto & Web3': 'Make an opaque mechanism or risk concrete through what a user actually experiences; challenge hype with a specific, understandable tradeoff.',
+    'Other': 'Identify what this audience already cares about, then use the strongest relevant lens: surprising fact, unresolved question, useful payoff, misconception, or meaningful tradeoff.',
 };
 
 const CREATOR_META_LANGUAGE = /\b(i (?:asked|fed|gave|made|told) (?:an? )?ai|ai (?:analysed|analyzed|found|said|told me)|i fed data|the answer surprised me|here(?:'|’)s what (?:it|ai) found|supercomputer)\b/i;
@@ -122,14 +155,15 @@ function hookRepresentsSubject(hook, subject) {
     return words(hook).some(word => subjectWords.has(word));
 }
 
-async function verifyHistoryTopic(groqClient, candidate) {
+async function reviewTopic(groqClient, genre, blueprint, candidate) {
+    const historyReview = genre === 'History & Hidden Facts';
     const response = await createCompletionWithRetry(groqClient, {
         messages: [
             {
                 role: 'system',
-                content: `You are a cautious historical fact-check editor. Review the proposed subject, angle, and hook using well-established historical and archaeological knowledge. Do not reward a claim merely because it sounds plausible. If the hook makes a specific unsupported or doubtful claim, replace it with a safer, well-attested fact about the same subject. If the subject itself is dubious or not historical, choose a different, clearly documented historical subject. Preserve a compelling angle without inventing secrets, discoveries, dates, purposes, or evidence. Return JSON with exactly: {"subject":"...", "subject_type":"...", "angle":"...", "hook":"..."}. Keep the hook under 15 words, name the subject, and anchor it clearly in the past.`
+                content: `You are a rigorous ${historyReview ? 'historical and archaeological' : 'genre and factual'} editor for social-media topics. Check that the subject itself belongs to the selected genre and that the hook's factual claims are well-supported by established knowledge. Do not accept a claim merely because it sounds plausible. Watch especially for invented names, techniques, studies, organizations, discoveries, dates, statistics, causal links, and outcomes. When a specific claim is doubtful, rewrite it using a safer, well-attested detail in the same genre. Keep an appealing curiosity gap, surprise, human relevance, or practical payoff; do not flatten the hook into a textbook label. For History, require a real subject from the past and an evidence-grounded angle; never invent a secret, inscription, feature, date, ritual, or purpose. For sensitive claims, qualify genuine uncertainty. Return JSON with exactly: {"subject":"...", "subject_type":"...", "angle":"...", "hook":"..."}. Use one allowed subject type. Keep the hook under 15 words and make it clearly about the subject.`
             },
-            { role: 'user', content: JSON.stringify(candidate) }
+            { role: 'user', content: JSON.stringify({ genre, genreBrief: getGenreGuidance(genre), allowedSubjectTypes: blueprint.types, viralLens: GENRE_HOOK_LENSES[genre] || GENRE_HOOK_LENSES.Other, candidate }) }
         ],
         model: 'openai/gpt-oss-120b',
         response_format: { type: 'json_object' },
@@ -156,6 +190,19 @@ Your sole job is to choose an original, specific subject that belongs directly t
 
 NICHE DEFINITION:
 ${getGenreGuidance(genre)}
+
+VIRAL TOPIC AND HOOK PRINCIPLES:
+- No prompt can guarantee virality. Optimize for the signals behind strong social posts: an immediate stop-scroll idea, quick comprehension, emotional or practical relevance, specific novelty, curiosity that sustains attention, and a payoff worth saving or sharing.
+- Choose one proven story shape that suits this niche: a surprising documented detail; a common belief corrected by evidence; a real mystery with competing explanations; a hidden cause or mechanism; a meaningful contradiction; a human consequence; or a practical insight with a clear payoff. Do not force every story into mystery or controversy.
+- Make the subject immediately understandable and concrete. Prefer a named person, place, object, behavior, event, decision, or everyday moment over an abstract trend.
+- Open a fair curiosity gap the carousel can actually close. The hook should make the audience want one specific answer; later slides must deliver it promptly.
+- Privately compare distinct candidates for one-second clarity, relevance to the chosen audience, novelty, emotional or practical stakes, evidence quality, and payoff. Choose the strongest combination; do not expose the scoring.
+- Make the hook concise, memorable, and easy to repeat or send to someone. Use a specific contrast, consequence, puzzle, or reveal where it fits. Do not rely on a generic shock phrase or a question with no satisfying answer.
+- Never invent a named theory, technique, study, organization, discovery, date, statistic, causal result, or popular belief to make a hook sound more clickable. Do not present a forecast or disputed claim as fact. If a vivid detail is uncertain, choose a better-supported angle.
+- Keep curiosity honest: no fake urgency, exaggerated certainty, fear, shame, or promise beyond what the carousel can support. Write the hook in fewer than 15 words.
+
+GENRE-SPECIFIC VIRAL LENS:
+${GENRE_HOOK_LENSES[genre] || GENRE_HOOK_LENSES.Other}
 
 ALLOWED SUBJECT TYPES:
 ${blueprint.types.map(type => `- ${type}`).join('\n')}
@@ -198,7 +245,7 @@ Return only JSON: {"subject":"specific subject", "subject_type":"one allowed typ
         let angle = typeof candidate.angle === 'string' ? candidate.angle.trim() : '';
         if (genre === 'History & Hidden Facts' && subject && angle && hook) {
             try {
-                const reviewed = await verifyHistoryTopic(groqClient, { subject, subject_type: subjectType, angle, hook });
+                const reviewed = await reviewTopic(groqClient, genre, blueprint, { subject, subject_type: subjectType, angle, hook });
                 if ([reviewed.subject, reviewed.subject_type, reviewed.angle, reviewed.hook].every(value => typeof value === 'string' && value.trim())) {
                     subject = reviewed.subject.trim();
                     subjectType = reviewed.subject_type.trim().toLowerCase();
@@ -206,7 +253,7 @@ Return only JSON: {"subject":"specific subject", "subject_type":"one allowed typ
                     hook = reviewed.hook.trim();
                 }
             } catch (error) {
-                console.warn('Historical claim review failed; using the generated candidate:', error.message);
+                console.warn(`Editorial review failed for ${JSON.stringify(genre)}; using the generated candidate:`, error.message);
             }
         }
         const combined = `${subject} ${angle} ${hook}`;
@@ -216,6 +263,7 @@ Return only JSON: {"subject":"specific subject", "subject_type":"one allowed typ
             subjectPresent: subject.length > 0,
             anglePresent: angle.length > 0,
             hookLength: hook.length < 120,
+            hookWordCount: hook.split(/\s+/).filter(Boolean).length < 15,
             noJargon: !containsJargon(hook),
             noCreatorMeta: !CREATOR_META_LANGUAGE.test(combined),
             noExcludedSubject: !excluded,
