@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Insta-Manager — g0wtham.exe</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --cyan: #00E5FF;
+      --bg: #080c12;
+      --card: rgba(255,255,255,0.04);
+      --border: rgba(255,255,255,0.08);
+      --text: #f0f4f8;
+      --muted: rgba(255,255,255,0.45);
+      --ig-pink: #E1306C;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 3rem 1.5rem 5rem;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* ---- Animated Background ---- */
+    .bg-animation {
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      z-index: -1;
+      overflow: hidden;
+      background: #080c12;
+    }
+    .blob {
+      position: absolute;
+      filter: blur(80px);
+      border-radius: 50%;
+      opacity: 0.5;
+      animation: float 20s infinite alternate ease-in-out;
+    }
+    .blob1 { width: 400px; height: 400px; background: rgba(0,229,255,0.15); top: -100px; left: -100px; }
+    .blob2 { width: 500px; height: 500px; background: rgba(131,58,180,0.15); bottom: -150px; right: -100px; animation-duration: 25s; }
+    .blob3 { width: 300px; height: 300px; background: rgba(253,29,29,0.1); top: 40%; left: 30%; animation-duration: 22s; }
+    @keyframes float {
+      0%   { transform: translate(0,0) scale(1); }
+      33%  { transform: translate(30px,-50px) scale(1.1); }
+      66%  { transform: translate(-20px,20px) scale(0.9); }
+      100% { transform: translate(0,0) scale(1); }
+    }
+
+    /* ---- Header ---- */
+    header { text-align: center; margin-bottom: 3rem; }
+    header h1 {
+      font-size: 3rem; font-weight: 900; letter-spacing: -1px;
+      background: linear-gradient(135deg, #fff 30%, var(--cyan));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    header p { color: var(--muted); margin-top: 0.5rem; font-size: 1rem; }
+
+    /* ---- Control Panel ---- */
+    #controls {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 2rem;
+      width: 100%;
+      max-width: 560px;
+      backdrop-filter: blur(16px);
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 1rem 1.5rem;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 700;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-brainstorm { background: linear-gradient(135deg, #00b4db, var(--cyan)); color: #000; }
+    .btn-generate   { background: #ffffff; color: #000; }
+
+    #topic-row { display: none; flex-direction: column; gap: 0.75rem; }
+    #topic-row.visible { display: flex; }
+
+    #topic-input {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.8rem 1rem;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.95rem;
+      width: 100%;
+    }
+
+    /* ---- Status Bar ---- */
+    #status {
+      text-align: center;
+      font-size: 0.95rem;
+      color: var(--cyan);
+      min-height: 1.4rem;
+      font-weight: 600;
+      margin-top: 0.5rem;
+    }
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid rgba(0,229,255,0.3);
+      border-top-color: var(--cyan);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ================================================================
+       OUTPUT SECTION — two-column layout
+    ================================================================ */
+    #output-section {
+      display: none;
+      width: 100%;
+      max-width: 1100px;
+      margin-top: 3rem;
+      gap: 3rem;
+      align-items: flex-start;
+      /* flex row on wide screens */
+      flex-direction: row;
+      justify-content: center;
+    }
+    #output-section.visible { display: flex; }
+
+    /* ---- LEFT: Instagram Phone Mockup ---- */
+    .phone-wrapper {
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.2rem;
+    }
+
+    .phone-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    /* ====== PHONE SHELL — iPhone 15 Pro style ====== */
+    .phone-shell {
+      width: 290px;
+      background: linear-gradient(160deg, #2a2a2a 0%, #1a1a1a 40%, #232323 100%);
+      border-radius: 52px;
+      padding: 12px;
+      position: relative;
+      box-shadow:
+        0 0 0 1.5px #3a3a3a,
+        0 0 0 3px #111,
+        0 0 0 4px rgba(255,255,255,0.07),
+        0 40px 100px rgba(0,0,0,0.9),
+        0 10px 30px rgba(0,0,0,0.6),
+        inset 0 1px 0 rgba(255,255,255,0.1),
+        inset 0 -1px 0 rgba(0,0,0,0.4);
+    }
+
+    /* Volume buttons — LEFT side */
+    .phone-shell::before {
+      content: '';
+      position: absolute;
+      left: -5px;
+      top: 90px;
+      width: 4px;
+      height: 28px;
+      background: linear-gradient(180deg, #2e2e2e, #1e1e1e);
+      border-radius: 3px 0 0 3px;
+      box-shadow: 0 36px 0 #2a2a2a, 0 72px 0 #2a2a2a;
+    }
+
+    /* Power button — RIGHT side */
+    .phone-shell::after {
+      content: '';
+      position: absolute;
+      right: -5px;
+      top: 110px;
+      width: 4px;
+      height: 60px;
+      background: linear-gradient(180deg, #2e2e2e, #1e1e1e);
+      border-radius: 0 3px 3px 0;
+    }
+
+    /* Screen area */
+    .phone-screen {
+      background: #000;
+      border-radius: 42px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      /* Screen reflection highlight */
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+    }
+
+    /* Dynamic Island */
+    .dynamic-island {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      background: #000;
+      padding-top: 10px;
+    }
+    .dynamic-island-pill {
+      width: 110px;
+      height: 30px;
+      background: #000;
+      border-radius: 20px;
+      border: 2px solid #1a1a1a;
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.06),
+        inset 0 1px 2px rgba(0,0,0,0.8);
+    }
+
+    /* iOS status bar */
+    .ios-statusbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 2px 22px 0;
+      background: #000;
+    }
+    .ios-time {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: #fff;
+      font-family: -apple-system, 'Inter', sans-serif;
+      letter-spacing: -0.3px;
+    }
+    .ios-icons {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.55rem;
+      color: #fff;
+    }
+    .ios-battery {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      font-size: 0.6rem;
+      font-weight: 600;
+    }
+    .ios-battery-bar {
+      width: 22px; height: 11px;
+      border: 1.5px solid rgba(255,255,255,0.5);
+      border-radius: 3px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      padding: 1.5px;
+    }
+    .ios-battery-bar::after {
+      content: '';
+      position: absolute;
+      right: -5px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 2.5px;
+      height: 5px;
+      background: rgba(255,255,255,0.4);
+      border-radius: 0 1px 1px 0;
+    }
+    .ios-battery-fill {
+      width: 75%;
+      height: 100%;
+      background: #4cd964;
+      border-radius: 1.5px;
+    }
+
+    /* Instagram-like top bar (below status bar) */
+    .ig-topbar {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 0.9rem 0.5rem;
+      background: #000;
+      z-index: 2;
+    }
+    .ig-avatar {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.65rem; font-weight: 700; color: #fff;
+      flex-shrink: 0;
+      padding: 2px;
+    }
+    .ig-avatar-inner {
+      width: 100%; height: 100%;
+      border-radius: 50%;
+      background: #111;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.65rem; font-weight: 700; color: #fff;
+    }
+    .ig-username { font-size: 0.8rem; font-weight: 700; color: #fff; flex: 1; }
+    .ig-more { color: #fff; font-size: 1.2rem; line-height: 1; opacity: 0.6; }
+
+    /* Carousel track inside phone */
+    .ig-carousel-track-wrap {
+      position: relative;
+      overflow: hidden;
+      /* Fixed width so aspect-ratio on children works */
+      width: 100%;
+      cursor: grab;
+    }
+    .ig-carousel-track-wrap:active { cursor: grabbing; }
+
+    .ig-carousel-track {
+      display: flex;
+      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Each slide inside the phone — 1:1 square (standard IG carousel ratio) */
+    .ig-slide {
+      flex-shrink: 0;
+      width: 100%;
+      aspect-ratio: 4 / 5;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .ig-slide-content {
+      position: relative;
+      z-index: 2;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 1.4rem 1.2rem 0.8rem;
+    }
+
+    .ig-slide-top { }
+    .ig-slide-accent {
+      width: 28px; height: 3px;
+      background: var(--cyan); border-radius: 2px;
+      margin-bottom: 0.5rem;
+    }
+    .ig-slide-number {
+      font-size: 0.55rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--cyan);
+      opacity: 0.75;
+    }
+    .ig-slide-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .ig-slide-title {
+      font-size: 1.25rem;
+      font-weight: 900;
+      line-height: 1.2;
+      color: #fff;
+      margin-bottom: 0.6rem;
+      letter-spacing: -0.5px;
+    }
+    .ig-slide-body {
+      font-size: 0.78rem;
+      line-height: 1.55;
+      color: rgba(255,255,255,0.85);
+      font-weight: 500;
+    }
+    .ig-slide-footer {
+      flex-shrink: 0;
+      padding: 0.35rem 1.2rem;
+      background: rgba(0,0,0,0.6);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid rgba(0,229,255,0.12);
+    }
+    .ig-slide-footer span {
+      font-size: 0.45rem;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.35);
+      font-weight: 600;
+    }
+    .ig-slide-footer .handle { color: var(--cyan); opacity: 0.7; }
+
+    /* Gradient backgrounds (same as before) */
+    .bg-gradient-blue   { background: linear-gradient(160deg, #0a0f1e 0%, #0d2137 50%, #0a3d6b 100%); }
+    .bg-gradient-purple { background: linear-gradient(160deg, #0d0a1e 0%, #1a0d3d 50%, #2d0b6b 100%); }
+    .bg-gradient-red    { background: linear-gradient(160deg, #1e0a0a 0%, #3d0d0d 50%, #6b1212 100%); }
+    .bg-gradient-green  { background: linear-gradient(160deg, #0a1e0d 0%, #0d3d14 50%, #0b6b20 100%); }
+    .bg-gradient-gold   { background: linear-gradient(160deg, #1e180a 0%, #3d300d 50%, #6b500b 100%); }
+
+    /* Noise overlay */
+    .ig-slide::before {
+      content: '';
+      position: absolute; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+      opacity: 0.15;
+      pointer-events: none;
+    }
+    .ig-slide::after {
+      content: '';
+      position: absolute; inset: 0;
+      background-image: linear-gradient(rgba(0,229,255,0.04) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(0,229,255,0.04) 1px, transparent 1px);
+      background-size: 28px 28px;
+      pointer-events: none;
+    }
+
+    /* Dot indicators */
+    .ig-dots {
+      display: flex;
+      gap: 5px;
+      justify-content: center;
+      padding: 0.5rem 0;
+      background: #000;
+    }
+    .ig-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.2);
+      transition: background 0.3s, width 0.3s;
+    }
+    .ig-dot.active {
+      background: var(--cyan);
+      width: 14px;
+      border-radius: 3px;
+    }
+
+    /* Instagram action row */
+    .ig-actions {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.6rem 1rem;
+      background: #000;
+    }
+    .ig-action-icon {
+      font-size: 1.2rem;
+      cursor: pointer;
+      transition: transform 0.15s;
+    }
+    .ig-action-icon:hover { transform: scale(1.15); }
+    .ig-action-icon.share { margin-left: auto; }
+
+    /* Post info row below actions (likes + caption preview) */
+    .ig-post-info {
+      padding: 0 0.9rem 0.5rem;
+      background: #000;
+    }
+    .ig-likes {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 0.25rem;
+    }
+    .ig-caption-preview {
+      font-size: 0.65rem;
+      color: rgba(255,255,255,0.7);
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .ig-caption-preview strong {
+      color: #fff;
+      font-weight: 700;
+    }
+    .ig-view-comments {
+      font-size: 0.6rem;
+      color: rgba(255,255,255,0.35);
+      margin-top: 0.2rem;
+    }
+    .ig-home-indicator {
+      height: 22px;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .ig-home-bar {
+      width: 100px;
+      height: 4px;
+      background: rgba(255,255,255,0.3);
+      border-radius: 2px;
+    }
+
+    /* Navigation arrows on phone */
+    .phone-nav {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: center;
+    }
+    .phone-nav-btn {
+      width: 38px; height: 38px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      font-size: 1rem;
+      color: #fff;
+      transition: background 0.2s;
+      user-select: none;
+    }
+    .phone-nav-btn:hover { background: rgba(255,255,255,0.14); }
+
+    .slide-counter-text {
+      font-size: 0.75rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    /* ---- RIGHT: Caption & Actions Panel ---- */
+    .caption-panel {
+      flex: 1;
+      max-width: 460px;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      min-width: 0;
+    }
+
+    .panel-title {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.25rem;
+    }
+
+    /* Caption box */
+    #caption-box {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      padding: 1.25rem;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.9rem;
+      line-height: 1.65;
+      width: 100%;
+      min-height: 220px;
+      resize: vertical;
+      backdrop-filter: blur(16px);
+    }
+    #caption-box:focus {
+      outline: none;
+      border-color: rgba(0,229,255,0.3);
+      box-shadow: 0 0 0 3px rgba(0,229,255,0.06);
+    }
+
+    /* Action buttons row */
+    .action-row {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .action-btn {
+      flex: 1;
+      min-width: 130px;
+      padding: 0.85rem 1rem;
+      border: none;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s, box-shadow 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+    }
+    .action-btn:active { transform: scale(0.97); }
+
+    .btn-copy {
+      background: rgba(0,229,255,0.12);
+      color: var(--cyan);
+      border: 1px solid rgba(0,229,255,0.25);
+    }
+    .btn-copy:hover { background: rgba(0,229,255,0.2); }
+
+    .btn-download {
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.14);
+    }
+    .btn-download:hover { background: rgba(255,255,255,0.14); }
+
+    /* Copied feedback */
+    .copied-badge {
+      display: none;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #4ade80;
+      animation: fadeInOut 2s ease forwards;
+    }
+    .copied-badge.show { display: flex; }
+    @keyframes fadeInOut {
+      0%   { opacity: 0; transform: translateY(4px); }
+      15%  { opacity: 1; transform: translateY(0); }
+      75%  { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    /* Hashtag chips */
+    .hashtag-preview {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-top: 0.5rem;
+    }
+    .hashtag-chip {
+      background: rgba(0,229,255,0.07);
+      border: 1px solid rgba(0,229,255,0.15);
+      border-radius: 20px;
+      padding: 0.2rem 0.65rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--cyan);
+      opacity: 0.8;
+    }
+
+    /* ---- Hidden off-screen render grid (for download) ---- */
+    #render-grid {
+      position: fixed;
+      left: -9999px;
+      top: 0;
+      display: grid;
+      grid-template-columns: repeat(5, 400px);
+      gap: 0;
+      pointer-events: none;
+    }
+    #render-grid .slide-card {
+      width: 400px;
+      aspect-ratio: 4 / 5;
+      border-radius: 16px;
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+    #render-grid .slide-content {
+      position: relative;
+      z-index: 2;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 2.5rem 2rem 1.5rem;
+    }
+    #render-grid .slide-accent {
+      width: 48px; height: 4px;
+      background: var(--cyan); border-radius: 2px; margin-bottom: 1rem;
+    }
+    #render-grid .slide-number {
+      font-size: 0.85rem; font-weight: 700;
+      letter-spacing: 3px; text-transform: uppercase;
+      color: var(--cyan); opacity: 0.75;
+    }
+    #render-grid .slide-main {
+      margin-top: auto; margin-bottom: auto;
+      padding-top: 2rem; padding-bottom: 1rem;
+    }
+    #render-grid .slide-title {
+      font-size: 2.6rem; font-weight: 900;
+      line-height: 1.15; color: #fff;
+      margin-bottom: 1.2rem; letter-spacing: -1px;
+    }
+    #render-grid .slide-body {
+      font-size: 1.3rem; line-height: 1.6;
+      color: rgba(255,255,255,0.85); font-weight: 500;
+    }
+    #render-grid .slide-footer {
+      flex-shrink: 0;
+      padding: 0.6rem 2rem;
+      background: rgba(0,0,0,0.6);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid rgba(0,229,255,0.12);
+    }
+    #render-grid .slide-footer span {
+      font-size: 0.65rem; letter-spacing: 1.5px;
+      text-transform: uppercase; color: rgba(255,255,255,0.35); font-weight: 600;
+    }
+    #render-grid .slide-footer .handle { color: var(--cyan); opacity: 0.7; }
+    #render-grid .slide-card::before {
+      content: '';
+      position: absolute; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+      opacity: 0.15; pointer-events: none;
+    }
+    #render-grid .slide-card::after {
+      content: '';
+      position: absolute; inset: 0;
+      background-image: linear-gradient(rgba(0,229,255,0.04) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(0,229,255,0.04) 1px, transparent 1px);
+      background-size: 40px 40px; pointer-events: none;
+    }
+
+    /* responsive */
+    @media (max-width: 780px) {
+      #output-section { flex-direction: column; align-items: center; }
+      .caption-panel { max-width: 320px; width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-animation">
+    <div class="blob blob1"></div>
+    <div class="blob blob2"></div>
+    <div class="blob blob3"></div>
+  </div>
+
+  <header>
+    <h1>AI Insta-Manager</h1>
+    <p>Generate viral Instagram carousels in seconds · Powered by Groq</p>
+  </header>
+
+  <div id="controls">
+    <button class="btn btn-brainstorm" id="btn-brainstorm">Brainstorm Viral Topic 🎯</button>
+
+    <div id="topic-row">
+      <input type="text" id="topic-input" placeholder="Edit the topic if you want...">
+      <button class="btn btn-generate" id="btn-generate">Approve & Generate Slides 🚀</button>
+    </div>
+
+    <div id="status"></div>
+  </div>
+
+  <!-- ============================================================
+       OUTPUT: Instagram Preview + Caption Panel
+  ============================================================ -->
+  <div id="output-section">
+
+    <!-- LEFT: Phone mockup -->
+    <div class="phone-wrapper">
+      <div class="phone-label">Instagram Preview</div>
+
+      <div class="phone-shell">
+        <div class="phone-screen">
+
+          <!-- Dynamic Island -->
+          <div class="dynamic-island">
+            <div class="dynamic-island-pill"></div>
+          </div>
+
+          <!-- iOS Status Bar -->
+          <div class="ios-statusbar">
+            <div class="ios-time" id="ios-clock">9:41</div>
+            <div class="ios-icons">
+              <svg width="16" height="12" viewBox="0 0 16 12" fill="white" opacity="0.9">
+                <rect x="0" y="8" width="3" height="4" rx="0.5"/>
+                <rect x="4.5" y="5" width="3" height="7" rx="0.5"/>
+                <rect x="9" y="2" width="3" height="10" rx="0.5"/>
+                <rect x="13.5" y="0" width="2.5" height="12" rx="0.5" opacity="0.3"/>
+              </svg>
+              <svg width="16" height="12" viewBox="0 0 16 12" fill="white" opacity="0.9">
+                <path d="M8 2.5C10.5 2.5 12.7 3.6 14.2 5.3L15.5 4C13.6 1.9 11 0.5 8 0.5C5 0.5 2.4 1.9 0.5 4L1.8 5.3C3.3 3.6 5.5 2.5 8 2.5Z"/>
+                <path d="M8 5.5C9.7 5.5 11.2 6.2 12.3 7.4L13.6 6.1C12.1 4.5 10.2 3.5 8 3.5C5.8 3.5 3.9 4.5 2.4 6.1L3.7 7.4C4.8 6.2 6.3 5.5 8 5.5Z"/>
+                <circle cx="8" cy="11" r="1.5"/>
+              </svg>
+              <div class="ios-battery">
+                <div class="ios-battery-bar"><div class="ios-battery-fill"></div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- IG top bar -->
+          <div class="ig-topbar">
+            <div class="ig-avatar">
+              <div class="ig-avatar-inner">g0</div>
+            </div>
+            <div class="ig-username">g0wtham.exe</div>
+            <div class="ig-more">···</div>
+          </div>
+
+          <!-- Carousel swipe area -->
+          <div class="ig-carousel-track-wrap" id="ig-track-wrap">
+            <div class="ig-carousel-track" id="ig-track"></div>
+          </div>
+
+          <!-- Dot indicators -->
+          <div class="ig-dots" id="ig-dots"></div>
+
+          <!-- IG Action row with proper icons -->
+          <div class="ig-actions">
+            <svg class="ig-action-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+            <svg class="ig-action-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+            <svg class="ig-action-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            <svg class="ig-action-icon" style="margin-left:auto" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+          </div>
+
+          <!-- Post info: likes + caption preview -->
+          <div class="ig-post-info">
+            <div class="ig-likes">2,847 likes</div>
+            <div class="ig-caption-preview" id="ig-caption-preview">
+              <strong>g0wtham.exe</strong> Your caption will appear here...
+            </div>
+            <div class="ig-view-comments">View all 143 comments</div>
+          </div>
+
+          <!-- iOS Home Indicator -->
+          <div class="ig-home-indicator">
+            <div class="ig-home-bar"></div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Navigation arrows + counter -->
+      <div class="phone-nav">
+        <div class="phone-nav-btn" id="nav-prev">‹</div>
+        <span class="slide-counter-text" id="slide-counter">1 / 5</span>
+        <div class="phone-nav-btn" id="nav-next">›</div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Caption panel -->
+    <div class="caption-panel">
+      <div class="panel-title">Caption</div>
+
+      <textarea id="caption-box" placeholder="Your caption will appear here..."></textarea>
+
+      <div class="hashtag-preview" id="hashtag-chips"></div>
+
+      <div class="action-row">
+        <button class="action-btn btn-copy" id="btn-copy">
+          📋 Copy Caption
+        </button>
+        <button class="action-btn btn-download" id="btn-download">
+          ⬇️ Download Slides
+        </button>
+      </div>
+
+      <div class="copied-badge" id="copied-badge">
+        ✅ Copied to clipboard!
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden full-res render grid for download -->
+  <div id="render-grid"></div>
+
+  <script>
+    /* Live clock for status bar */
+    function updateClock() {
+      const el = document.getElementById('ios-clock');
+      if (!el) return;
+      const now = new Date();
+      const h = now.getHours() % 12 || 12;
+      const m = String(now.getMinutes()).padStart(2, '0');
+      el.textContent = `${h}:${m}`;
+    }
+    updateClock();
+    setInterval(updateClock, 30000);
+
+    /* ============================================================
+       DOM refs
+    ============================================================ */
+    const btnBrainstorm = document.getElementById('btn-brainstorm');
+    const topicRow      = document.getElementById('topic-row');
+    const topicInput    = document.getElementById('topic-input');
+    const btnGenerate   = document.getElementById('btn-generate');
+    const statusEl      = document.getElementById('status');
+    const outputSection = document.getElementById('output-section');
+    const igTrack       = document.getElementById('ig-track');
+    const igDots        = document.getElementById('ig-dots');
+    const navPrev       = document.getElementById('nav-prev');
+    const navNext       = document.getElementById('nav-next');
+    const slideCounter  = document.getElementById('slide-counter');
+    const captionBox    = document.getElementById('caption-box');
+    const hashtagChips  = document.getElementById('hashtag-chips');
+    const btnCopy       = document.getElementById('btn-copy');
+    const btnDownload   = document.getElementById('btn-download');
+    const copiedBadge   = document.getElementById('copied-badge');
+    const renderGrid    = document.getElementById('render-grid');
+
+    const bgMap = {
+      'gradient-blue':   'bg-gradient-blue',
+      'gradient-purple': 'bg-gradient-purple',
+      'gradient-red':    'bg-gradient-red',
+      'gradient-green':  'bg-gradient-green',
+      'gradient-gold':   'bg-gradient-gold',
+    };
+
+    let currentSlide = 0;
+    let totalSlides  = 5;
+    let currentScript = [];
+
+    function setStatus(msg, spinner = false) {
+      statusEl.innerHTML = spinner ? `<span class="spinner"></span>${msg}` : msg;
+    }
+
+    /* ============================================================
+       Step 1: Brainstorm
+    ============================================================ */
+    btnBrainstorm.addEventListener('click', async () => {
+      btnBrainstorm.disabled = true;
+      setStatus('Groq is brainstorming a viral topic...', true);
+      try {
+        const res  = await fetch('/api/brainstorm', { method: 'POST' });
+        const data = await res.json();
+        if (data.topic) {
+          topicInput.value = data.topic;
+          topicRow.classList.add('visible');
+          setStatus('✅ Topic ready — edit it or approve as-is.');
+        } else {
+          setStatus('❌ Error: ' + data.error);
+        }
+      } catch {
+        setStatus('❌ Failed to connect to server.');
+      }
+      btnBrainstorm.disabled = false;
+    });
+
+    /* ============================================================
+       Step 2: Generate via SSE
+    ============================================================ */
+    btnGenerate.addEventListener('click', () => {
+      const topic = topicInput.value.trim();
+      if (!topic) return;
+
+      btnGenerate.disabled = true;
+      outputSection.classList.remove('visible');
+      igTrack.innerHTML = '';
+      igDots.innerHTML  = '';
+      hashtagChips.innerHTML = '';
+      captionBox.value  = '';
+      setStatus('Connecting to Groq...', true);
+
+      const evtSource = new EventSource(`/api/generate-stream?topic=${encodeURIComponent(topic)}`);
+
+      evtSource.onmessage = (e) => {
+        const payload = JSON.parse(e.data);
+
+        if (payload.error) {
+          setStatus('❌ Error: ' + payload.error);
+          evtSource.close();
+          btnGenerate.disabled = false;
+          return;
+        }
+
+        if (payload.status) setStatus(payload.status, true);
+
+        if (payload.done && payload.script) {
+          evtSource.close();
+          currentScript = payload.script;
+          renderPhonePreview(payload.script);
+          buildRenderGrid(payload.script);
+
+          if (payload.caption) {
+            captionBox.value = payload.caption;
+            // Auto-copy caption to clipboard
+            navigator.clipboard.writeText(payload.caption).catch(() => {});
+            showCopied();
+            // Show hashtag chips
+            const tags = payload.caption.match(/#\w+/g) || [];
+            hashtagChips.innerHTML = tags.map(t => `<span class="hashtag-chip">${t}</span>`).join('');
+            // Update phone caption preview (first non-hashtag line)
+            const previewEl = document.getElementById('ig-caption-preview');
+            if (previewEl) {
+              const firstLine = payload.caption.split('\n').find(l => l.trim() && !l.trim().startsWith('#')) || '';
+              previewEl.innerHTML = `<strong>g0wtham.exe</strong> ${firstLine}`;
+            }
+          }
+
+          outputSection.classList.add('visible');
+          setStatus('✅ Carousel ready! Scroll the preview → then download or copy caption.');
+          btnGenerate.disabled = false;
+        }
+      };
+
+      evtSource.onerror = () => {
+        setStatus('❌ Connection error. Try again.');
+        evtSource.close();
+        btnGenerate.disabled = false;
+      };
+    });
+
+    /* ============================================================
+       Render Instagram phone preview
+    ============================================================ */
+    function renderPhonePreview(slides) {
+      igTrack.innerHTML = '';
+      igDots.innerHTML  = '';
+      totalSlides = slides.length;
+      currentSlide = 0;
+
+      slides.forEach((slide, i) => {
+        const bgClass = bgMap[slide.bg_type] || 'bg-gradient-blue';
+
+        // Slide
+        const el = document.createElement('div');
+        el.className = `ig-slide ${bgClass}`;
+        el.innerHTML = `
+          <div class="ig-slide-content">
+            <div class="ig-slide-top">
+              <div class="ig-slide-accent"></div>
+              <div class="ig-slide-number">Slide ${slide.slide_number} of ${totalSlides}</div>
+            </div>
+            <div class="ig-slide-main">
+              <div class="ig-slide-title">${slide.title}</div>
+              <div class="ig-slide-body">${slide.body_text}</div>
+            </div>
+          </div>
+          <div class="ig-slide-footer">
+            <span>Slide ${slide.slide_number} / ${totalSlides}</span>
+            <span class="handle">@g0wtham.exe</span>
+          </div>
+        `;
+        igTrack.appendChild(el);
+
+        // Dot
+        const dot = document.createElement('div');
+        dot.className = 'ig-dot' + (i === 0 ? ' active' : '');
+        igDots.appendChild(dot);
+      });
+
+      updateCarousel();
+      setupSwipe();
+    }
+
+    /* ============================================================
+       Carousel navigation
+    ============================================================ */
+    function updateCarousel() {
+      igTrack.style.transform = `translateX(-${currentSlide * 100}%)`;
+      document.querySelectorAll('.ig-dot').forEach((d, i) => {
+        d.classList.toggle('active', i === currentSlide);
+      });
+      slideCounter.textContent = `${currentSlide + 1} / ${totalSlides}`;
+    }
+
+    navPrev.addEventListener('click', () => {
+      if (currentSlide > 0) { currentSlide--; updateCarousel(); }
+    });
+    navNext.addEventListener('click', () => {
+      if (currentSlide < totalSlides - 1) { currentSlide++; updateCarousel(); }
+    });
+
+    // Touch/mouse swipe inside phone
+    function setupSwipe() {
+      const wrap = document.getElementById('ig-track-wrap');
+      let startX = 0;
+
+      wrap.addEventListener('mousedown', e => { startX = e.clientX; });
+      wrap.addEventListener('mouseup', e => {
+        const diff = startX - e.clientX;
+        if (diff > 30 && currentSlide < totalSlides - 1) { currentSlide++; updateCarousel(); }
+        if (diff < -30 && currentSlide > 0)               { currentSlide--; updateCarousel(); }
+      });
+
+      wrap.addEventListener('touchstart', e => { startX = e.touches[0].clientX; }, { passive: true });
+      wrap.addEventListener('touchend', e => {
+        const diff = startX - e.changedTouches[0].clientX;
+        if (diff > 30 && currentSlide < totalSlides - 1) { currentSlide++; updateCarousel(); }
+        if (diff < -30 && currentSlide > 0)               { currentSlide--; updateCarousel(); }
+      });
+    }
+
+    /* ============================================================
+       Build hidden render grid (full resolution for download)
+    ============================================================ */
+    function buildRenderGrid(slides) {
+      renderGrid.innerHTML = '';
+      const numSlides = slides.length;
+      slides.forEach((slide, i) => {
+        const bgClass = bgMap[slide.bg_type] || 'bg-gradient-blue';
+        const card = document.createElement('div');
+        card.className = `slide-card ${bgClass}`;
+        card.id = `render-slide-${i + 1}`;
+        card.innerHTML = `
+          <div class="slide-content">
+            <div class="slide-top">
+              <div class="slide-accent"></div>
+              <div class="slide-number">Slide ${slide.slide_number} of ${numSlides}</div>
+            </div>
+            <div class="slide-main">
+              <div class="slide-title">${slide.title}</div>
+              <div class="slide-body">${slide.body_text}</div>
+            </div>
+          </div>
+          <div class="slide-footer">
+            <span>Slide ${slide.slide_number} / ${numSlides}</span>
+            <span class="handle">@g0wtham.exe</span>
+          </div>
+        `;
+        renderGrid.appendChild(card);
+      });
+    }
+
+    /* ============================================================
+       Copy Caption
+    ============================================================ */
+    btnCopy.addEventListener('click', () => {
+      navigator.clipboard.writeText(captionBox.value)
+        .then(showCopied)
+        .catch(() => {
+          captionBox.select();
+          document.execCommand('copy');
+          showCopied();
+        });
+    });
+
+    function showCopied() {
+      copiedBadge.classList.remove('show');
+      void copiedBadge.offsetWidth; // reflow to restart animation
+      copiedBadge.classList.add('show');
+      setTimeout(() => copiedBadge.classList.remove('show'), 2200);
+    }
+
+    /* ============================================================
+       Download Slides as individual JPEGs in a ZIP
+    ============================================================ */
+    btnDownload.addEventListener('click', async () => {
+      btnDownload.disabled = true;
+      btnDownload.textContent = '⏳ Preparing...';
+
+      try {
+        // Load dependencies
+        const [h2cMod, JSZip] = await Promise.all([
+          import('https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.esm.js'),
+          loadJSZip()
+        ]);
+        const html2canvas = h2cMod.default;
+        const zip = new JSZip();
+
+        for (let i = 1; i <= currentScript.length; i++) {
+          const el = document.getElementById(`render-slide-${i}`);
+          if (!el) continue;
+          const canvas = await html2canvas(el, { scale: 3, useCORS: true, backgroundColor: null });
+          const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.95));
+          zip.file(`slide_${i}.jpg`, blob);
+        }
+
+        const content = await zip.generateAsync({ type: 'blob' });
+        const url = URL.createObjectURL(content);
+        const a = document.createElement('a');
+        a.href = url;
+        
+        // Generate filename: YYYY-MM-DD_slide-1-title.zip
+        const dateStr = new Date().toISOString().split('T')[0];
+        let titleStr = "carousel";
+        if (currentScript && currentScript.length > 0 && currentScript[0].title) {
+          titleStr = currentScript[0].title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        }
+        a.download = `${dateStr}_${titleStr}.zip`;
+        
+        a.click();
+        URL.revokeObjectURL(url);
+
+      } catch (err) {
+        alert('Download failed: ' + err.message);
+      }
+
+      btnDownload.disabled = false;
+      btnDownload.innerHTML = '⬇️ Download Slides';
+    });
+
+    function loadJSZip() {
+      return new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js';
+        s.onload = () => resolve(window.JSZip);
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+    }
+  </script>
+</body>
+</html>
