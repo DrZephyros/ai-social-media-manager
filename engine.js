@@ -83,28 +83,14 @@ async function fetchLiveTrends() {
 }
 
 export async function generateTopic(genre = null) {
-    const FORMATS = [
-        "I asked AI {angle}. Here's what it found.",
-        "Why {angle} — it's not what they tell you.",
-        "{angle}. And nobody is talking about it.",
-        "I fed AI all the data on {angle}. The answer surprised me.",
-        "The real reason {angle}.",
-        "{angle}. Explained in 5 slides.",
-        "Everyone is wrong about {angle}. Here's the data.",
-        "{angle}. I broke it down so you don't have to.",
-        "I made AI analyze {angle}. It found something no one expected."
-    ];
+    const generatePrompt = `You are an expert Instagram carousel idea editor.
+Suggest ONE specific, genuinely interesting subject for a short ${genre ? `"${genre}"` : 'surprising general-knowledge'} carousel.
 
-    const generatePrompt = `You are a master hook writer for viral Instagram carousels.
-I need a single, punchy hook (under 15 words) about ${genre ? `the topic/niche of "${genre}"` : "a surprising economic, technological, or societal fact"}.
+The selected genre defines what the post is ABOUT. Keep the subject inside that genre from the first word to the last. Do not pivot to business, economics, technology, current trends, or the future unless that is the selected genre and the specific subject calls for it. For history, choose a real past event, person, object, place, or practice; do not frame it as a modern trend or future prediction.
 
-Use one of these proven formats as a structural inspiration:
-${FORMATS.map(f => `- ${f}`).join('\n')}
+Write a clear, intriguing hook under 15 words. Be accurate and concrete; prefer a named person, place, event, object, or time period. Avoid vague bait such as "hidden truth nobody talks about" and generic templates about AI, data, or what the future will look like. Do not invent facts or imply a connection that the subject does not have.
 
-RULES:
-1. Make it concrete and relatable.
-2. NO corporate/academic jargon (e.g., avoid "macroeconomics", "paradigm", "disruption", "yield curve").
-3. DO NOT output anything except the final hook itself. No quotes around it, no explanations.`;
+Output only the hook, with no quotes or explanation.`;
 
     try {
         const groqClient = getGroqClient();
@@ -128,13 +114,15 @@ RULES:
     }
 
     // Fallback if AI fails
-    const defaultTopic = genre ? `The hidden truth about ${genre} nobody talks about.` : "Why your salary buys less every year — it's not what they tell you.";
+    const defaultTopic = genre ? `A surprising story from ${genre}` : "A surprising fact hiding in plain sight";
     return defaultTopic;
 }
 
 export async function generateScript(topic, genre = null) {
     const systemInstruction = `You write Instagram carousel scripts. Your style: conversational, insightful, and punchy. Like a smart friend texting you something wild they just found out.
-${genre ? `The target niche/genre is: ${genre}. Ensure the content fits this genre.` : ''}
+${genre ? `SELECTED GENRE: ${genre}.
+GENRE FIDELITY (top priority): The selected genre is the subject, not a decorative angle. Every slide must directly develop the same topic within "${genre}". Do not import unrelated modern trends, future predictions, economics, work, AI, politics, or villains just to create drama. In particular, a history topic must stay rooted in the past and explain a real historical event, person, place, object, or practice. Never turn a history hook into a prediction about 2030 or another modern trend. If the supplied hook conflicts with the genre, keep its core subject only if it fits; otherwise choose a closely related, clearly on-genre subject.
+` : ''}
 HARD RULES — violating any = failure:
 1. Carousel Length: Generate between 5 to 8 slides. Choose the length that best fits the story.
 2. Body text = 2 to 3 sentences. No more.
@@ -142,67 +130,17 @@ HARD RULES — violating any = failure:
 4. ZERO corporate/abstract words. Cut: "productivity", "imbalance", "firms", "sectors", "entities", "mechanisms", "dynamics", "paradigm", "leverage", "ecosystem".
 5. Stats: 1-2 stats max per slide. Make them feel real and specific (not round numbers like 40%).
 6. Titles = max 5 words. Thriller chapter energy.
-7. ABSOLUTELY NO POLITICS: Do NOT name, criticize, or blame any government, political party, politician, or public official. Do not frame any slide as "the government did this." Keep blame on systemic economic forces, market dynamics, or corporate behaviour. Slide titles and body text must NEVER be misleading — if the title says "Blame X", the body MUST be about X, not something else.
+7. Avoid partisan persuasion and unsupported blame. Be accurate and fair. ${genre === 'History & Hidden Facts' ? 'Historical topics may discuss rulers, governments, wars, laws, and political events when central to the history; describe them neutrally and accurately.' : 'Do not add political blame or a political angle when it is not central to the selected genre.'} Slide titles and body text must NEVER be misleading.
 
-NARRATIVE FLOW (CRITICAL):
-Your slides CANNOT just be a random list of facts on a topic. They must tell a cohesive story.
-- Slide 1: The Hook/Problem. State a mind-blowing fact that challenges what the reader believes.
-- Slide 2: The False Culprit. What people *think* is causing the problem.
-- Slide 3: The Real Villain. Reveal the hidden mechanism or truth nobody talks about.
-- Slide 4/5/6: The Escalation. Show exactly how this mechanism works using concrete examples.
-- Final Slide: The Conclusion/Question. Ask a compelling, relevant question that sparks debate in the comments.
+NARRATIVE FLOW:
+Tell one cohesive story suited to the genre and topic, not a generic problem-and-villain formula. Use the sequence that fits: for history, establish time and place, introduce the people or event, explain what happened and why, then show its consequence or legacy; for science/health, explain the discovery or mechanism and its evidence; for advice/lifestyle, offer a useful progression; for ideas/culture, unpack the claim with examples. Do not force a false culprit, villain, crisis, or controversy. End with a relevant question that invites genuine discussion.
 
-SENTENCE QUALITY — read this carefully:
-
-BAD: "AI and robots will boost productivity, forcing firms to raise pay to attract talent."
-WHY BAD: 16 words, corporate words "productivity" and "firms", too abstract.
-GOOD: "Robots already do 30% of factory jobs in Japan."
-WHY GOOD: 11 words, one concrete stat, zero jargon.
-
-BAD: "But the price surge outpacing that rise is the real surprise."
-WHY BAD: Vague. "The real surprise" says nothing. No actual tension.
-GOOD: "But nobody's telling you where those wages disappear to."
-WHY GOOD: Creates genuine curiosity. Forces the swipe.
-
-BAD: "Yet those same machines also slash the cost of goods, creating a hidden imbalance."
-WHY BAD: 15 words, multi-clause, "hidden imbalance" is meaningless.
-GOOD: "And the people losing jobs aren't the ones benefiting."
-WHY GOOD: Simple, relatable, makes reader feel something.
-
-CLIFFHANGER & PAYOFF RULE (CRITICAL):
-- If you end a slide with a curiosity gap (a cliffhanger), the VERY NEXT SLIDE must immediately answer it. Do not stack unanswered questions.
-- Slide 1 and 2 should use cliffhangers to pull the reader in. (e.g., "But you'll never guess who's paying for it.")
-- Slides 3, 4, and 5 must DELIVER the answers. Stop using cliffhangers in the middle of the story—state the hard facts directly. Do not leave the reader hanging at the end of the carousel.
-- NEVER use: "is the real surprise", "is the real issue", "is what nobody talks about", "hidden imbalance", "fuels a bubble".
-- Final Slide: No cliffhangers. Just a compelling, relevant question that sparks debate in the comments.
-
-PERFECT EXAMPLE to match EXACTLY (this is 5 slides, but you can do up to 8):
-Hook: "Why you still can't afford a house."
-
-Slide 1 (The Hook):
-Title: "It's Not You"
-Body: "A house cost 3x the average salary in 1990. Today it's 8x — and it's not inflation."
-bg_type: "gradient-red"
-
-Slide 2 (The False Culprit):
-Title: "Forget Avocado Toast"
-Body: "Financial gurus blame your spending habits. But the math literally doesn't add up."
-bg_type: "gradient-purple"
-
-Slide 3 (The Real Villain):
-Title: "Who Bought Them All"
-Body: "Investment firms bought 1 in 4 homes sold in America since 2020. And they're legally allowed to keep doing it."
-bg_type: "gradient-purple"
-
-Slide 4 (The Escalation):
-Title: "The Scale Of It"
-Body: "In some cities, investment companies now own 1 in every 3 rental properties. Regular buyers simply can't compete."
-bg_type: "gradient-red"
-
-Slide 5 (The Question):
-Title: "Ban Them Or Not?"
-Body: "Should corporations be banned from buying residential homes? Drop your take in the comments 👇"
-bg_type: "gradient-gold"
+WRITING QUALITY:
+- Use plain, vivid language and specific details. Explain necessary technical terms in everyday words.
+- Build curiosity with a clear question or reveal, then give the answer promptly. Never rely on vague phrases such as "the real surprise" or "hidden imbalance".
+- Keep claims factual and proportionate. Do not invent statistics, quotes, motives, or causal links. If a detail is uncertain, omit it or qualify it.
+- Give each slide a useful role in the story; avoid repeating the hook or padding with generic engagement bait.
+- The final slide should deliver the takeaway and end with a relevant question for discussion.
 
 BACKGROUND TYPES:
 "gradient-blue" = calm, analytical
@@ -222,8 +160,8 @@ BEFORE OUTPUTTING: Check each slide body:
 □ 2-3 sentences?
 □ Each sentence under 15 words?
 □ Zero corporate words?
-□ Does it tell a single chronological story?
-□ Cliffhanger creates real curiosity?
+□ Does it stay specifically within the selected genre and deliver the supplied topic?
+□ Does its story structure fit this genre instead of forcing a villain/problem narrative?
 □ image_query is concrete and visual?
 
 Output ONLY strict JSON:
