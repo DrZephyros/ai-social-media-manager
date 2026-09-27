@@ -167,6 +167,7 @@ const GENRE_HOOK_LENSES = {
 };
 
 const CREATOR_META_LANGUAGE = /\b(i (?:asked|fed|gave|made|told) (?:an? )?ai|ai (?:analysed|analyzed|found|said|told me)|i fed data|the answer surprised me|here(?:'|’)s what (?:it|ai) found|supercomputer)\b/i;
+const HISTORICAL_ENTITY_NAMES = /\b(napoleon(?: bonaparte)?|hitler|alexander the great|julius caesar|caesar|cleopatra|socrates|plato|aristotle|leonidas|hannibal|genghis khan|charlemagne|joan of arc|shakespeare|lincoln|churchill|tutankham(?:un|en)|king tut|queen elizabeth (?:i|ii)|henry viii|ivan the terrible|saladin|mansa musa|ashoka|akbar|ramesses? (?:ii|the great)|nero|aurelian|nefertiti|attila|spartacus|sun tzu|confucius|marie antoinette|roosevelt|napoleonic|world war (?:i|ii|one|two)|wwi|wwii|the titanic|the boston tea party|the french revolution|the russian revolution|the american revolution|the fall of rome|the berlin wall|the black death|the trojan war|the peloponnesian war|ancient greece|ancient rome|the roman empire|the ottoman empire|the british empire|the mongol empire|the aztec empire|the incan empire|the maya|the pyramids? of giza|stonehenge|pompeii|waterloo)\b/i;
 
 function getGenreGuidance(genre) {
     if (!genre) return 'Choose one concrete, accurate, broadly interesting subject and keep every slide on that subject.';
@@ -213,17 +214,17 @@ NICHE DEFINITION:
 ${getGenreGuidance(genre)}
 
 VIRAL TOPIC AND HOOK PRINCIPLES:
-- Think like a sharp editor who knows human attention. People stop for people they recognize, problems they have felt, status and identity, love and conflict, fear and relief, money and power, survival, injustice, surprising reversals, and beliefs they want tested. Choose a topic that touches at least one of these instincts and explain that connection in the hook. A fact can be true and surprising but still be uninteresting if its subject and stakes mean nothing to the reader.
+- Think like a sharp editor who knows human attention. People stop for recognizable people and stories, problems they have felt, status and identity, love and conflict, fear and relief, money and power, survival, injustice, surprising reversals, and beliefs they want tested. Choose a topic that touches at least one of these instincts and make that connection unmistakable in the hook. A fact can be true and surprising but still be uninteresting if its subject and stakes mean nothing to the reader.
 - Optimize in this order: (1) instant relevance or recognition, (2) clear human/emotional/practical stakes, (3) a specific curiosity gap or belief-changing reveal, (4) a satisfying evidence-based payoff. Novelty alone is not a reason to care. The reader should immediately understand “why should I care?”
 - No prompt can guarantee virality. Aim for the signals behind strong social posts: instant comprehension, emotional or practical relevance, novelty in service of relevance, curiosity that sustains attention, and a payoff worth saving or sharing.
-- Choose one proven story shape that suits this niche: a surprising documented detail; a common belief corrected by evidence; a real mystery with competing explanations; a hidden cause or mechanism; a meaningful contradiction; a human consequence; or a practical insight with a clear payoff. Do not force every story into mystery or controversy.
+- Choose a proven story shape that suits this niche: a surprising documented detail that matters to people; a common belief corrected by evidence; a real mystery with competing explanations; a consequential decision and its fallout; a rivalry or relationship under pressure; a hidden cause or mechanism; a meaningful contradiction; or a practical insight with a clear payoff. Do not force every story into mystery or controversy.
 - Make the subject immediately understandable and concrete. Prefer a named person, place, object, behavior, event, decision, or everyday moment over an abstract trend.
 - Open a fair curiosity gap the carousel can actually close. The hook should make the audience want one specific answer; later slides must deliver it promptly.
 - Privately compare distinct candidates for one-second clarity, relevance to the chosen audience, novelty, emotional or practical stakes, evidence quality, and payoff. Choose the strongest combination; do not expose the scoring.
 - Make the hook concise, memorable, and easy to repeat or send to someone. Use a specific contrast, consequence, puzzle, or reveal where it fits. Do not rely on a generic shock phrase or a question with no satisfying answer.
 - THREE-SECOND FRIEND TEST: Imagine telling the idea to a smart friend who is not interested in this niche. Would they understand the setup immediately, care what happens, and naturally ask “wait, why?” If not, reject it. Prefer familiar anchors plus a fresh implication, a recognizable personal problem plus an unexpected explanation, or an important choice with a human consequence. Do not mistake “I didn't know that” for “I want to know that.”
 - BELIEF-CHALLENGE TEST: When reliable evidence supports it, select a detail that corrects or complicates what people commonly assume. Do not invent a myth or claim “everyone believes” something. The hook should imply a meaningful answer, not just announce an unusual fact.
-- Story test: Can this be told as setup → pressure/choice → consequence → satisfying reveal? For human subjects, favor choices, rivalries, relationships, setbacks, risks, reversals, and consequences over disconnected facts. In practical genres, a recognizable frustration can be the setup and a useful action the payoff.
+- STORY-FIRST TEST: Prefer a complete mini-story over a standalone fact: setup → pressure or choice → consequence → satisfying reveal. For people, use documented choices, rivalries, relationships, setbacks, risks, reversals, and consequences. For non-human topics, connect the mechanism or discovery to people, a real-world consequence, or a question the audience can picture. In practical genres, a recognizable frustration can be the setup and a useful action the payoff. If the only hook is “X wasn't what you thought,” explain why that correction matters.
 - A recognizable subject is not enough on its own. State or imply the stakes and the open question. For unfamiliar proper nouns, provide a familiar anchor or enough context to make the relevance instant.
 - Never invent a named theory, technique, study, organization, discovery, date, statistic, causal result, or popular belief to make a hook sound more clickable. Do not present a forecast or disputed claim as fact. If a vivid detail is uncertain, choose a better-supported angle.
 - Keep curiosity honest: no fake urgency, exaggerated certainty, fear, shame, or promise beyond what the carousel can support. Write the hook in fewer than 15 words.
@@ -304,7 +305,7 @@ function isClearlyHistoricalHook(hook) {
     if (hasFutureYear) return false;
     // "History" by itself is not evidence that the subject is historical.
     const historicalAnchors = /\b(ancient|antiquity|medieval|renaissance|middle ages|century|centuries|bce|bc|ce|ad|empires?|pharaohs?|roman|ottoman|vikings?|samurai|dynasties|kingdoms?|rulers?|kings?|queens?|emperors?|temples?|archaeolog\w*|excavat\w*|inscriptions?|coins?|manuscripts?|artifacts?|artefacts?|ruins?|forts?|palaces?|monuments?|tombs?|pyramids?|civilizations?|civilisations?|chola|maurya|gupta|mughal|ashoka|ellora|ajanta|hampi|konark|khajuraho|nalanda|harappa|indus|mesopotamia|sumer|babylon|egyptian|greek|aztec|inca|maya|minoan|wars?|revolutions?|apollo\s?\d+|moon landing|plagues?|sieges?|battle of|in the (?:\d{3,4}|\w+ century)|during the (?:\w+ )?century|\d{1,3}\s?(?:bce|bc|ce|ad)|\b(?:1[0-9]{3}|20(?:0\d|1\d|2[0-6]))\b)\b/i;
-    return historicalAnchors.test(text);
+    return historicalAnchors.test(text) || HISTORICAL_ENTITY_NAMES.test(text);
 }
 
 function ensureFinalDiscussionQuestion(slides) {
@@ -324,9 +325,6 @@ function ensureFinalDiscussionQuestion(slides) {
 export async function generateScript(topic, genre = null) {
     genre = requireGenre(genre);
     if (typeof topic !== 'string' || !topic.trim()) throw new Error('A topic is required to write the carousel.');
-    if (genre === 'History & Hidden Facts' && !isClearlyHistoricalHook(topic)) {
-        throw new Error('That topic is not a historical subject. Choose a topic about a civilization, ruler, temple, archaeological site, artifact, or historical event.');
-    }
     const systemInstruction = `You are a story editor who writes high-retention Instagram carousel scripts. Make each slide compelling enough to swipe, and make every reveal accurate and satisfying. Write conversationally, vividly, and with concrete details.
 ${genre ? `SELECTED GENRE: ${JSON.stringify(genre)}.
 GENRE-SPECIFIC BRIEF: ${getGenreGuidance(genre)}
