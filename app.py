@@ -14,8 +14,11 @@ if not os.path.exists(RESULTS_DIR):
 if "draft_topic" not in st.session_state:
     st.session_state.draft_topic = None
 
-# Hardcoded API Key
-MISTRAL_API_KEY = "mstrl_GADBg3HXkWwGBmlBXN5v5SSiqzutY2fM_0yqked"
+# Load credentials from the environment; never store API keys in source code.
+MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
+if not MISTRAL_API_KEY:
+    st.error("MISTRAL_API_KEY is not configured. Add it to the app environment to continue.")
+    st.stop()
 engine.setup_client(MISTRAL_API_KEY)
 
 # --- SIDEBAR ---
@@ -30,13 +33,14 @@ with st.sidebar:
 
 # --- MAIN UI ---
 st.title("🤖 AI Social Media Manager")
-st.markdown("Generate 5-slide educational carousels on Tech, Economics, and Geopolitics automatically.")
+st.markdown("Generate five-slide Instagram carousels for your selected niche.")
+selected_genre = st.selectbox("Choose your niche", engine.GENRES, index=engine.GENRES.index("History & Hidden Facts"))
 
 # STEP 1: Brainstorm Topic
 st.markdown("### Step 1: Idea Generation")
 if st.button("Brainstorm Viral Topic 🎯"):
     with st.spinner("Mistral is brainstorming..."):
-        st.session_state.draft_topic = engine.generate_topic()
+        st.session_state.draft_topic = engine.generate_topic(selected_genre)
         
 # STEP 2: Approve & Edit
 if st.session_state.draft_topic:
@@ -55,7 +59,7 @@ if st.session_state.draft_topic:
         try:
             # Generate Script
             status_text.text("🧠 Writing 5-slide script...")
-            script_data = engine.generate_script(edited_topic)
+            script_data = engine.generate_script(edited_topic, selected_genre)
             progress_bar.progress(20)
             
             with st.expander("View AI Generated Script"):

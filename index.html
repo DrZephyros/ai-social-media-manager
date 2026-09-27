@@ -1100,6 +1100,7 @@
       chip.dataset.label = g.label;
       chip.innerHTML = `<span>${g.icon}</span><span>${g.label}</span>`;
       chip.addEventListener('click', () => {
+        clearDraftTopic();
         document.querySelectorAll('.genre-chip').forEach(c => c.classList.remove('active'));
         chip.classList.add('active');
         if (g.label === 'Other') {
@@ -1117,6 +1118,7 @@
     });
 
     customGenreInput.addEventListener('input', () => {
+      clearDraftTopic();
       selectedGenre = customGenreInput.value.trim() || null;
       updateGenreLabel();
       btnBrainstorm.disabled = !selectedGenre;
@@ -1134,6 +1136,13 @@
       genreSelectedLabel.textContent = selectedGenre
         ? `✅ Niche: ${selectedGenre}`
         : '';
+    }
+
+    function clearDraftTopic() {
+      topicInput.value = '';
+      topicRow.classList.remove('visible');
+      outputSection.classList.remove('visible');
+      setStatus('');
     }
 
     function getGenre() {
@@ -1156,15 +1165,19 @@
           body: JSON.stringify({ genre })
         });
         const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `Request failed (${res.status}).`);
+        if (data.genre !== genre) {
+          throw new Error(`Genre mismatch: you selected "${genre}" but the server used "${data.genre || 'none'}". No topic was accepted.`);
+        }
         if (data.topic) {
           topicInput.value = data.topic;
           topicRow.classList.add('visible');
-          setStatus('✅ Topic ready — edit it or approve as-is.');
+          setStatus(`✅ Topic ready for ${data.genre} — edit it or approve as-is.`);
         } else {
-          setStatus('❌ Error: ' + data.error);
+          throw new Error('The server returned no topic. Please try again.');
         }
-      } catch {
-        setStatus('❌ Failed to connect to server.');
+      } catch (err) {
+        setStatus(`❌ ${err.message || 'Failed to connect to server.'}`);
       }
       btnBrainstorm.disabled = false;
     });

@@ -8,16 +8,35 @@ from mistralai import Mistral
 # Global Mistral Client
 client = None
 
+GENRES = [
+    "Economics", "Tech & AI", "Mental Health", "Physical Fitness",
+    "Health & Nutrition", "Bioengineering", "Student Life", "Entrepreneurship",
+    "Climate & Environment", "Space & Astronomy", "Neuroscience", "Relationships",
+    "Personal Finance", "Future of Work", "Psychology", "History & Hidden Facts",
+    "Philosophy", "Geopolitics", "Parenting", "Food Science", "Crypto & Web3", "Other",
+]
+
 def setup_client(api_key):
     global client
     client = Mistral(api_key=api_key)
 
-def generate_topic():
-    """Asks Mistral AI to brainstorm a trending, viral topic automatically."""
+def generate_topic(genre):
+    """Generate a topic that is directly about the selected genre."""
     if not client:
         raise Exception("Mistral client not initialized.")
-        
-    prompt = "You are a viral Instagram strategist. Give me exactly ONE highly engaging, controversial, and trending topic about macroeconomics, future technology, or geopolitics for an Instagram carousel. Do not include quotes or extra text. Just the short topic name."
+    if not isinstance(genre, str) or not genre.strip():
+        raise ValueError("Choose a niche before brainstorming a topic.")
+
+    genre = genre.strip()
+    history_guidance = """
+For History & Hidden Facts, default to ancient and premodern civilizations. Choose from temples, kingdoms, dynasties, kings and emperors, architecture, archaeology, excavations, inscriptions, coins, manuscripts, artifacts, ruins, daily life, beliefs, trade, or art. Name a concrete historical person, place, object, or event and anchor it to its civilization or period. Distinguish documented evidence from legend or interpretation. Make the central subject historical in its own right.""" if genre == "History & Hidden Facts" else ""
+
+    prompt = f"""You are an Instagram carousel idea editor.
+The required niche is {json.dumps(genre)}. The subject itself must directly belong to this niche.
+Niche guidance: {history_guidance or 'Choose a specific, useful, accurate subject that directly fits the selected niche. Do not substitute a familiar trending topic.'}
+
+Privately consider three different candidate subjects from the selected niche. Choose the most concrete and well-supported one. Check that the central subject itself fits the niche, then write one clear hook under 15 words. Do not reveal your candidate list or reasoning. Do not invent claims, statistics, or dates.
+Return only the hook."""
     
     chat_completion = client.chat.complete(
         messages=[
@@ -30,15 +49,17 @@ def generate_topic():
     )
     return chat_completion.choices[0].message.content.strip()
 
-def generate_script(topic):
-    """Calls Mistral AI to generate a 5-slide JSON script."""
+def generate_script(topic, genre):
+    """Calls Mistral AI to generate a 5-slide script within the selected genre."""
     if not client:
         raise Exception("Mistral client not initialized.")
         
-    system_instruction = '''
-    You are an expert geopolitical analyst, tech futurist, and viral Instagram strategist. 
-    I will give you a trending topic. Break it down into a highly engaging, 5-slide Instagram carousel.
-    Keep text minimal. Slide 1 is a hook. Slide 2 is context. Slide 3-4 is the AI's solution/prediction. Slide 5 is a question to drive comments.
+    system_instruction = f'''
+    You are a careful, engaging Instagram carousel writer.
+    The selected niche is {json.dumps(genre)}. Keep every slide directly about that niche and the supplied topic. Do not switch to another subject or invent a prediction or solution.
+    For history, default to ancient and premodern civilizations, including temples, rulers, dynasties, empires, archaeology, inscriptions, and artifacts. Explain when and where the subject belongs; distinguish evidence from interpretation and legend.
+    Build a concise five-slide story: introduce the concrete subject, give its context, explain the key evidence or development, show its significance, then ask a relevant question.
+    Use plain language. Do not invent dates, statistics, quotes, or causal claims.
     
     You must output your response in JSON format. The root must be a JSON object with a single key "slides", which is an array of objects. 
     Each object must have exactly these keys: slide_number, title, body_text, image_prompt.
@@ -48,7 +69,7 @@ def generate_script(topic):
     chat_completion = client.chat.complete(
         messages=[
             {"role": "system", "content": system_instruction},
-            {"role": "user", "content": f"Topic: {topic}"},
+            {"role": "user", "content": json.dumps({"genre": genre, "topic": topic})},
         ],
         model="mistral-large-latest",
         response_format={"type": "json_object"}

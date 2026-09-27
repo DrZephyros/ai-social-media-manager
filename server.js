@@ -21,8 +21,12 @@ let latestScript = null;
 app.post('/api/brainstorm', async (req, res) => {
     try {
         const { genre } = req.body || {};
+        if (typeof genre !== 'string' || !genre.trim() || genre.trim().length > 120) {
+            return res.status(400).json({ error: 'Select a niche before brainstorming a topic.' });
+        }
+        console.info(`[brainstorm] received genre ${JSON.stringify(genre.trim())}`);
         const topic = await generateTopic(genre);
-        res.json({ topic });
+        res.json({ topic, genre: genre.trim() });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: err.message });
@@ -59,6 +63,10 @@ app.get('/api/generate-stream', async (req, res) => {
     const topic = req.query.topic;
     const genre = req.query.genre;
     if (!topic) return res.status(400).end();
+    if (typeof genre !== 'string' || !genre.trim() || genre.trim().length > 120) {
+        return res.status(400).json({ error: 'Select a niche before generating slides.' });
+    }
+    const selectedGenre = genre.trim();
 
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
@@ -70,11 +78,11 @@ app.get('/api/generate-stream', async (req, res) => {
     try {
         send({ status: '🧠 Groq AI is writing your carousel script...' });
 
-        const script = await generateScript(topic, genre);
+        const script = await generateScript(topic, selectedGenre);
         latestScript = script;
 
         send({ status: '✍️ Writing the Instagram caption...' });
-        const caption = await generateCaption(topic, script, genre);
+        const caption = await generateCaption(topic, script, selectedGenre);
 
         send({ status: '✅ Script and caption complete! Rendering your slides...' });
         send({ done: true, script, caption });
