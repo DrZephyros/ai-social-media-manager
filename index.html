@@ -130,7 +130,6 @@
     }
     #genre-search-wrap {
       position: relative;
-      margin-bottom: 1rem;
     }
     #genre-search-wrap svg {
       position: absolute;
@@ -153,39 +152,41 @@
       transition: border-color 0.2s;
     }
     #genre-search:focus { border-color: var(--cyan); }
-    #genre-grid {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
+    #genre-options {
+      display: none;
+      position: absolute;
+      z-index: 30;
+      top: calc(100% + 0.45rem);
+      left: 0;
+      right: 0;
+      max-height: 280px;
+      overflow-y: auto;
+      padding: 0.35rem;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #111923;
+      box-shadow: 0 18px 45px rgba(0,0,0,0.45);
+      backdrop-filter: blur(18px);
     }
-    .genre-chip {
+    #genre-options.open { display: block; }
+    .genre-option {
+      width: 100%;
       display: flex;
       align-items: center;
-      gap: 0.4rem;
-      padding: 0.45rem 0.9rem;
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      background: rgba(255,255,255,0.04);
-      color: var(--muted);
-      font-size: 0.8rem;
+      gap: 0.65rem;
+      padding: 0.7rem 0.8rem;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--text);
+      text-align: left;
+      font: inherit;
+      font-size: 0.88rem;
       font-weight: 600;
       cursor: pointer;
-      transition: all 0.18s ease;
-      user-select: none;
-      white-space: nowrap;
     }
-    .genre-chip:hover {
-      border-color: var(--cyan);
-      color: var(--cyan);
-      background: rgba(0,229,255,0.07);
-    }
-    .genre-chip.active {
-      border-color: var(--cyan);
-      background: rgba(0,229,255,0.15);
-      color: var(--cyan);
-      box-shadow: 0 0 12px rgba(0,229,255,0.2);
-    }
-    .genre-chip.hidden { display: none; }
+    .genre-option:hover, .genre-option[aria-selected="true"] { background: rgba(0,229,255,0.1); color: var(--cyan); }
+    .genre-option.hidden { display: none; }
     #custom-genre-row {
       margin-top: 0.75rem;
       display: none;
@@ -251,8 +252,7 @@
     #post-generate-actions .action-btn { min-height: 50px; }
     .btn-regenerate { background: #fff; color: #000; }
 
-    #topic-row { display: none; flex-direction: column; gap: 0.75rem; }
-    #topic-row.visible { display: flex; }
+    #topic-row { display: flex; flex-direction: column; gap: 0.75rem; }
 
     #topic-input {
       background: rgba(255,255,255,0.06);
@@ -923,10 +923,8 @@
     <h2>Choose your niche 🎯</h2>
     <div id="genre-search-wrap">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input type="text" id="genre-search" placeholder="Search genres...">
-    </div>
-    <div id="genre-grid">
-      <!-- chips injected by JS -->
+      <input type="text" id="genre-search" placeholder="Search or select a niche..." role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="genre-options" autocomplete="off">
+      <div id="genre-options" role="listbox" aria-label="Available niches"></div>
     </div>
     <div id="custom-genre-row">
       <input type="text" id="custom-genre-input" placeholder="Type your own genre...">
@@ -935,12 +933,11 @@
   </div>
 
   <div id="controls">
-    <button class="btn btn-brainstorm" id="btn-brainstorm" disabled>Brainstorm Viral Topic 🎯</button>
-
     <div id="topic-row">
-      <input type="text" id="topic-input" placeholder="Edit the topic if you want...">
-      <button class="btn btn-generate" id="btn-generate">Approve & Generate Slides 🚀</button>
+      <input type="text" id="topic-input" placeholder="Type your topic or headline idea..." aria-label="Carousel topic">
+      <button class="btn btn-generate" id="btn-generate" disabled>Generate Carousel 🚀</button>
     </div>
+    <button class="btn btn-brainstorm" id="btn-brainstorm" disabled>Brainstorm a Topic 🎯</button>
 
     <div id="post-generate-actions">
       <div class="action-row">
@@ -1087,7 +1084,6 @@
     const slideCounter  = document.getElementById('slide-counter');
     const captionBox    = document.getElementById('caption-box');
     const hashtagChips  = document.getElementById('hashtag-chips');
-    const btnCopy       = document.getElementById('btn-copy');
     const controls      = document.getElementById('controls');
     const postGenerateActions = document.getElementById('post-generate-actions');
     const btnDownloadTop = document.getElementById('btn-download-top');
@@ -1140,60 +1136,94 @@
       { label: 'Other', icon: '✏️' },
     ];
 
-    const genreGrid = document.getElementById('genre-grid');
+    const genreOptions = document.getElementById('genre-options');
+    const genreSearchWrap = document.getElementById('genre-search-wrap');
     const genreSearch = document.getElementById('genre-search');
     const customGenreRow = document.getElementById('custom-genre-row');
     const customGenreInput = document.getElementById('custom-genre-input');
     const genreSelectedLabel = document.getElementById('genre-selected-label');
     let selectedGenre = null;
+    let isCustomGenre = false;
 
     GENRES.forEach(g => {
-      const chip = document.createElement('div');
-      chip.className = 'genre-chip';
-      chip.dataset.label = g.label;
-      chip.innerHTML = `<span>${g.icon}</span><span>${g.label}</span>`;
-      chip.addEventListener('click', () => {
+      const option = document.createElement('button');
+      option.type = 'button';
+      option.className = 'genre-option';
+      option.setAttribute('role', 'option');
+      option.dataset.label = g.label;
+      option.setAttribute('aria-selected', 'false');
+      option.textContent = `${g.icon}  ${g.label}`;
+      option.addEventListener('click', () => {
         clearDraftTopic();
-        document.querySelectorAll('.genre-chip').forEach(c => c.classList.remove('active'));
-        chip.classList.add('active');
         if (g.label === 'Other') {
+          isCustomGenre = true;
+          selectedGenre = null;
+          genreSearch.value = 'Other';
           customGenreRow.classList.add('visible');
           customGenreInput.focus();
-          selectedGenre = customGenreInput.value.trim() || null;
         } else {
+          isCustomGenre = false;
           customGenreRow.classList.remove('visible');
           selectedGenre = g.label;
+          customGenreInput.value = '';
+          genreSearch.value = `${g.icon} ${g.label}`;
         }
+        genreOptions.querySelectorAll('.genre-option').forEach(item => item.setAttribute('aria-selected', String(item === option)));
+        closeGenreOptions();
         updateGenreLabel();
-        btnBrainstorm.disabled = !selectedGenre;
+        updateActionAvailability();
       });
-      genreGrid.appendChild(chip);
+      genreOptions.appendChild(option);
     });
 
     customGenreInput.addEventListener('input', () => {
       clearDraftTopic();
-      selectedGenre = customGenreInput.value.trim() || null;
+      selectedGenre = null;
       updateGenreLabel();
-      btnBrainstorm.disabled = !selectedGenre;
+      updateActionAvailability();
     });
 
     genreSearch.addEventListener('input', () => {
-      const q = genreSearch.value.toLowerCase();
-      document.querySelectorAll('.genre-chip').forEach(chip => {
-        const match = chip.dataset.label.toLowerCase().includes(q);
-        chip.classList.toggle('hidden', !match);
+      openGenreOptions();
+      const q = genreSearch.value.replace(/^\p{Extended_Pictographic}\s*/u, '').trim().toLowerCase();
+      genreOptions.querySelectorAll('.genre-option').forEach(option => {
+        option.classList.toggle('hidden', !option.dataset.label.toLowerCase().includes(q));
       });
     });
 
+    genreSearch.addEventListener('focus', () => {
+      if (selectedGenre || isCustomGenre) genreSearch.select();
+      openGenreOptions();
+    });
+    genreSearch.addEventListener('keydown', event => {
+      if (event.key === 'Escape') closeGenreOptions();
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        genreOptions.querySelector('.genre-option:not(.hidden)')?.focus();
+      }
+    });
+    document.addEventListener('click', event => {
+      if (!genreSearchWrap.contains(event.target)) closeGenreOptions();
+    });
+
+    function openGenreOptions() {
+      genreOptions.classList.add('open');
+      genreSearch.setAttribute('aria-expanded', 'true');
+    }
+
+    function closeGenreOptions() {
+      genreOptions.classList.remove('open');
+      genreSearch.setAttribute('aria-expanded', 'false');
+      genreOptions.querySelectorAll('.genre-option').forEach(option => option.classList.remove('hidden'));
+    }
+
     function updateGenreLabel() {
-      genreSelectedLabel.textContent = selectedGenre
-        ? `✅ Niche: ${selectedGenre}`
-        : '';
+      genreSelectedLabel.textContent = isCustomGenre
+        ? (customGenreInput.value.trim() ? `✅ Niche: ${customGenreInput.value.trim()}` : 'Enter your custom niche to continue.')
+        : selectedGenre ? `✅ Niche: ${selectedGenre}` : '';
     }
 
     function clearDraftTopic() {
-      topicInput.value = '';
-      topicRow.classList.remove('visible');
       outputSection.classList.remove('visible');
       controls.classList.remove('has-generated');
       postGenerateActions.classList.remove('visible');
@@ -1201,10 +1231,21 @@
     }
 
     function getGenre() {
-      if (selectedGenre) return selectedGenre;
-      const custom = customGenreInput.value.trim();
-      return custom || null;
+      if (isCustomGenre) return customGenreInput.value.trim() || null;
+      return selectedGenre;
     }
+
+    function updateActionAvailability() {
+      const genre = getGenre();
+      btnBrainstorm.disabled = !genre;
+      btnGenerate.disabled = !genre || !topicInput.value.trim();
+    }
+
+    topicInput.addEventListener('input', () => {
+      if (outputSection.classList.contains('visible')) clearDraftTopic();
+      updateActionAvailability();
+    });
+    updateActionAvailability();
 
     /* ============================================================
        Step 1: Brainstorm
@@ -1212,6 +1253,11 @@
     btnBrainstorm.addEventListener('click', async () => {
       btnBrainstorm.disabled = true;
       const genre = getGenre();
+      if (!genre) {
+        setStatus('Choose a niche before brainstorming a topic.');
+        updateActionAvailability();
+        return;
+      }
       setStatus(`Brainstorming a viral ${genre} topic...`, true);
       try {
         const res  = await fetch('/api/brainstorm', {
@@ -1226,7 +1272,7 @@
         }
         if (data.topic) {
           topicInput.value = data.topic;
-          topicRow.classList.add('visible');
+          updateActionAvailability();
           setStatus(`✅ Topic ready for ${data.genre} — edit it or approve as-is.`);
         } else {
           throw new Error('The server returned no topic. Please try again.');
@@ -1234,7 +1280,7 @@
       } catch (err) {
         setStatus(`❌ ${err.message || 'Failed to connect to server.'}`);
       }
-      btnBrainstorm.disabled = false;
+      updateActionAvailability();
     });
 
     /* ============================================================
@@ -1242,7 +1288,12 @@
     ============================================================ */
     btnGenerate.addEventListener('click', () => {
       const topic = topicInput.value.trim();
-      if (!topic) return;
+      const genre = getGenre();
+      if (!genre || !topic) {
+        setStatus(!genre ? 'Choose a niche before generating the carousel.' : 'Enter a topic before generating the carousel.');
+        updateActionAvailability();
+        return;
+      }
 
       btnGenerate.disabled = true;
       outputSection.classList.remove('visible');
@@ -1252,7 +1303,6 @@
       captionBox.value  = '';
       setStatus('Connecting to Gemini...', true);
 
-      const genre = getGenre();
       const evtSource = new EventSource(`/api/generate-stream?topic=${encodeURIComponent(topic)}&genre=${encodeURIComponent(genre || '')}`);
 
       evtSource.onmessage = async (e) => {
@@ -1488,7 +1538,7 @@
     /* ============================================================
        Copy Caption
     ============================================================ */
-    btnCopy.addEventListener('click', () => {
+    btnCopyTop.addEventListener('click', () => {
       navigator.clipboard.writeText(captionBox.value)
         .then(showCopied)
         .catch(() => {
@@ -1498,7 +1548,6 @@
         });
     });
 
-    btnCopyTop.addEventListener('click', () => btnCopy.click());
     btnRegenerate.addEventListener('click', () => {
       controls.classList.remove('has-generated');
       postGenerateActions.classList.remove('visible');
