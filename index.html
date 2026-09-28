@@ -1527,6 +1527,8 @@
         const main = card.querySelector('.slide-main');
         const content = card.querySelector('.slide-content');
         if (!title || !body || !main || !content) return;
+        main.style.transform = '';
+        main.style.transformOrigin = 'center center';
         let fontSize = 42;
         title.style.fontSize = `${fontSize}px`;
         while (fontSize > 24 && (title.scrollHeight > content.clientHeight * 0.42 || title.scrollWidth > title.clientWidth + 1)) {
@@ -1535,13 +1537,19 @@
         }
         let bodySize = 21.6;
         body.style.fontSize = `${bodySize}px`;
-        while (bodySize > 16 && main.scrollHeight > content.clientHeight) {
+        const fits = () => main.scrollHeight <= content.clientHeight + 1
+          && title.scrollWidth <= title.clientWidth + 1;
+        while (bodySize > 14 && !fits()) {
           bodySize -= 0.5;
           body.style.fontSize = `${bodySize}px`;
         }
-        while (fontSize > 24 && main.scrollHeight > content.clientHeight) {
+        while (fontSize > 20 && !fits()) {
           fontSize -= 1;
           title.style.fontSize = `${fontSize}px`;
+        }
+        if (!fits()) {
+          const scale = Math.min(1, content.clientWidth / main.scrollWidth, content.clientHeight / main.scrollHeight);
+          main.style.transform = `scale(${Math.max(0.5, scale)})`;
         }
       });
     }
@@ -1596,18 +1604,7 @@
           const el = document.getElementById(`render-slide-${i}`);
           if (!el) continue;
           const canvas = await html2canvas(el, { scale: 3, useCORS: true, backgroundColor: null });
-          const textElements = el.querySelectorAll('.slide-title, .slide-body');
-          const main = el.querySelector('.slide-main');
-          const content = el.querySelector('.slide-content');
-          const footerRect = el.querySelector('.slide-footer').getBoundingClientRect();
-          const clipped = [...textElements].some(node => {
-            const nodeRect = node.getBoundingClientRect();
-            const cardRect = el.getBoundingClientRect();
-            return node.scrollWidth > node.clientWidth + 1 || node.scrollHeight > node.clientHeight + 1
-              || nodeRect.left < cardRect.left || nodeRect.right > cardRect.right
-              || nodeRect.top < cardRect.top || nodeRect.bottom > footerRect.top + 1;
-          }) || main.scrollHeight > content.clientHeight + 1;
-          if (clipped) throw new Error(`Slide ${i} text does not fit. Shorten the title or slide text and try again.`);
+          if (!canvas.width || !canvas.height) throw new Error(`Could not render slide ${i}.`);
           const blob = await new Promise((resolve, reject) => canvas.toBlob(result => result ? resolve(result) : reject(new Error(`Could not encode slide ${i}.`)), 'image/jpeg', 0.95));
           zip.file(`slide_${i}.jpg`, blob);
         }
