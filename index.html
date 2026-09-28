@@ -675,18 +675,23 @@
       justify-content: center;
     }
     .phone-nav-btn {
-      width: 38px; height: 38px;
-      background: rgba(255,255,255,0.07);
-      border: 1px solid rgba(255,255,255,0.12);
+      width: 42px; height: 42px;
+      background: rgba(0,229,255,0.08);
+      border: 1px solid rgba(0,229,255,0.72);
       border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
       cursor: pointer;
-      font-size: 1rem;
+      font-size: 1.25rem;
+      font-weight: 700;
       color: #fff;
-      transition: background 0.2s;
+      box-shadow: 0 0 12px rgba(0,229,255,0.2), inset 0 0 8px rgba(0,229,255,0.08);
+      transition: background 0.2s, box-shadow 0.2s, transform 0.2s;
       user-select: none;
     }
-    .phone-nav-btn:hover { background: rgba(255,255,255,0.14); }
+    #nav-next { border-color: rgba(255,74,174,0.78); background: rgba(255,74,174,0.08); box-shadow: 0 0 12px rgba(255,74,174,0.22), inset 0 0 8px rgba(255,74,174,0.08); }
+    .phone-nav-btn:hover { background: rgba(0,229,255,0.18); box-shadow: 0 0 18px rgba(0,229,255,0.38), inset 0 0 10px rgba(0,229,255,0.12); transform: translateY(-1px); }
+    #nav-next:hover { background: rgba(255,74,174,0.18); box-shadow: 0 0 18px rgba(255,74,174,0.4), inset 0 0 10px rgba(255,74,174,0.12); }
+    .phone-nav-btn:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
 
     .slide-counter-text {
       font-size: 0.75rem;
