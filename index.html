@@ -563,24 +563,7 @@
       font-weight: 500;
       text-shadow: 0 1px 4px rgba(0,0,0,0.5);
     }
-    .ig-slide-footer {
-      flex-shrink: 0;
-      padding: 0.3rem 1.2rem;
-      background: rgba(0,0,0,0.7);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      position: relative;
-      z-index: 2;
-    }
-    .ig-slide-footer span {
-      font-size: 0.45rem;
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
-      color: rgba(255,255,255,0.35);
-      font-weight: 600;
-    }
-    .ig-slide-footer .handle { color: var(--cyan); opacity: 0.7; }
+    .ig-slide[data-cover="true"] .ig-slide-title { font-size: 1.45rem; margin-bottom: 0; }
 
     /* Gradient backgrounds (fallback when no image) */
     .bg-gradient-blue   { background: linear-gradient(160deg, #0a0f1e 0%, #0d2137 50%, #0a3d6b 100%); }
@@ -864,20 +847,7 @@
       font-size: 1.3rem; line-height: 1.6;
       color: rgba(255,255,255,0.85); font-weight: 500;
     }
-    #render-grid .slide-footer {
-      flex-shrink: 0;
-      padding: 0.6rem 2rem;
-      background: rgba(0,0,0,0.6);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-top: 1px solid rgba(0,229,255,0.12);
-    }
-    #render-grid .slide-footer span {
-      font-size: 0.65rem; letter-spacing: 1.5px;
-      text-transform: uppercase; color: rgba(255,255,255,0.35); font-weight: 600;
-    }
-    #render-grid .slide-footer .handle { color: var(--cyan); opacity: 0.7; }
+    #render-grid .slide-card[data-cover="true"] .slide-title { font-size: 3rem; margin-bottom: 0; }
     #render-grid .slide-card::before {
       content: '';
       position: absolute; inset: 0;
@@ -1398,17 +1368,14 @@
         const el = document.createElement('div');
         el.className = `ig-slide ${!slide.bg_image ? bgClass : ''}`;
         el.dataset.mood = mood;
+        el.dataset.cover = i === 0 ? 'true' : 'false';
         el.innerHTML = `
           <div class="ig-slide-bg" style="${bgStyle}"></div>
           <div class="ig-slide-content">
             <div class="ig-slide-main">
               <div class="ig-slide-title">${formatTitle(slide.title)}</div>
-              <div class="ig-slide-body">${slide.body_text}</div>
+              ${i === 0 || !slide.body_text ? '' : `<div class="ig-slide-body">${slide.body_text}</div>`}
             </div>
-          </div>
-          <div class="ig-slide-footer">
-            <span>Slide ${slide.slide_number} / ${totalSlides}</span>
-            <span class="handle">@g0wtham.exe</span>
           </div>
         `;
         igTrack.appendChild(el);
@@ -1488,9 +1455,7 @@
           #render-grid .slide-title { font-size: 2.6rem; font-weight: 900; line-height: 1.12; color: #fff; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 1.05rem; text-shadow: 0 2px 8px rgba(0,0,0,0.6); overflow-wrap: anywhere; }
           #render-grid .slide-title .highlight { color: var(--cyan); }
           #render-grid .slide-body { font-size: 1.35rem; line-height: 1.45; color: rgba(255,255,255,0.88); font-weight: 500; text-shadow: 0 1px 4px rgba(0,0,0,0.5); overflow-wrap: anywhere; }
-          #render-grid .slide-footer { flex-shrink: 0; padding: 0.8rem 2.5rem; background: rgba(0,0,0,0.7); display: flex; justify-content: space-between; align-items: center; position: relative; z-index: 2; }
-          #render-grid .slide-footer span { font-size: 0.9rem; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(255,255,255,0.35); font-weight: 600; }
-          #render-grid .slide-footer .handle { color: var(--cyan); opacity: 0.7; }
+          #render-grid .slide-card[data-cover="true"] .slide-title { font-size: 3rem; margin-bottom: 0; }
         `;
         document.head.appendChild(style);
       }
@@ -1502,18 +1467,15 @@
         const card = document.createElement('div');
         card.className = `slide-card ${!slide.bg_image ? bgClass : ''}`;
         card.dataset.mood = mood;
+        card.dataset.cover = i === 0 ? 'true' : 'false';
         card.id = `render-slide-${i + 1}`;
         card.innerHTML = `
           <div class="slide-card-bg" style="${bgStyle}"></div>
           <div class="slide-content">
             <div class="slide-main">
               <div class="slide-title">${formatTitle(slide.title)}</div>
-              <div class="slide-body">${slide.body_text}</div>
+              ${i === 0 || !slide.body_text ? '' : `<div class="slide-body">${slide.body_text}</div>`}
             </div>
-          </div>
-          <div class="slide-footer">
-            <span>Slide ${slide.slide_number} / ${numSlides}</span>
-            <span class="handle">@g0wtham.exe</span>
           </div>
         `;
         renderGrid.appendChild(card);
@@ -1531,7 +1493,7 @@
         if (!title || !body || !main || !content) return;
         main.style.transform = '';
         main.style.transformOrigin = 'center center';
-        let fontSize = 42;
+        let fontSize = card.dataset.cover === 'true' ? 48 : 42;
         title.style.fontSize = `${fontSize}px`;
         while (fontSize > 24 && (title.scrollHeight > content.clientHeight * 0.42 || title.scrollWidth > title.clientWidth + 1)) {
           fontSize -= 1;

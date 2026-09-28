@@ -131,8 +131,9 @@ def generate_script(topic, genre):
 
     STORY FIRST — SHORT, CONNECTED, AND SUSPENSEFUL:
     - Use 5–7 slides to tell one focused story. Every slide moves the central question forward; cut background trivia and repeated setup.
-    - Each body has 2 sentences when possible, never more than 3, and 24–32 words total. No sentence over 15 words. Aim near 25 words; don't cram in extra facts.
-    - Slide 1 is a hook, not an introduction: lead with the strangest documented choice, contradiction, or consequence. Give just enough context, then hold back the payoff.
+    - Slide 1 is a title-only cover: write a vivid, natural 3–7 word hook and set body_text to an empty string. No explanation, setup paragraph, date, or extra copy. Let Slide 2 begin and explain the story.
+    - For slides 2 onward, each body has 2 sentences when possible, never more than 3, and 24–32 words total. No sentence over 15 words. Aim near 25 words; don't cram in extra facts.
+    - For Caesar's ransom story, title-only hooks might be “The Hostage Raised His Price” or “Caesar Was Worth More.” These are examples of concise curiosity, not wording to reuse.
     - Each following slide immediately pays off the last slide's specific tease, adds one fresh beat, and points naturally to what comes next. Keep the chain causal; no unrelated fact dumps.
     - End every non-final slide with a short, conversational suspense line that grows from its facts and tees up the next slide. Use varied phrasing in the spirit of “But that wasn't all,” “And that wasn't even the strangest part,” “But he wasn't finished,” or “That's when things got worse.” These are style examples, not mandatory catchphrases. Fit the actual next beat and never invent a twist, danger, or reaction.
     - The final slide resolves the story and its last tease, then ends with one brief, specific question viewers can answer.
@@ -141,7 +142,7 @@ def generate_script(topic, genre):
 
     VOICE AND PACE:
     - Write like a smart friend telling a story aloud: contractions, active verbs, vivid specifics, and natural rhythm. Avoid stiff textbook phrasing, choppy fragments, and bloated explanations.
-    - Titles: 2–5 words, specific and intriguing. Body: 2–3 short sentences, clear on its own, and no more than 32 words.
+    - Titles on slides 2 onward: 2–5 words, specific and intriguing. Body: 2–3 short sentences, clear on its own, and no more than 32 words.
     - Make the selected niche central. Fit suspense to the subject; do not force danger, villains, conflict, or controversy.
 
     Output JSON only: {{"slides":[{{"slide_number":1,"title":"...","body_text":"...","image_prompt":"..."}}]}}. Each slide must have exactly these keys. image_prompt describes a cinematic, dark, highly aesthetic background without text.
@@ -152,6 +153,7 @@ def generate_script(topic, genre):
         data = json.loads(response_text)
         slides = data["slides"]
         if slides:
+            slides[0]["body_text"] = ""
             final_slide = slides[-1]
             body = str(final_slide.get("body_text", "")).strip()
             if not re.search(r"\?[\"'”’)]*\s*$", body):
@@ -192,13 +194,11 @@ def draw_text_on_image(image_path, title, body, slide_number, output_path):
     width, height = img.size
     
     try:
-        title_font = ImageFont.truetype("arialbd.ttf", 80)
+        title_font = ImageFont.truetype("arialbd.ttf", 96 if slide_number == 1 else 80)
         body_font = ImageFont.truetype("arial.ttf", 50)
-        footer_font = ImageFont.truetype("arial.ttf", 35)
     except IOError:
         title_font = ImageFont.load_default()
         body_font = ImageFont.load_default()
-        footer_font = ImageFont.load_default()
     
     def wrap_text(text, font, max_width):
         lines = []
@@ -227,9 +227,5 @@ def draw_text_on_image(image_path, title, body, slide_number, output_path):
         draw.text((margin, y_text), line, font=body_font, fill="#DDDDDD")
         y_text += 60
         
-    # Footer
-    footer_text = f"Slide {slide_number} / 5 | @YourAI_Page"
-    draw.text((margin, height - 100), footer_text, font=footer_font, fill="#888888")
-    
     img = img.convert("RGB")
     img.save(output_path)
