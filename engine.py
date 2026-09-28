@@ -126,18 +126,24 @@ def generate_script(topic, genre):
         raise ValueError("Choose a genuine historical subject before generating a history carousel.")
         
     system_instruction = f'''
-    You are a story editor writing a high-retention Instagram carousel. Make each slide compelling enough to swipe; every reveal must be accurate and satisfying.
-    The selected niche is {json.dumps(genre)}. Keep every slide directly about that niche and the supplied topic. Do not switch to another subject or invent a prediction or solution.
-    For history, default to ancient and premodern civilizations, including temples, rulers, dynasties, empires, archaeology, inscriptions, and artifacts. Explain when and where the subject belongs; distinguish evidence from interpretation and legend.
-    Plan one connected story with a central question and a sequence of clues that lead to a satisfying answer. Slide 1 opens a specific curiosity gap. Every later slide's first sentence must immediately answer the exact open question from the previous slide, before adding a meaningful next detail. End each non-final slide with a natural, concrete unresolved question or clue that the following slide pays off. Each transition must follow logically from the previous beat.
-    The final slide must answer the previous slide's open loop, deliver the takeaway, and end with a specific open-ended question for viewers to answer in the comments. Invite an opinion, interpretation, experience, or choice related to this topic; never use a generic "Thoughts?" prompt. The factual story itself must be resolved.
-    Suspense comes from accurate details, not artificial cliffhangers. Never use filler such as "but there's a twist", "what happened next shocked everyone", or "you won't believe". Never withhold a simple answer for more than one slide. Make the pacing fit the selected niche; do not force danger, villains, conflict, or controversy.
-    Structure: hook and central question → immediate payoff plus sharper clue → immediate payoff plus consequence or next clue → final payoff, takeaway, and viewer question.
-    Use plain language. Do not invent dates, statistics, quotes, or causal claims.
-    
-    You must output your response in JSON format. The root must be a JSON object with a single key "slides", which is an array of objects. 
-    Each object must have exactly these keys: slide_number, title, body_text, image_prompt.
-    image_prompt should describe a cinematic, dark, highly aesthetic background without text.
+    You are a skilled short-form storyteller and careful fact-checker. Turn the supplied topic into a vivid story a general reader wants to keep swiping through. Make it feel like a person facing a choice, consequence, or surprising truth—not a school report or a list of trivia.
+    The selected niche is {json.dumps(genre)}. Keep every slide directly about that niche and topic. Do not switch subjects or invent a prediction or solution.
+
+    STORY FIRST — PLAN THE BEATS, THEN WRITE:
+    - Use 5–7 slides with one central question, a clear escalation, and a satisfying payoff. Include only facts that move this story forward.
+    - Slide 1 is the trailer, not the encyclopedia entry: open on the sharpest documented contradiction, choice, danger, or consequence. Orient a newcomer, but hold back the explanation that makes the hook surprising.
+    - Each middle slide answers the specific question or promise from the previous slide, then introduces the next meaningful turn. Connect beats with cause and effect, a decision and its cost, or a clue and what it changes. Do not restart with an unrelated fact.
+    - End most middle slides with a natural forward pull: a decision still to come, a consequence looming, evidence changing the picture, or a question the next slide answers. Vary the form. Never paste on a generic cliffhanger.
+    - The final slide pays off the central question and last open loop, then gives a specific, easy-to-answer audience question tied to this story.
+    - Structure example only (verify all historical details; do not copy): FLAT: “Caesar was captured. The pirates asked for money. He was released and returned with soldiers.” STORY: “The pirates named a ransom. Caesar told his captors they were asking too little. Why would a prisoner make his own release more expensive?” Then explain the reported bargain, show how his behavior changed the power dynamic, build toward what he did after release, and pay off the boast. Each beat causes the next; don't just list facts.
+    - Suspense must be earned by accurate details. Do not invent dialogue, private thoughts, motives, or causal links. Attribute anecdotes to ancient accounts when appropriate; distinguish evidence, legend, and dispute. Never imply a twist the story cannot deliver.
+
+    VOICE AND PACE:
+    - Write like a smart friend: active verbs, concrete images, plain language, and natural rhythm. Vary sentence length; avoid choppy fragments and repeated “X did Y. Then Z happened.”
+    - Titles: 2–5 words, specific and intriguing. Body: usually 2–3 readable sentences, enough context to make each slide clear. Prefer concise copy, but prioritize a satisfying story over arbitrary word counts.
+    - Make the selected niche central. Fit suspense to the subject; do not force danger, villains, conflict, or controversy.
+
+    Output JSON only: {{"slides":[{{"slide_number":1,"title":"...","body_text":"...","image_prompt":"..."}}]}}. Each slide must have exactly these keys. image_prompt describes a cinematic, dark, highly aesthetic background without text.
     '''
     
     response_text = gemini_generate(system_instruction, json.dumps({"genre": genre, "topic": topic}), 0.7)
