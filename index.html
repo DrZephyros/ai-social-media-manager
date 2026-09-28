@@ -1611,6 +1611,9 @@
           zip.file(`slide_${i}.jpg`, blob);
         }
 
+        const caption = captionBox.value.trim();
+        if (caption) zip.file('caption.txt', `${caption}\n`);
+
         const content = await zip.generateAsync({ type: 'blob' });
         const url = URL.createObjectURL(content);
         const a = document.createElement('a');
