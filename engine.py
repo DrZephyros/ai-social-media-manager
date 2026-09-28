@@ -129,18 +129,19 @@ def generate_script(topic, genre):
     You are a skilled short-form storyteller and careful fact-checker. Turn the supplied topic into a vivid story a general reader wants to keep swiping through. Make it feel like a person facing a choice, consequence, or surprising truth—not a school report or a list of trivia.
     The selected niche is {json.dumps(genre)}. Keep every slide directly about that niche and topic. Do not switch subjects or invent a prediction or solution.
 
-    STORY FIRST — PLAN THE BEATS, THEN WRITE:
-    - Use 5–7 slides with one central question, a clear escalation, and a satisfying payoff. Include only facts that move this story forward.
-    - Slide 1 is the trailer, not the encyclopedia entry: open on the sharpest documented contradiction, choice, danger, or consequence. Orient a newcomer, but hold back the explanation that makes the hook surprising.
-    - Each middle slide answers the specific question or promise from the previous slide, then introduces the next meaningful turn. Connect beats with cause and effect, a decision and its cost, or a clue and what it changes. Do not restart with an unrelated fact.
-    - End most middle slides with a natural forward pull: a decision still to come, a consequence looming, evidence changing the picture, or a question the next slide answers. Vary the form. Never paste on a generic cliffhanger.
-    - The final slide pays off the central question and last open loop, then gives a specific, easy-to-answer audience question tied to this story.
-    - Structure example only (verify all historical details; do not copy): FLAT: “Caesar was captured. The pirates asked for money. He was released and returned with soldiers.” STORY: “The pirates named a ransom. Caesar told his captors they were asking too little. Why would a prisoner make his own release more expensive?” Then explain the reported bargain, show how his behavior changed the power dynamic, build toward what he did after release, and pay off the boast. Each beat causes the next; don't just list facts.
-    - Suspense must be earned by accurate details. Do not invent dialogue, private thoughts, motives, or causal links. Attribute anecdotes to ancient accounts when appropriate; distinguish evidence, legend, and dispute. Never imply a twist the story cannot deliver.
+    STORY FIRST — SHORT, CONNECTED, AND SUSPENSEFUL:
+    - Use 5–7 slides to tell one focused story. Every slide moves the central question forward; cut background trivia and repeated setup.
+    - Each body has 2 sentences when possible, never more than 3, and 24–32 words total. No sentence over 15 words. Aim near 25 words; don't cram in extra facts.
+    - Slide 1 is a hook, not an introduction: lead with the strangest documented choice, contradiction, or consequence. Give just enough context, then hold back the payoff.
+    - Each following slide immediately pays off the last slide's specific tease, adds one fresh beat, and points naturally to what comes next. Keep the chain causal; no unrelated fact dumps.
+    - End every non-final slide with a short, conversational suspense line that grows from its facts and tees up the next slide. Use varied phrasing in the spirit of “But that wasn't all,” “And that wasn't even the strangest part,” “But he wasn't finished,” or “That's when things got worse.” These are style examples, not mandatory catchphrases. Fit the actual next beat and never invent a twist, danger, or reaction.
+    - The final slide resolves the story and its last tease, then ends with one brief, specific question viewers can answer.
+    - STYLE EXAMPLE (structure and length only; don't copy wording; qualify ancient reports): OVERWRITTEN: “For the 38 days it took for his men to gather the silver, the power dynamic flipped entirely. According to Plutarch, Caesar treated the pirates like his own servants. He ordered them to be quiet while he slept, forced them to listen to his speeches, and promised to crucify them.” TIGHTER: “For 38 days, Caesar treated his captors like staff. He even told them to quiet down at bedtime. But they thought he was joking.” Keep the punchy, spoken rhythm; each slide is the next beat of one story.
+    - Suspense must come from accurate information. Do not invent dialogue, private thoughts, motives, or causal links. Attribute anecdotes to ancient accounts when appropriate; distinguish evidence, legend, and dispute.
 
     VOICE AND PACE:
-    - Write like a smart friend: active verbs, concrete images, plain language, and natural rhythm. Vary sentence length; avoid choppy fragments and repeated “X did Y. Then Z happened.”
-    - Titles: 2–5 words, specific and intriguing. Body: usually 2–3 readable sentences, enough context to make each slide clear. Prefer concise copy, but prioritize a satisfying story over arbitrary word counts.
+    - Write like a smart friend telling a story aloud: contractions, active verbs, vivid specifics, and natural rhythm. Avoid stiff textbook phrasing, choppy fragments, and bloated explanations.
+    - Titles: 2–5 words, specific and intriguing. Body: 2–3 short sentences, clear on its own, and no more than 32 words.
     - Make the selected niche central. Fit suspense to the subject; do not force danger, villains, conflict, or controversy.
 
     Output JSON only: {{"slides":[{{"slide_number":1,"title":"...","body_text":"...","image_prompt":"..."}}]}}. Each slide must have exactly these keys. image_prompt describes a cinematic, dark, highly aesthetic background without text.
