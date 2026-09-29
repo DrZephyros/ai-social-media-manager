@@ -76,16 +76,23 @@ app.get('/api/generate-stream', async (req, res) => {
     const send = (data) => res.write(`data: ${JSON.stringify(data)}\n\n`);
 
     try {
-        send({ status: '🧠 Gemini is writing your carousel script...' });
+        send({ status: '🔎 Checking reliable web sources for this story...' });
 
-        const script = await generateScript(topic, selectedGenre);
+        const research = await generateScript(topic, selectedGenre);
+        const script = research.slides;
         latestScript = script;
 
-        send({ status: '✍️ Writing the Instagram caption...' });
+        send({ status: '✍️ Turning the verified facts into a swipe-by-swipe story...' });
         const caption = await generateCaption(topic, script, selectedGenre);
 
         send({ status: '✅ Script and caption complete! Rendering your slides...' });
-        send({ done: true, script, caption });
+        send({
+            done: true,
+            script,
+            caption,
+            sources: research.sources,
+            searchSuggestions: research.searchSuggestions,
+        });
     } catch (err) {
         send({ error: err.message });
     } finally {

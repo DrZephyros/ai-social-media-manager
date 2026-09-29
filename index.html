@@ -722,6 +722,33 @@
       box-shadow: 0 0 0 3px rgba(0,229,255,0.06);
     }
 
+    .research-sources {
+      border: 1px solid rgba(0,229,255,0.16);
+      border-radius: 14px;
+      padding: 1rem 1.1rem;
+      background: rgba(0,229,255,0.035);
+    }
+    .research-sources[hidden] { display: none; }
+    .research-sources-title {
+      color: var(--cyan);
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 1.8px;
+      text-transform: uppercase;
+      margin-bottom: 0.65rem;
+    }
+    .research-sources-list {
+      margin: 0;
+      padding-left: 1.2rem;
+      display: grid;
+      gap: 0.45rem;
+      color: var(--muted);
+      font-size: 0.82rem;
+      line-height: 1.45;
+    }
+    .research-sources-list a { color: var(--text); text-decoration-color: rgba(0,229,255,0.55); text-underline-offset: 3px; }
+    .research-sources-note { margin: 0.7rem 0 0; color: var(--muted); font-size: 0.75rem; line-height: 1.45; }
+
     /* Action buttons row */
     .action-row {
       display: flex;
@@ -1016,6 +1043,13 @@
 
       <textarea id="caption-box" placeholder="Your caption will appear here..."></textarea>
 
+      <section class="research-sources" id="research-sources" aria-live="polite" hidden>
+        <div class="research-sources-title">Sources checked</div>
+        <ol class="research-sources-list" id="research-sources-list"></ol>
+        <p class="research-sources-note" id="research-sources-note"></p>
+        <div id="google-search-suggestions" hidden></div>
+      </section>
+
       <div class="hashtag-preview" id="hashtag-chips"></div>
 
       <div class="copied-badge" id="copied-badge">
@@ -1055,6 +1089,10 @@
     const navNext       = document.getElementById('nav-next');
     const slideCounter  = document.getElementById('slide-counter');
     const captionBox    = document.getElementById('caption-box');
+    const researchSourcesPanel = document.getElementById('research-sources');
+    const researchSourcesList = document.getElementById('research-sources-list');
+    const researchSourcesNote = document.getElementById('research-sources-note');
+    const googleSearchSuggestions = document.getElementById('google-search-suggestions');
     const hashtagChips  = document.getElementById('hashtag-chips');
     const controls      = document.getElementById('controls');
     const postGenerateActions = document.getElementById('post-generate-actions');
@@ -1075,9 +1113,45 @@
     let currentSlide = 0;
     let totalSlides  = 5;
     let currentScript = [];
+    let currentSources = [];
 
     function setStatus(msg, spinner = false) {
       statusEl.innerHTML = spinner ? `<span class="spinner"></span>${msg}` : msg;
+    }
+
+    function renderResearchSources(sources, searchSuggestions = '') {
+      researchSourcesList.replaceChildren();
+      const validSources = (Array.isArray(sources) ? sources : []).filter(source => {
+        try { return ['http:', 'https:'].includes(new URL(source.url).protocol); }
+        catch { return false; }
+      });
+      researchSourcesPanel.hidden = false;
+      googleSearchSuggestions.hidden = typeof searchSuggestions !== 'string' || !searchSuggestions.trim();
+      googleSearchSuggestions.innerHTML = googleSearchSuggestions.hidden ? '' : searchSuggestions;
+      if (validSources.length === 0) {
+        researchSourcesNote.textContent = 'No source links came back from web search. Verify factual details before posting.';
+        return;
+      }
+
+      validSources.forEach(source => {
+        const item = document.createElement('li');
+        const link = document.createElement('a');
+        const parsedUrl = new URL(source.url);
+        link.href = parsedUrl.href;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = source.title || parsedUrl.hostname;
+        item.append(link);
+        const claim = Array.isArray(source.claims) ? source.claims.find(text => typeof text === 'string' && text.trim()) : '';
+        if (claim) {
+          const excerpt = document.createElement('div');
+          excerpt.className = 'research-sources-note';
+          excerpt.textContent = claim.trim().slice(0, 220);
+          item.append(excerpt);
+        }
+        researchSourcesList.append(item);
+      });
+      researchSourcesNote.textContent = 'Open the reports and check the details before publishing.';
     }
 
     /* ============================================================
@@ -1273,7 +1347,13 @@
       igDots.innerHTML  = '';
       hashtagChips.innerHTML = '';
       captionBox.value  = '';
-      setStatus('Connecting to Gemini...', true);
+      currentSources = [];
+      researchSourcesPanel.hidden = true;
+      researchSourcesList.replaceChildren();
+      researchSourcesNote.textContent = '';
+      googleSearchSuggestions.replaceChildren();
+      googleSearchSuggestions.hidden = true;
+      setStatus('Connecting to Gemini and checking web sources...', true);
 
       const evtSource = new EventSource(`/api/generate-stream?topic=${encodeURIComponent(topic)}&genre=${encodeURIComponent(genre || '')}`);
 
@@ -1292,6 +1372,8 @@
         if (payload.done && payload.script) {
           evtSource.close();
           currentScript = payload.script;
+          currentSources = Array.isArray(payload.sources) ? payload.sources : [];
+          renderResearchSources(currentSources, payload.searchSuggestions);
           
           setStatus('📸 Fetching high-quality backgrounds...', true);
           
