@@ -4,7 +4,11 @@ dotenv.config();
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
 
 function getGeminiApiKeys() {
-    const apiKeys = [process.env.GEMINI_API_KEY, process.env.GEMINI_API_KEY_FALLBACK]
+    const apiKeys = [
+        process.env.GEMINI_API_KEY,
+        process.env.GEMINI_API_KEY_FALLBACK,
+        process.env.GEMINI_API_KEY_FALLBACK_2,
+    ]
         .map(key => key?.trim())
         .filter((key, index, keys) => key && keys.indexOf(key) === index);
     if (apiKeys.length === 0) {
