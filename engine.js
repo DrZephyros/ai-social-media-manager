@@ -3,10 +3,14 @@ dotenv.config();
 
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
 
-function getGeminiApiKey() {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) throw new Error('GEMINI_API_KEY is missing. Add it to your local .env and Vercel environment variables.');
-    return apiKey;
+function getGeminiApiKeys() {
+    const apiKeys = [process.env.GEMINI_API_KEY, process.env.GEMINI_API_KEY_FALLBACK]
+        .map(key => key?.trim())
+        .filter((key, index, keys) => key && keys.indexOf(key) === index);
+    if (apiKeys.length === 0) {
+        throw new Error('GEMINI_API_KEY is missing. Add it to your local .env and Vercel environment variables.');
+    }
+    return apiKeys;
 }
 
 // Finance/tech jargon that kills virality — triggers a regeneration
@@ -31,15 +35,16 @@ function wait(ms) {
 }
 
 async function generateGeminiContent(systemInstruction, userContent, temperature = 0.7, options = {}) {
-    const apiKey = getGeminiApiKey();
+    const apiKeys = getGeminiApiKeys();
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
     const { thinkingLevel = 'high', timeoutMs = 45000, maxRetries = 3 } = options;
+    let apiKeyIndex = 0;
     for (let retry = 0; ; retry++) {
         let response;
         try {
             response = await fetch(endpoint, {
                 method: 'POST',
-                headers: { 'content-type': 'application/json', 'x-goog-api-key': apiKey },
+                headers: { 'content-type': 'application/json', 'x-goog-api-key': apiKeys[apiKeyIndex] },
                 body: JSON.stringify({
                     systemInstruction: { parts: [{ text: systemInstruction }] },
                     contents: [{ role: 'user', parts: [{ text: userContent }] }],
@@ -61,6 +66,14 @@ async function generateGeminiContent(systemInstruction, userContent, temperature
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) {
             const detail = payload?.error?.message || `Gemini returned HTTP ${response.status}.`;
+            // A backup key can recover from a rejected/revoked primary key. Do not
+            // switch keys for 429 quota errors; quotas are project-scoped.
+            if ([401, 403].includes(response.status) && apiKeyIndex + 1 < apiKeys.length) {
+                apiKeyIndex++;
+                retry = -1;
+                console.warn('Primary Gemini key was rejected; retrying with the configured fallback key.');
+                continue;
+            }
             if ([429, 500, 502, 503, 504].includes(response.status) && retry < maxRetries) {
                 const retryInfo = payload?.error?.details?.find(detail => detail['@type']?.includes('RetryInfo'))?.retryDelay;
                 const retrySeconds = Number(retryInfo?.match(/[\d.]+/)?.[0]);
