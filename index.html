@@ -1047,7 +1047,6 @@
         <div class="research-sources-title">Sources checked</div>
         <ol class="research-sources-list" id="research-sources-list"></ol>
         <p class="research-sources-note" id="research-sources-note"></p>
-        <div id="google-search-suggestions" hidden></div>
       </section>
 
       <div class="hashtag-preview" id="hashtag-chips"></div>
@@ -1092,7 +1091,6 @@
     const researchSourcesPanel = document.getElementById('research-sources');
     const researchSourcesList = document.getElementById('research-sources-list');
     const researchSourcesNote = document.getElementById('research-sources-note');
-    const googleSearchSuggestions = document.getElementById('google-search-suggestions');
     const hashtagChips  = document.getElementById('hashtag-chips');
     const controls      = document.getElementById('controls');
     const postGenerateActions = document.getElementById('post-generate-actions');
@@ -1119,15 +1117,13 @@
       statusEl.innerHTML = spinner ? `<span class="spinner"></span>${msg}` : msg;
     }
 
-    function renderResearchSources(sources, searchSuggestions = '') {
+    function renderResearchSources(sources) {
       researchSourcesList.replaceChildren();
       const validSources = (Array.isArray(sources) ? sources : []).filter(source => {
         try { return ['http:', 'https:'].includes(new URL(source.url).protocol); }
         catch { return false; }
       });
       researchSourcesPanel.hidden = false;
-      googleSearchSuggestions.hidden = typeof searchSuggestions !== 'string' || !searchSuggestions.trim();
-      googleSearchSuggestions.innerHTML = googleSearchSuggestions.hidden ? '' : searchSuggestions;
       if (validSources.length === 0) {
         researchSourcesNote.textContent = 'No source links came back from web search. Verify factual details before posting.';
         return;
@@ -1351,9 +1347,7 @@
       researchSourcesPanel.hidden = true;
       researchSourcesList.replaceChildren();
       researchSourcesNote.textContent = '';
-      googleSearchSuggestions.replaceChildren();
-      googleSearchSuggestions.hidden = true;
-      setStatus('Connecting to Gemini and checking web sources...', true);
+      setStatus('Searching free web sources, then writing your story...', true);
 
       const evtSource = new EventSource(`/api/generate-stream?topic=${encodeURIComponent(topic)}&genre=${encodeURIComponent(genre || '')}`);
 
@@ -1373,7 +1367,7 @@
           evtSource.close();
           currentScript = payload.script;
           currentSources = Array.isArray(payload.sources) ? payload.sources : [];
-          renderResearchSources(currentSources, payload.searchSuggestions);
+          renderResearchSources(currentSources);
           
           setStatus('📸 Fetching high-quality backgrounds...', true);
           

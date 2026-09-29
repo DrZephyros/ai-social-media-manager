@@ -76,7 +76,7 @@ app.get('/api/generate-stream', async (req, res) => {
     const send = (data) => res.write(`data: ${JSON.stringify(data)}\n\n`);
 
     try {
-        send({ status: '🔎 Checking reliable web sources for this story...' });
+        send({ status: '🔎 Searching free web sources for this story...' });
 
         const research = await generateScript(topic, selectedGenre);
         const script = research.slides;
@@ -91,7 +91,6 @@ app.get('/api/generate-stream', async (req, res) => {
             script,
             caption,
             sources: research.sources,
-            searchSuggestions: research.searchSuggestions,
         });
     } catch (err) {
         send({ error: err.message });
