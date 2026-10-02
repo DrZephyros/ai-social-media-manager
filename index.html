@@ -1833,8 +1833,6 @@
     /* ============================================================
        Download Slides as individual JPEGs in a ZIP
     ============================================================ */
-    let downloadVersion = 0;
-
     function syncPreviewEdits() {
       clearTimeout(renderGridUpdateTimer);
       igTrack.querySelectorAll('.editable-slide-text').forEach((field) => {
@@ -1889,14 +1887,16 @@
         const a = document.createElement('a');
         a.href = url;
         
-        // Generate filename: YYYY-MM-DD_slide-1-title.zip
-        const dateStr = new Date().toISOString().split('T')[0];
-        let titleStr = "carousel";
-        if (currentScript && currentScript.length > 0 && currentScript[0].title) {
-          titleStr = currentScript[0].title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-        }
-        downloadVersion += 1;
-        a.download = `${dateStr}_${titleStr}_v${downloadVersion}.zip`;
+        const acronyms = new Set(['AI', 'NASA', 'DNA', 'CEO', 'USA', 'UK', 'EU', 'WHO', 'AD', 'BC']);
+        const readableTitle = String(currentScript?.[0]?.title || 'Instagram Carousel')
+          .replace(/[<>:"/\\|?*\x00-\x1F]/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .split(' ')
+          .slice(0, 6)
+          .map(word => acronyms.has(word.toUpperCase()) ? word.toUpperCase() : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join(' ') || 'Instagram Carousel';
+        a.download = `${readableTitle}.zip`;
         
         a.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
