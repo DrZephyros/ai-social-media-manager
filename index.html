@@ -284,11 +284,30 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    .workspace-tabs { width: min(980px, calc(100% - 2rem)); margin: 1.5rem auto 0; display: flex; gap: 0.65rem; padding: 0.45rem; border: 1px solid var(--border); border-radius: 15px; background: rgba(12,17,26,0.88); backdrop-filter: blur(14px); position: sticky; top: 0.6rem; z-index: 20; }
-    .workspace-tab { flex: 1; min-height: 46px; border: 1px solid transparent; border-radius: 11px; background: transparent; color: var(--muted); font: inherit; font-weight: 750; cursor: pointer; transition: color 0.18s, background 0.18s, border-color 0.18s; }
-    .workspace-tab.active { color: #fff; border-color: rgba(0,229,255,0.3); background: rgba(0,229,255,0.1); box-shadow: inset 0 0 16px rgba(0,229,255,0.05); }
-    .workspace-tab:disabled { opacity: 0.38; cursor: not-allowed; }
-    .step-number { display: inline-grid; place-items: center; width: 1.4rem; height: 1.4rem; margin-right: 0.35rem; border: 1px solid currentColor; border-radius: 50%; font-size: 0.72rem; }
+    .workspace-tabs { --step-glow: rgba(0,229,255,0.18); width: min(980px, calc(100% - 2rem)); margin: 1.5rem auto 0; display: flex; gap: 0.55rem; padding: 0.55rem; border: 1px solid rgba(255,255,255,0.09); border-radius: 18px; background: rgba(12,17,26,0.88); backdrop-filter: blur(14px); position: sticky; top: 0.6rem; z-index: 20; box-shadow: 0 12px 40px rgba(0,0,0,0.22); }
+    .workspace-tab { --tab-accent: #00e5ff; --tab-glow: rgba(0,229,255,0.18); position: relative; flex: 1; min-height: 52px; display: flex; align-items: center; justify-content: center; gap: 0.55rem; border: 1px solid transparent; border-radius: 13px; background: transparent; color: rgba(220,228,238,0.66); font: inherit; font-weight: 750; cursor: pointer; transition: color 0.2s, background 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.2s; }
+    .workspace-tab[data-step="topic"] { --tab-accent: #ffd84d; --tab-glow: rgba(255,216,77,0.2); }
+    .workspace-tab[data-step="sources"] { --tab-accent: #4d8dff; --tab-glow: rgba(77,141,255,0.2); }
+    .workspace-tab[data-step="preview"] { --tab-accent: #ff55b8; --tab-glow: rgba(255,85,184,0.2); }
+    .workspace-tab:hover:not(:disabled) { color: #fff; border-color: color-mix(in srgb, var(--tab-accent) 35%, transparent); background: color-mix(in srgb, var(--tab-accent) 7%, transparent); box-shadow: 0 0 20px var(--tab-glow), inset 0 0 14px color-mix(in srgb, var(--tab-accent) 5%, transparent); transform: translateY(-1px); }
+    .workspace-tab.active { color: #fff; border-color: color-mix(in srgb, var(--tab-accent) 65%, transparent); background: color-mix(in srgb, var(--tab-accent) 13%, transparent); box-shadow: 0 0 23px var(--tab-glow), inset 0 0 18px color-mix(in srgb, var(--tab-accent) 8%, transparent); }
+    .workspace-tab:disabled { opacity: 0.34; cursor: not-allowed; }
+    .workspace-tab svg { width: 19px; height: 19px; flex: 0 0 auto; color: var(--tab-accent); filter: drop-shadow(0 0 5px var(--tab-glow)); }
+    .workspace-tab .step-arrow { width: 17px; height: 17px; margin-left: auto; opacity: 0.34; color: rgba(225,235,245,0.7); filter: none; transition: opacity 0.2s, color 0.2s, filter 0.2s; }
+    .workspace-tab.active .step-arrow { opacity: 1; color: var(--tab-accent); filter: drop-shadow(0 0 6px var(--tab-glow)); }
+    .workspace-tab:hover:not(:disabled) .step-arrow { opacity: 0.88; color: var(--tab-accent); filter: drop-shadow(0 0 5px var(--tab-glow)); }
+    .workspace-tab[data-step="preview"] .step-arrow { display: none; }
+    .step-icon { display: inline-flex; align-items: center; gap: 0.55rem; }
+    .tab-label-short { display: none; }
+    @media (max-width: 560px) {
+      .workspace-tabs { gap: 0.2rem; padding: 0.35rem; }
+      .workspace-tab { gap: 0.22rem; min-height: 46px; padding: 0 0.2rem; font-size: 0.76rem; }
+      .workspace-tab .step-icon { gap: 0.25rem; }
+      .workspace-tab svg { width: 16px; height: 16px; }
+      .workspace-tab .step-arrow { width: 12px; height: 12px; margin-left: 0.05rem; }
+      .tab-label-long { display: none; }
+      .tab-label-short { display: inline; }
+    }
     .workspace-panel { width: min(980px, calc(100% - 2rem)); margin: 1.25rem auto 3rem; }
     .workspace-panel[hidden] { display: none !important; }
     .workspace-panel.active { display: block; }
@@ -944,9 +963,17 @@
   </header>
 
   <nav id="workspace-tabs" class="workspace-tabs" role="tablist" aria-label="Carousel workspace">
-    <button id="tab-topic" class="workspace-tab active" role="tab" aria-selected="true" aria-controls="topic-panel" data-panel="topic-panel"><span class="step-number">1</span> Topic</button>
-    <button id="tab-sources" class="workspace-tab" role="tab" aria-selected="false" aria-controls="sources-panel" data-panel="sources-panel" disabled><span class="step-number">2</span> Review sources</button>
-    <button id="tab-preview" class="workspace-tab" role="tab" aria-selected="false" aria-controls="preview-panel" data-panel="preview-panel" disabled><span class="step-number">3</span> Preview &amp; edit</button>
+    <button id="tab-topic" class="workspace-tab active" role="tab" aria-selected="true" aria-controls="topic-panel" data-step="topic" data-panel="topic-panel">
+      <span class="step-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg>Topic</span>
+      <svg class="step-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </button>
+    <button id="tab-sources" class="workspace-tab" role="tab" aria-selected="false" aria-controls="sources-panel" data-step="sources" data-panel="sources-panel" disabled>
+      <span class="step-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg><span class="tab-label-long">Review sources</span><span class="tab-label-short">Sources</span></span>
+      <svg class="step-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </button>
+    <button id="tab-preview" class="workspace-tab" role="tab" aria-selected="false" aria-controls="preview-panel" data-step="preview" data-panel="preview-panel" disabled>
+      <span class="step-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg><span class="tab-label-long">Preview &amp; edit</span><span class="tab-label-short">Preview</span></span>
+    </button>
   </nav>
 
   <section id="topic-panel" class="workspace-panel active" role="tabpanel" aria-labelledby="tab-topic">
@@ -1347,6 +1374,36 @@
       return selectedGenre;
     }
 
+    function withCaptionHashtags(caption) {
+      const text = String(caption || '').trim();
+      if ((text.match(/#[\p{L}\p{N}_]+/gu) || []).length >= 5) return text;
+      const candidates = [
+        ...(currentScript?.[0]?.title || '').split(/[^\p{L}\p{N}]+/u),
+        ...(getGenre() || '').split(/[^\p{L}\p{N}]+/u),
+        ...text.split(/[^\p{L}\p{N}]+/u),
+      ];
+      const stopWords = new Set(['about','after','again','also','because','could','every','from','have','into','just','more','over','that','their','there','these','they','this','through','under','were','what','when','where','which','while','would','your','with','story','slide','slides']);
+      const tags = [];
+      for (const candidate of candidates) {
+        const word = candidate.trim();
+        if (word.length < 3 || stopWords.has(word.toLowerCase())) continue;
+        const tag = `#${word}`;
+        if (!tags.some(existing => existing.toLowerCase() === tag.toLowerCase())) tags.push(tag);
+        if (tags.length === 8) break;
+      }
+      for (const tag of ['#LearnSomething', '#DailyKnowledge']) {
+        if (tags.length >= 5) break;
+        if (!tags.some(existing => existing.toLowerCase() === tag.toLowerCase())) tags.push(tag);
+      }
+      const body = text.replace(/(?:\s*#[\p{L}\p{N}_]+)+\s*$/gu, '').trim();
+      return `${body}\n\n${tags.join(' ')}`.trim();
+    }
+
+    function refreshHashtagChips(caption) {
+      const tags = caption.match(/#[\p{L}\p{N}_]+/gu) || [];
+      hashtagChips.innerHTML = tags.map(tag => `<span class="hashtag-chip">${tag}</span>`).join('');
+    }
+
     function updateActionAvailability() {
       const genre = getGenre();
       btnBrainstorm.disabled = !genre;
@@ -1462,17 +1519,16 @@
           buildRenderGrid(currentScript);
 
           if (payload.caption) {
-            captionBox.value = payload.caption;
+            captionBox.value = withCaptionHashtags(payload.caption);
             // Auto-copy caption to clipboard
-            navigator.clipboard.writeText(payload.caption).catch(() => {});
+            navigator.clipboard.writeText(captionBox.value).catch(() => {});
             showCopied();
             // Show hashtag chips
-            const tags = payload.caption.match(/#\w+/g) || [];
-            hashtagChips.innerHTML = tags.map(t => `<span class="hashtag-chip">${t}</span>`).join('');
+            refreshHashtagChips(captionBox.value);
             // Update phone caption preview (first non-hashtag line)
             const previewEl = document.getElementById('ig-caption-preview');
             if (previewEl) {
-              const firstLine = payload.caption.split('\n').find(l => l.trim() && !l.trim().startsWith('#')) || '';
+              const firstLine = captionBox.value.split('\n').find(l => l.trim() && !l.trim().startsWith('#')) || '';
               previewEl.innerHTML = `<strong>g0wtham.exe</strong> ${firstLine}`;
             }
           }
@@ -1774,7 +1830,27 @@
     /* ============================================================
        Download Slides as individual JPEGs in a ZIP
     ============================================================ */
+    let downloadVersion = 0;
+
+    function syncPreviewEdits() {
+      clearTimeout(renderGridUpdateTimer);
+      igTrack.querySelectorAll('.editable-slide-text').forEach((field) => {
+        const slide = currentScript[Number(field.dataset.slideIndex)];
+        if (!slide) return;
+        if (field.dataset.slideField === 'title') {
+          slide.title = field.textContent.replace(/\s+/g, ' ').trim();
+        } else if (field.dataset.slideField === 'copy') {
+          slide.body_text = field.innerText.trim();
+          slide.hook = '';
+        }
+      });
+      buildRenderGrid(currentScript);
+    }
+
     async function downloadSlides(button) {
+      // Read the live contenteditable DOM before any awaits. This also catches
+      // the final keystroke when the debounced render has not run yet.
+      syncPreviewEdits();
       button.disabled = true;
       button.textContent = '⏳ Preparing...';
 
@@ -1800,7 +1876,9 @@
           zip.file(`slide_${i}.jpg`, blob);
         }
 
-        const caption = captionBox.value.trim();
+        const caption = withCaptionHashtags(captionBox.value);
+        captionBox.value = caption;
+        refreshHashtagChips(caption);
         if (caption) zip.file('caption.txt', `${caption}\n`);
 
         const content = await zip.generateAsync({ type: 'blob' });
@@ -1814,7 +1892,8 @@
         if (currentScript && currentScript.length > 0 && currentScript[0].title) {
           titleStr = currentScript[0].title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
         }
-        a.download = `${dateStr}_${titleStr}.zip`;
+        downloadVersion += 1;
+        a.download = `${dateStr}_${titleStr}_v${downloadVersion}.zip`;
         
         a.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
