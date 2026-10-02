@@ -455,15 +455,16 @@ function questionFitsStory(question, slides) {
     const storyWords = new Set((slides || []).map(slide => `${slide.title || ''} ${slide.body_text || ''}`).join(' ').toLowerCase().match(/[\p{L}\p{N}]+/gu) || []);
     const meaningful = new Set(words.filter(word => word.length > 3 && !GENERIC_QUESTION_WORDS.has(word)));
     const overlaps = new Set([...meaningful].filter(word => storyWords.has(word)));
-    return overlaps.size >= 2 && overlaps.size / Math.max(1, meaningful.size) >= 0.45;
+    return overlaps.size >= 1 && overlaps.size / Math.max(1, meaningful.size) >= 0.25;
 }
 
 function questionInvitesOpinion(question) {
     const text = String(question || '').trim();
     if (/\b(?:how much|how many|what percentage|what proportion|what amount)\b/i.test(text)) return false;
     if (QUESTION_JARGON.test(text) || /\b(?:do you prefer|which is more vital|what is more important)\b/i.test(text)) return false;
-    if (/^\s*(?:is|are|do|does|did|can|could|will)\b/i.test(text)) return false;
-    if (/^\s*would you\b/i.test(text) && !/^\s*would you (?:rather|choose)\b/i.test(text)) return false;
+    if (/^\s*(?:who|what year|when did|where did|how many|how much)\b/i.test(text)) return false;
+    const opinionFrame = /\b(?:do you think|would you say|do you believe|could .{0,80}\b(?:ever|one day|in the future)|will .{0,80}\b(?:ever|one day|in the future)|would you trust|would you support|what do you think)\b/i.test(text);
+    if (/^\s*(?:is|are|do|does|did|can|could|will|would)\b/i.test(text) && !opinionFrame) return false;
     return true;
 }
 
@@ -495,18 +496,6 @@ function hasClumsyTransition(slide) {
     return /^\s*Yet\b/i.test(title)
         || /(?:^|[.!?]\s*)Yet\b/i.test(copy)
         || /\b(?:AI(?:\s+models?)?|models?|(?:the\s+)?systems?)\s+turn(?:s|ed|ing)?\s+(?:back\s+)?on\s+itself\b/i.test(`${title} ${copy}`);
-}
-
-function storySpecificKeywords(slides) {
-    const frequencies = new Map();
-    for (const slide of slides || []) {
-        const text = `${slide.title || ''} ${slide.body_text || ''}`.toLowerCase();
-        for (const word of text.match(/[\p{L}\p{N}]+/gu) || []) {
-            if (word.length < 5 || GENERIC_QUESTION_WORDS.has(word)) continue;
-            frequencies.set(word, (frequencies.get(word) || 0) + 1);
-        }
-    }
-    return [...frequencies.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12).map(([word]) => word);
 }
 
 async function repairSuspenseHooks(slides, sources) {
@@ -659,11 +648,12 @@ FINAL EDIT — silently revise before returning JSON:
 □ If the slides were shuffled, would the story break? If not, strengthen the causal links.
 □ Are any slides just background facts, repeated claims, empty cliffhangers, or invented drama? Cut or rewrite them.
 □ Does the final story slide deliver the payoff without an unrelated question?
-□ Does the comment prompt refer to a specific detail or dilemma in this story, not just its broad genre?
+□ Does the comment prompt sound natural and ask about a real detail or plausible implication, without forcing a choice or making an unsupported leap?
+□ Would a reader with no specialist knowledge understand the final question immediately and have a real opinion to share?
 □ Does each claim match retrieved sources, with uncertainty and separate incidents handled correctly?
 □ Are image_query fields concrete and visual?
 
-Output ONLY strict JSON. Return 5–7 narrative slides in slides, plus one separate final discussionSlide. Each non-final story slide must have a 4–8 word "hook" field; the final story slide and cover have an empty hook. Keep body_text to 10–24 words. The discussionSlide body_text is one 7–16 word question, grounded in a specific detail or tradeoff actually stated in the story. It must invite an interesting personal opinion, not an abstract policy debate. Include at least two meaningful story-specific terms also used in the narrative. Format:
+Output ONLY strict JSON. Return 5–7 narrative slides in slides, plus one separate final discussionSlide. Each non-final story slide must have a 4–8 word "hook" field; the final story slide and cover have an empty hook. Keep body_text to 10–24 words. The discussionSlide body_text is one natural 7–16 word question about a specific detail, surprising implication, or realistic dilemma raised by this story. It should make an ordinary reader want to share a prediction, reaction, or judgment. Opinion-based forms such as “Do you think…?” or “Could … ever…?” are welcome when the story raises that possibility; a question does not need to be unanswerable with yes or no to invite a good comment. Do not force a binary choice when the reader has no real-world choice to make. Never leap from a technical result to claims of consciousness, sentience, danger, or personhood unless the sources establish them. Mention at least one clear story-specific detail, but do not cram in keywords. The discussionSlide title should sound like a friendly invitation (for example, “Your Take”), not a stiff label or a claim. Format:
 { "slides": [ { "slide_number": 1, "title": "...", "body_text": "...", "hook": "", "bg_type": "...", "image_query": "..." }, ... ], "discussionSlide": { "title": "...", "body_text": "one specific, engaging question", "bg_type": "...", "image_query": "..." } }`;
 
     const responseText = await generateGeminiContent(systemInstruction, JSON.stringify({ topic, genre, researchSources: sources }), 0.7, {
@@ -690,11 +680,10 @@ Output ONLY strict JSON. Return 5–7 narrative slides in slides, plus one separ
         && questionFitsStory(discussionSlide.body_text, slides)
         && questionInvitesOpinion(discussionSlide.body_text);
     if (!isGoodQuestion) {
-        const keywords = storySpecificKeywords(slides);
-        const questionPrompt = `Write one final-slide comment question in 7–16 words. Invite a personal choice or judgment about one specific, concrete detail in this story, in words an ordinary reader would use. Use a natural shape such as “Which would you choose: [real option A] or [real option B]?” or “What would you save first if [specific story situation]?” The options must be real and clear from the slides, not abstract concepts. Avoid specialist terms and words such as nuance, recursive, photocopy, vital, or distorted. Do not ask for a number, threshold, abstract policy, or generic opinion about AI, humanity, or the future. Do not write a bare yes/no question. Use at least two concrete terms that already appear in the story. Return only JSON: {"title":"2-4 words","body_text":"one specific, natural opinion question","bg_type":"gradient-purple","image_query":"2-4 concrete visual words"}.`;
+        const questionPrompt = `Write one final-slide comment question in 7–16 words. Ask what an ordinary reader might genuinely wonder after this exact story: a grounded prediction, personal reaction, or judgment about a specific detail or plausible implication. Natural opinion forms such as “Do you think…?” and “Could … ever…?” are welcome when the story raises that possibility. For a story about brain cells doing computer work, a grounded question might ask whether computers using living brain cells could ever count as living beings; use this only if it fits the evidence and never imply the cells are conscious. Do not force readers to choose between options they cannot realistically choose (for example, which kind of computer they would personally use), or turn a technical demonstration into an unsupported claim about consciousness, sentience, danger, or personhood. Avoid specialist terms, yes/no trivia, numbers, thresholds, abstract policy, and generic questions about AI or the future. Mention at least one concrete detail or entity from the slides, but keep it conversational; do not cram keywords. The separate final line “Let me know in the comments!” is added automatically. Use a friendly short title such as “Your Take,” not a stiff label. Return only JSON: {"title":"2-4 words","body_text":"one specific, natural opinion question","bg_type":"gradient-purple","image_query":"2-4 concrete visual words"}.`;
         const payload = JSON.stringify({ topic, genre, slides, researchSources: sources });
         for (let attempt = 0; attempt < 3; attempt++) {
-            const prompt = attempt === 0 ? questionPrompt : `${questionPrompt}\nThe previous draft failed validation. Ask about a concrete choice or consequence explicitly present in the slides. Use plain language, include two exact story terms, and make it impossible to answer with only yes or no.`;
+            const prompt = attempt === 0 ? questionPrompt : `${questionPrompt}\nThe previous draft failed validation. Keep it tied to a real detail in the slides, but phrase it like a question a curious person would actually ask. Opinion-based “Do you think…?” or “Could … ever…?” forms are allowed; do not invent a forced personal choice.`;
             const questionText = await generateGeminiContent(prompt, payload, attempt === 0 ? 0.55 : 0.35, { thinkingLevel: 'low', timeoutMs: 30000, maxRetries: 0 });
             const candidate = JSON.parse(questionText);
             const validQuestion = typeof candidate.body_text === 'string'
