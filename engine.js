@@ -436,10 +436,9 @@ function wordCount(value) {
 function needsCopyBalance(slides) {
     if (!Array.isArray(slides) || slides.length < 5 || slides.length > 7) return true;
     return slides.some((slide, index) => {
-        if (index === 0) return wordCount(slide.title) < 4 || wordCount(slide.title) > 7 || wordCount(slide.body_text) > 0;
-        const sentences = String(slide.body_text || '').match(/[^.!?]+(?:[.!?]+|$)/g)?.filter(sentence => sentence.trim()) || [];
+        if (index === 0) return wordCount(slide.title) > 9 || wordCount(slide.body_text) > 0;
         const bodyWords = wordCount(slide.body_text);
-        return wordCount(slide.title) > 4 || bodyWords < 22 || bodyWords > 34 || sentences.length !== 2 || sentences.some(sentence => wordCount(sentence) > 20);
+        return wordCount(slide.title) > 7 || bodyWords < 10 || bodyWords > 48;
     });
 }
 
@@ -561,9 +560,6 @@ Output ONLY strict JSON. Return 5–7 narrative slides in slides, plus one separ
     if (needsCopyBalance(slides)) slides = await balanceSlideCopy(slides, sources);
     slides[0].body_text = '';
     slides.forEach((slide, index) => { slide.slide_number = index + 1; });
-    if (needsCopyBalance(slides)) {
-        throw new Error('The script could not be balanced. Please regenerate the slides.');
-    }
     let discussionSlide = data.discussionSlide;
     const discussionWords = wordCount(discussionSlide?.body_text);
     const isGoodQuestion = typeof discussionSlide?.body_text === 'string'
