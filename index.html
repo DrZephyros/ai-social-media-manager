@@ -563,6 +563,7 @@
       font-weight: 500;
       text-shadow: 0 1px 4px rgba(0,0,0,0.5);
     }
+    .ig-slide-hook { margin-top: 0.6rem; color: var(--cyan); font-size: 0.73rem; line-height: 1.35; font-weight: 800; text-shadow: 0 1px 5px rgba(0,0,0,0.8); }
     .ig-slide[data-cover="true"] .ig-slide-title { font-size: 1.45rem; margin-bottom: 0; }
 
     /* Gradient backgrounds (fallback when no image) */
@@ -748,6 +749,45 @@
     }
     .research-sources-list a { color: var(--text); text-decoration-color: rgba(0,229,255,0.55); text-underline-offset: 3px; }
     .research-sources-note { margin: 0.7rem 0 0; color: var(--muted); font-size: 0.75rem; line-height: 1.45; }
+
+    .slide-editor-panel {
+      display: none;
+      width: min(1100px, calc(100% - 2rem));
+      margin: 1.5rem auto 3rem;
+      border: 1px solid rgba(0,229,255,0.18);
+      border-radius: 18px;
+      background: rgba(13,18,28,0.82);
+      backdrop-filter: blur(16px);
+      overflow: hidden;
+    }
+    .slide-editor-panel.visible { display: block; }
+    .slide-editor-panel summary {
+      padding: 1rem 1.25rem;
+      color: var(--text);
+      cursor: pointer;
+      font-weight: 750;
+      list-style-position: inside;
+    }
+    .slide-editor-hint { margin: 0 1.25rem 1rem; color: var(--muted); font-size: 0.82rem; }
+    .slide-editor-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.85rem; padding: 0 1.25rem 1.25rem; }
+    .slide-editor-card { min-width: 0; padding: 0.9rem; border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; background: rgba(255,255,255,0.035); }
+    .slide-editor-card label { display: block; margin: 0.4rem 0; color: var(--muted); font-size: 0.7rem; font-weight: 750; letter-spacing: 1.2px; text-transform: uppercase; }
+    .slide-editor-card input, .slide-editor-card textarea {
+      box-sizing: border-box;
+      width: 100%;
+      padding: 0.7rem 0.8rem;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 10px;
+      outline: none;
+      background: rgba(0,0,0,0.25);
+      color: var(--text);
+      font: inherit;
+      font-size: 0.88rem;
+      line-height: 1.45;
+    }
+    .slide-editor-card input:focus, .slide-editor-card textarea:focus { border-color: rgba(0,229,255,0.58); box-shadow: 0 0 0 3px rgba(0,229,255,0.08); }
+    .slide-editor-card textarea { min-height: 112px; resize: vertical; }
+    @media (max-width: 780px) { .slide-editor-list { grid-template-columns: 1fr; } }
 
     /* Action buttons row */
     .action-row {
@@ -1057,6 +1097,12 @@
     </div>
   </div>
 
+  <details class="slide-editor-panel" id="slide-editor-panel">
+    <summary>✏️ Edit slide text</summary>
+    <p class="slide-editor-hint">Changes update the preview and downloaded slides as you type.</p>
+    <div class="slide-editor-list" id="slide-editor-list"></div>
+  </details>
+
   <!-- Hidden full-res render grid for download -->
   <div id="render-grid"></div>
 
@@ -1099,6 +1145,8 @@
     const btnRegenerate = document.getElementById('btn-regenerate');
     const copiedBadge   = document.getElementById('copied-badge');
     const renderGrid    = document.getElementById('render-grid');
+    const slideEditorPanel = document.getElementById('slide-editor-panel');
+    const slideEditorList = document.getElementById('slide-editor-list');
 
     const bgMap = {
       'gradient-blue':   'bg-gradient-blue',
@@ -1339,6 +1387,8 @@
 
       btnGenerate.disabled = true;
       outputSection.classList.remove('visible');
+      slideEditorPanel.classList.remove('visible');
+      slideEditorList.replaceChildren();
       igTrack.innerHTML = '';
       igDots.innerHTML  = '';
       hashtagChips.innerHTML = '';
@@ -1385,6 +1435,7 @@
 
           renderPhonePreview(currentScript);
           buildRenderGrid(currentScript);
+          renderSlideEditor(currentScript);
 
           if (payload.caption) {
             captionBox.value = payload.caption;
@@ -1420,9 +1471,13 @@
     /* ============================================================
        Render Instagram phone preview
     ============================================================ */
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+    }
+
     function formatTitle(title) {
       // Highlight the last word or specific words for visual pop
-      const words = title.split(' ');
+      const words = escapeHtml(title).split(/\s+/);
       if (words.length > 1) {
         const lastWord = words.pop();
         return `${words.join(' ')} <span class="highlight">${lastWord}</span>`;
@@ -1430,11 +1485,11 @@
       return title;
     }
 
-    function renderPhonePreview(slides) {
+    function renderPhonePreview(slides, preserveIndex = false) {
       igTrack.innerHTML = '';
       igDots.innerHTML  = '';
       totalSlides = slides.length;
-      currentSlide = 0;
+      currentSlide = preserveIndex ? Math.min(currentSlide, slides.length - 1) : 0;
 
       slides.forEach((slide, i) => {
         const mood = slide.bg_type ? slide.bg_type.replace('gradient-', '') : 'blue';
@@ -1450,7 +1505,8 @@
           <div class="ig-slide-content">
             <div class="ig-slide-main">
               <div class="ig-slide-title">${formatTitle(slide.title)}</div>
-              ${i === 0 || !slide.body_text ? '' : `<div class="ig-slide-body">${slide.body_text}</div>`}
+              ${i === 0 || !slide.body_text ? '' : `<div class="ig-slide-body">${escapeHtml(slide.body_text).replace(/\n/g, '<br>')}</div>`}
+              ${i === 0 || !slide.hook ? '' : `<div class="ig-slide-hook">${escapeHtml(slide.hook)}</div>`}
             </div>
           </div>
         `;
@@ -1465,6 +1521,31 @@
       updateCarousel();
       setupSwipe();
     }
+
+    function renderSlideEditor(slides) {
+      slideEditorList.innerHTML = slides.map((slide, index) => `
+        <div class="slide-editor-card" data-slide-index="${index}">
+          <label for="slide-title-${index}">Slide ${index + 1} title</label>
+          <input id="slide-title-${index}" data-slide-field="title" value="${escapeHtml(slide.title)}" maxlength="100">
+          ${index === 0 ? '<p class="slide-editor-hint">Cover slides are title-only.</p>' : `
+            <label for="slide-body-${index}">${index === slides.length - 1 ? 'Comment question and call to action' : 'Slide text'}</label>
+            <textarea id="slide-body-${index}" data-slide-field="body_text" maxlength="350">${escapeHtml(slide.body_text)}</textarea>
+            ${!slide.isDiscussionSlide ? `<label for="slide-hook-${index}">Suspense hook</label><input id="slide-hook-${index}" data-slide-field="hook" value="${escapeHtml(slide.hook || '')}" maxlength="100" placeholder="Short line teasing the next slide">` : ''}`}
+        </div>
+      `).join('');
+      slideEditorPanel.classList.add('visible');
+    }
+
+    slideEditorList.addEventListener('input', event => {
+      const field = event.target.dataset.slideField;
+      const card = event.target.closest('[data-slide-index]');
+      if (!field || !card) return;
+      const slide = currentScript[Number(card.dataset.slideIndex)];
+      if (!slide) return;
+      slide[field] = event.target.value;
+      renderPhonePreview(currentScript, true);
+      buildRenderGrid(currentScript);
+    });
 
     /* ============================================================
        Carousel navigation
@@ -1487,6 +1568,8 @@
     // Touch/mouse swipe inside phone
     function setupSwipe() {
       const wrap = document.getElementById('ig-track-wrap');
+      if (wrap.dataset.swipeReady === 'true') return;
+      wrap.dataset.swipeReady = 'true';
       let startX = 0;
 
       wrap.addEventListener('mousedown', e => { startX = e.clientX; });
@@ -1531,6 +1614,7 @@
           #render-grid .slide-title { font-size: 2.6rem; font-weight: 900; line-height: 1.12; color: #fff; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 1.05rem; text-shadow: 0 2px 8px rgba(0,0,0,0.6); overflow-wrap: anywhere; }
           #render-grid .slide-title .highlight { color: var(--cyan); }
           #render-grid .slide-body { font-size: 1.35rem; line-height: 1.45; color: rgba(255,255,255,0.88); font-weight: 500; text-shadow: 0 1px 4px rgba(0,0,0,0.5); overflow-wrap: anywhere; }
+          #render-grid .slide-hook { margin-top: 0.8rem; color: var(--cyan); font-size: 1.05rem; line-height: 1.3; font-weight: 800; text-shadow: 0 1px 5px rgba(0,0,0,0.8); }
           #render-grid .slide-card[data-cover="true"] .slide-title { font-size: 3rem; margin-bottom: 0; }
         `;
         document.head.appendChild(style);
@@ -1550,7 +1634,8 @@
           <div class="slide-content">
             <div class="slide-main">
               <div class="slide-title">${formatTitle(slide.title)}</div>
-              ${i === 0 || !slide.body_text ? '' : `<div class="slide-body">${slide.body_text}</div>`}
+              ${i === 0 || !slide.body_text ? '' : `<div class="slide-body">${escapeHtml(slide.body_text).replace(/\n/g, '<br>')}</div>`}
+              ${i === 0 || !slide.hook ? '' : `<div class="slide-hook">${escapeHtml(slide.hook)}</div>`}
             </div>
           </div>
         `;
@@ -1564,6 +1649,7 @@
       renderGrid.querySelectorAll('.slide-card').forEach(card => {
         const title = card.querySelector('.slide-title');
         const body = card.querySelector('.slide-body');
+        const hook = card.querySelector('.slide-hook');
         const main = card.querySelector('.slide-main');
         const content = card.querySelector('.slide-content');
         if (!title || !body || !main || !content) return;
@@ -1577,11 +1663,13 @@
         }
         let bodySize = 21.6;
         body.style.fontSize = `${bodySize}px`;
+        if (hook) hook.style.fontSize = '16.8px';
         const fits = () => main.scrollHeight <= content.clientHeight + 1
           && title.scrollWidth <= title.clientWidth + 1;
         while (bodySize > 14 && !fits()) {
           bodySize -= 0.5;
           body.style.fontSize = `${bodySize}px`;
+          if (hook) hook.style.fontSize = `${Math.max(14, bodySize * 0.78)}px`;
         }
         while (fontSize > 20 && !fits()) {
           fontSize -= 1;
