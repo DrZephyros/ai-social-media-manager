@@ -284,23 +284,24 @@
     @keyframes spin { to { transform: rotate(360deg); } }
 
     /* ================================================================
-       OUTPUT SECTION — two-column layout
+       OUTPUT SECTION — caption first, large carousel below
     ================================================================ */
     #output-section {
       display: none;
       width: 100%;
-      max-width: 1100px;
+      max-width: 980px;
       margin-top: 3rem;
-      gap: 3rem;
-      align-items: flex-start;
-      /* flex row on wide screens */
-      flex-direction: row;
+      gap: 2rem;
+      align-items: center;
+      flex-direction: column;
       justify-content: center;
     }
     #output-section.visible { display: flex; }
 
     /* ---- LEFT: Instagram Phone Mockup ---- */
     .phone-wrapper {
+      order: 2;
+      width: 100%;
       flex-shrink: 0;
       display: flex;
       flex-direction: column;
@@ -318,7 +319,7 @@
 
     /* ====== PHONE SHELL — iPhone 15 Pro style ====== */
     .phone-shell {
-      width: 290px;
+      width: min(440px, calc(100vw - 2rem));
       background: linear-gradient(160deg, #2a2a2a 0%, #1a1a1a 40%, #232323 100%);
       border-radius: 52px;
       padding: 12px;
@@ -563,7 +564,9 @@
       font-weight: 500;
       text-shadow: 0 1px 4px rgba(0,0,0,0.5);
     }
-    .ig-slide-hook { margin-top: 0.6rem; color: var(--cyan); font-size: 0.73rem; line-height: 1.35; font-weight: 800; text-shadow: 0 1px 5px rgba(0,0,0,0.8); }
+    .editable-slide-text { cursor: text; border-radius: 5px; outline: 1px solid transparent; outline-offset: 4px; transition: outline-color 0.15s, background 0.15s; }
+    .editable-slide-text:hover { outline-color: rgba(255,255,255,0.24); }
+    .editable-slide-text:focus { outline-color: rgba(0,229,255,0.72); background: rgba(0,0,0,0.14); }
     .ig-slide[data-cover="true"] .ig-slide-title { font-size: 1.45rem; margin-bottom: 0; }
 
     /* Gradient backgrounds (fallback when no image) */
@@ -685,8 +688,10 @@
 
     /* ---- RIGHT: Caption & Actions Panel ---- */
     .caption-panel {
+      order: 1;
       flex: 1;
-      max-width: 460px;
+      width: min(860px, 100%);
+      max-width: 860px;
       display: flex;
       flex-direction: column;
       gap: 1rem;
@@ -713,7 +718,7 @@
       font-size: 0.9rem;
       line-height: 1.65;
       width: 100%;
-      min-height: 220px;
+      min-height: 150px;
       resize: vertical;
       backdrop-filter: blur(16px);
     }
@@ -750,44 +755,8 @@
     .research-sources-list a { color: var(--text); text-decoration-color: rgba(0,229,255,0.55); text-underline-offset: 3px; }
     .research-sources-note { margin: 0.7rem 0 0; color: var(--muted); font-size: 0.75rem; line-height: 1.45; }
 
-    .slide-editor-panel {
-      display: none;
-      width: min(1100px, calc(100% - 2rem));
-      margin: 1.5rem auto 3rem;
-      border: 1px solid rgba(0,229,255,0.18);
-      border-radius: 18px;
-      background: rgba(13,18,28,0.82);
-      backdrop-filter: blur(16px);
-      overflow: hidden;
-    }
-    .slide-editor-panel.visible { display: block; }
-    .slide-editor-panel summary {
-      padding: 1rem 1.25rem;
-      color: var(--text);
-      cursor: pointer;
-      font-weight: 750;
-      list-style-position: inside;
-    }
-    .slide-editor-hint { margin: 0 1.25rem 1rem; color: var(--muted); font-size: 0.82rem; }
-    .slide-editor-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.85rem; padding: 0 1.25rem 1.25rem; }
-    .slide-editor-card { min-width: 0; padding: 0.9rem; border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; background: rgba(255,255,255,0.035); }
-    .slide-editor-card label { display: block; margin: 0.4rem 0; color: var(--muted); font-size: 0.7rem; font-weight: 750; letter-spacing: 1.2px; text-transform: uppercase; }
-    .slide-editor-card input, .slide-editor-card textarea {
-      box-sizing: border-box;
-      width: 100%;
-      padding: 0.7rem 0.8rem;
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 10px;
-      outline: none;
-      background: rgba(0,0,0,0.25);
-      color: var(--text);
-      font: inherit;
-      font-size: 0.88rem;
-      line-height: 1.45;
-    }
-    .slide-editor-card input:focus, .slide-editor-card textarea:focus { border-color: rgba(0,229,255,0.58); box-shadow: 0 0 0 3px rgba(0,229,255,0.08); }
-    .slide-editor-card textarea { min-height: 112px; resize: vertical; }
-    @media (max-width: 780px) { .slide-editor-list { grid-template-columns: 1fr; } }
+    .caption-panel .panel-title { margin-bottom: -0.5rem; }
+    .phone-screen { min-height: 760px; }
 
     /* Action buttons row */
     .action-row {
@@ -932,7 +901,8 @@
     /* responsive */
     @media (max-width: 780px) {
       #output-section { flex-direction: column; align-items: center; }
-      .caption-panel { max-width: 320px; width: 100%; }
+      .caption-panel { max-width: 100%; width: 100%; }
+      .phone-screen { min-height: 690px; }
     }
   </style>
 </head>
@@ -996,7 +966,7 @@
 
     <!-- LEFT: Phone mockup -->
     <div class="phone-wrapper">
-      <div class="phone-label">Instagram Preview</div>
+      <div class="phone-label">Instagram Preview · Click text to edit</div>
 
       <div class="phone-shell">
         <div class="phone-screen">
@@ -1097,12 +1067,6 @@
     </div>
   </div>
 
-  <details class="slide-editor-panel" id="slide-editor-panel">
-    <summary>✏️ Edit slide text</summary>
-    <p class="slide-editor-hint">Changes update the preview and downloaded slides as you type.</p>
-    <div class="slide-editor-list" id="slide-editor-list"></div>
-  </details>
-
   <!-- Hidden full-res render grid for download -->
   <div id="render-grid"></div>
 
@@ -1145,8 +1109,6 @@
     const btnRegenerate = document.getElementById('btn-regenerate');
     const copiedBadge   = document.getElementById('copied-badge');
     const renderGrid    = document.getElementById('render-grid');
-    const slideEditorPanel = document.getElementById('slide-editor-panel');
-    const slideEditorList = document.getElementById('slide-editor-list');
 
     const bgMap = {
       'gradient-blue':   'bg-gradient-blue',
@@ -1387,8 +1349,6 @@
 
       btnGenerate.disabled = true;
       outputSection.classList.remove('visible');
-      slideEditorPanel.classList.remove('visible');
-      slideEditorList.replaceChildren();
       igTrack.innerHTML = '';
       igDots.innerHTML  = '';
       hashtagChips.innerHTML = '';
@@ -1435,7 +1395,6 @@
 
           renderPhonePreview(currentScript);
           buildRenderGrid(currentScript);
-          renderSlideEditor(currentScript);
 
           if (payload.caption) {
             captionBox.value = payload.caption;
@@ -1478,11 +1437,12 @@
     function formatTitle(title) {
       // Highlight the last word or specific words for visual pop
       const words = escapeHtml(title).split(/\s+/);
-      if (words.length > 1) {
-        const lastWord = words.pop();
-        return `${words.join(' ')} <span class="highlight">${lastWord}</span>`;
-      }
-      return title;
+      const lastWord = words.pop() || '';
+      return `${words.length ? `${words.join(' ')} ` : ''}<span class="highlight">${lastWord}</span>`;
+    }
+
+    function getSlideCopy(slide) {
+      return [slide.body_text, slide.hook].filter(Boolean).join(' ').trim();
     }
 
     function renderPhonePreview(slides, preserveIndex = false) {
@@ -1504,9 +1464,8 @@
           <div class="ig-slide-bg" style="${bgStyle}"></div>
           <div class="ig-slide-content">
             <div class="ig-slide-main">
-              <div class="ig-slide-title">${formatTitle(slide.title)}</div>
-              ${i === 0 || !slide.body_text ? '' : `<div class="ig-slide-body">${escapeHtml(slide.body_text).replace(/\n/g, '<br>')}</div>`}
-              ${i === 0 || !slide.hook ? '' : `<div class="ig-slide-hook">${escapeHtml(slide.hook)}</div>`}
+              <div class="ig-slide-title editable-slide-text" contenteditable="true" role="textbox" aria-label="Slide ${i + 1} title" spellcheck="true" data-slide-index="${i}" data-slide-field="title">${formatTitle(slide.title)}</div>
+              ${i === 0 || !getSlideCopy(slide) ? '' : `<div class="ig-slide-body editable-slide-text" contenteditable="true" role="textbox" aria-label="Slide ${i + 1} text" spellcheck="true" data-slide-index="${i}" data-slide-field="copy">${escapeHtml(getSlideCopy(slide)).replace(/\n/g, '<br>')}</div>`}
             </div>
           </div>
         `;
@@ -1522,30 +1481,26 @@
       setupSwipe();
     }
 
-    function renderSlideEditor(slides) {
-      slideEditorList.innerHTML = slides.map((slide, index) => `
-        <div class="slide-editor-card" data-slide-index="${index}">
-          <label for="slide-title-${index}">Slide ${index + 1} title</label>
-          <input id="slide-title-${index}" data-slide-field="title" value="${escapeHtml(slide.title)}" maxlength="100">
-          ${index === 0 ? '<p class="slide-editor-hint">Cover slides are title-only.</p>' : `
-            <label for="slide-body-${index}">${index === slides.length - 1 ? 'Comment question and call to action' : 'Slide text'}</label>
-            <textarea id="slide-body-${index}" data-slide-field="body_text" maxlength="350">${escapeHtml(slide.body_text)}</textarea>
-            ${!slide.isDiscussionSlide ? `<label for="slide-hook-${index}">Suspense hook</label><input id="slide-hook-${index}" data-slide-field="hook" value="${escapeHtml(slide.hook || '')}" maxlength="100" placeholder="Short line teasing the next slide">` : ''}`}
-        </div>
-      `).join('');
-      slideEditorPanel.classList.add('visible');
-    }
-
-    slideEditorList.addEventListener('input', event => {
+    let renderGridUpdateTimer;
+    igTrack.addEventListener('input', event => {
       const field = event.target.dataset.slideField;
-      const card = event.target.closest('[data-slide-index]');
-      if (!field || !card) return;
-      const slide = currentScript[Number(card.dataset.slideIndex)];
-      if (!slide) return;
-      slide[field] = event.target.value;
+      const slide = currentScript[Number(event.target.dataset.slideIndex)];
+      if (!field || !slide) return;
+      if (field === 'title') slide.title = event.target.textContent.replace(/\s+/g, ' ').trim();
+      if (field === 'copy') {
+        slide.body_text = event.target.innerText.trim();
+        slide.hook = '';
+      }
+      clearTimeout(renderGridUpdateTimer);
+      renderGridUpdateTimer = setTimeout(() => buildRenderGrid(currentScript), 150);
+    });
+
+    igTrack.addEventListener('blur', event => {
+      if (!event.target.matches('.editable-slide-text')) return;
+      clearTimeout(renderGridUpdateTimer);
       renderPhonePreview(currentScript, true);
       buildRenderGrid(currentScript);
-    });
+    }, true);
 
     /* ============================================================
        Carousel navigation
@@ -1614,7 +1569,6 @@
           #render-grid .slide-title { font-size: 2.6rem; font-weight: 900; line-height: 1.12; color: #fff; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 1.05rem; text-shadow: 0 2px 8px rgba(0,0,0,0.6); overflow-wrap: anywhere; }
           #render-grid .slide-title .highlight { color: var(--cyan); }
           #render-grid .slide-body { font-size: 1.35rem; line-height: 1.45; color: rgba(255,255,255,0.88); font-weight: 500; text-shadow: 0 1px 4px rgba(0,0,0,0.5); overflow-wrap: anywhere; }
-          #render-grid .slide-hook { margin-top: 0.8rem; color: var(--cyan); font-size: 1.05rem; line-height: 1.3; font-weight: 800; text-shadow: 0 1px 5px rgba(0,0,0,0.8); }
           #render-grid .slide-card[data-cover="true"] .slide-title { font-size: 3rem; margin-bottom: 0; }
         `;
         document.head.appendChild(style);
@@ -1634,8 +1588,7 @@
           <div class="slide-content">
             <div class="slide-main">
               <div class="slide-title">${formatTitle(slide.title)}</div>
-              ${i === 0 || !slide.body_text ? '' : `<div class="slide-body">${escapeHtml(slide.body_text).replace(/\n/g, '<br>')}</div>`}
-              ${i === 0 || !slide.hook ? '' : `<div class="slide-hook">${escapeHtml(slide.hook)}</div>`}
+              ${i === 0 || !getSlideCopy(slide) ? '' : `<div class="slide-body">${escapeHtml(getSlideCopy(slide)).replace(/\n/g, '<br>')}</div>`}
             </div>
           </div>
         `;
@@ -1649,7 +1602,6 @@
       renderGrid.querySelectorAll('.slide-card').forEach(card => {
         const title = card.querySelector('.slide-title');
         const body = card.querySelector('.slide-body');
-        const hook = card.querySelector('.slide-hook');
         const main = card.querySelector('.slide-main');
         const content = card.querySelector('.slide-content');
         if (!title || !body || !main || !content) return;
@@ -1663,13 +1615,11 @@
         }
         let bodySize = 21.6;
         body.style.fontSize = `${bodySize}px`;
-        if (hook) hook.style.fontSize = '16.8px';
         const fits = () => main.scrollHeight <= content.clientHeight + 1
           && title.scrollWidth <= title.clientWidth + 1;
         while (bodySize > 14 && !fits()) {
           bodySize -= 0.5;
           body.style.fontSize = `${bodySize}px`;
-          if (hook) hook.style.fontSize = `${Math.max(14, bodySize * 0.78)}px`;
         }
         while (fontSize > 20 && !fits()) {
           fontSize -= 1;
