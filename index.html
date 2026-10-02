@@ -288,11 +288,13 @@
     .workspace-tab { flex: 1; min-height: 46px; border: 1px solid transparent; border-radius: 11px; background: transparent; color: var(--muted); font: inherit; font-weight: 750; cursor: pointer; transition: color 0.18s, background 0.18s, border-color 0.18s; }
     .workspace-tab.active { color: #fff; border-color: rgba(0,229,255,0.3); background: rgba(0,229,255,0.1); box-shadow: inset 0 0 16px rgba(0,229,255,0.05); }
     .workspace-tab:disabled { opacity: 0.38; cursor: not-allowed; }
+    .step-number { display: inline-grid; place-items: center; width: 1.4rem; height: 1.4rem; margin-right: 0.35rem; border: 1px solid currentColor; border-radius: 50%; font-size: 0.72rem; }
     .workspace-panel { width: min(980px, calc(100% - 2rem)); margin: 1.25rem auto 3rem; }
     .workspace-panel[hidden] { display: none !important; }
     .workspace-panel.active { display: block; }
     .tab-panel-heading { margin-bottom: 0.35rem; font-size: 1.35rem; font-weight: 850; color: var(--text); }
     .tab-panel-subtitle { margin: 0 0 1.25rem; color: var(--muted); }
+    .source-preview-button { display: block; width: min(520px, 100%); margin: 1.4rem auto 0; }
     #topic-panel #genre-picker { width: min(860px, 100%); margin: 0 auto 1.5rem; }
     #topic-panel #controls { max-width: 860px; margin: 0 auto; }
 
@@ -942,9 +944,9 @@
   </header>
 
   <nav id="workspace-tabs" class="workspace-tabs" role="tablist" aria-label="Carousel workspace">
-    <button id="tab-topic" class="workspace-tab active" role="tab" aria-selected="true" aria-controls="topic-panel" data-panel="topic-panel">① Topic</button>
-    <button id="tab-sources" class="workspace-tab" role="tab" aria-selected="false" aria-controls="sources-panel" data-panel="sources-panel" disabled>② Sources</button>
-    <button id="tab-preview" class="workspace-tab" role="tab" aria-selected="false" aria-controls="preview-panel" data-panel="preview-panel" disabled>③ Preview</button>
+    <button id="tab-topic" class="workspace-tab active" role="tab" aria-selected="true" aria-controls="topic-panel" data-panel="topic-panel"><span class="step-number">1</span> Topic</button>
+    <button id="tab-sources" class="workspace-tab" role="tab" aria-selected="false" aria-controls="sources-panel" data-panel="sources-panel" disabled><span class="step-number">2</span> Review sources</button>
+    <button id="tab-preview" class="workspace-tab" role="tab" aria-selected="false" aria-controls="preview-panel" data-panel="preview-panel" disabled><span class="step-number">3</span> Preview &amp; edit</button>
   </nav>
 
   <section id="topic-panel" class="workspace-panel active" role="tabpanel" aria-labelledby="tab-topic">
@@ -976,13 +978,14 @@
   </section>
 
   <section id="sources-panel" class="workspace-panel" role="tabpanel" aria-labelledby="tab-sources" hidden>
-    <div class="tab-panel-heading">Sources</div>
-    <p class="tab-panel-subtitle">Research links used to build this carousel.</p>
+    <div class="tab-panel-heading">Review your sources</div>
+    <p class="tab-panel-subtitle">These are the links used to write the carousel. Open any report you want to check. When you’re ready, continue to your slides.</p>
     <section class="research-sources" id="research-sources" aria-live="polite" hidden>
       <div class="research-sources-title">Sources checked</div>
       <ol class="research-sources-list" id="research-sources-list"></ol>
       <p class="research-sources-note" id="research-sources-note"></p>
     </section>
+    <button class="btn btn-generate source-preview-button" id="btn-source-preview">Sources look good — preview my slides →</button>
   </section>
 
   <section id="preview-panel" class="workspace-panel" role="tabpanel" aria-labelledby="tab-preview" hidden>
@@ -1133,6 +1136,7 @@
     const btnDownloadTop = document.getElementById('btn-download-top');
     const btnCopyTop = document.getElementById('btn-copy-top');
     const btnRegenerate = document.getElementById('btn-regenerate');
+    const btnSourcePreview = document.getElementById('btn-source-preview');
     const workspaceTabs = document.getElementById('workspace-tabs');
     const workspaceTabButtons = [...workspaceTabs.querySelectorAll('.workspace-tab')];
     const workspacePanels = [...document.querySelectorAll('.workspace-panel')];
@@ -1180,6 +1184,8 @@
       const button = event.target.closest('.workspace-tab');
       if (button && !button.disabled) showWorkspaceTab(button.dataset.panel);
     });
+
+    btnSourcePreview.addEventListener('click', () => showWorkspaceTab('preview-panel'));
 
     function renderResearchSources(sources) {
       researchSourcesList.replaceChildren();
@@ -1477,8 +1483,8 @@
           btnRegenerate.classList.add('visible');
           document.getElementById('tab-sources').disabled = false;
           document.getElementById('tab-preview').disabled = false;
-          showWorkspaceTab('preview-panel');
-          setStatus('✅ Carousel ready! Edit the slides and download them from Preview.');
+          showWorkspaceTab('sources-panel');
+          setStatus('✅ Carousel ready! Review the sources, then open Preview when you’re ready.');
           btnGenerate.disabled = false;
         }
       };
