@@ -247,7 +247,8 @@
     #post-generate-actions.visible { display: flex; }
     #post-generate-actions .action-row { width: 100%; }
     #post-generate-actions .action-btn { min-height: 50px; }
-    .btn-regenerate { background: #fff; color: #000; }
+    .btn-regenerate { display: none; background: #fff; color: #000; }
+    .btn-regenerate.visible { display: block; }
 
     #topic-row { display: flex; flex-direction: column; gap: 0.75rem; }
 
@@ -283,6 +284,18 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    .workspace-tabs { width: min(980px, calc(100% - 2rem)); margin: 1.5rem auto 0; display: flex; gap: 0.65rem; padding: 0.45rem; border: 1px solid var(--border); border-radius: 15px; background: rgba(12,17,26,0.88); backdrop-filter: blur(14px); position: sticky; top: 0.6rem; z-index: 20; }
+    .workspace-tab { flex: 1; min-height: 46px; border: 1px solid transparent; border-radius: 11px; background: transparent; color: var(--muted); font: inherit; font-weight: 750; cursor: pointer; transition: color 0.18s, background 0.18s, border-color 0.18s; }
+    .workspace-tab.active { color: #fff; border-color: rgba(0,229,255,0.3); background: rgba(0,229,255,0.1); box-shadow: inset 0 0 16px rgba(0,229,255,0.05); }
+    .workspace-tab:disabled { opacity: 0.38; cursor: not-allowed; }
+    .workspace-panel { width: min(980px, calc(100% - 2rem)); margin: 1.25rem auto 3rem; }
+    .workspace-panel[hidden] { display: none !important; }
+    .workspace-panel.active { display: block; }
+    .tab-panel-heading { margin-bottom: 0.35rem; font-size: 1.35rem; font-weight: 850; color: var(--text); }
+    .tab-panel-subtitle { margin: 0 0 1.25rem; color: var(--muted); }
+    #topic-panel #genre-picker { width: min(860px, 100%); margin: 0 auto 1.5rem; }
+    #topic-panel #controls { max-width: 860px; margin: 0 auto; }
+
     /* ================================================================
        OUTPUT SECTION — caption first, large carousel below
     ================================================================ */
@@ -290,7 +303,7 @@
       display: none;
       width: 100%;
       max-width: 980px;
-      margin-top: 3rem;
+      margin: 1.5rem auto 3rem;
       gap: 2rem;
       align-items: center;
       flex-direction: column;
@@ -540,26 +553,26 @@
       flex: 1;
       display: flex;
       flex-direction: column;
-      justify-content: flex-end;
+      justify-content: center;
       padding: 1.4rem 1.5rem;
     }
 
     .ig-slide-title {
-      font-size: 1.2rem;
+      font-size: 1.7rem;
       font-weight: 900;
       line-height: 1.18;
       color: #fff;
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      margin-bottom: 0.75rem;
+      margin-bottom: 1rem;
       text-shadow: 0 2px 8px rgba(0,0,0,0.6);
     }
     .ig-slide-title .highlight {
       color: var(--cyan);
     }
     .ig-slide-body {
-      font-size: 0.72rem;
-      line-height: 1.5;
+      font-size: 1.05rem;
+      line-height: 1.45;
       color: rgba(255,255,255,0.88);
       font-weight: 500;
       text-shadow: 0 1px 4px rgba(0,0,0,0.5);
@@ -567,7 +580,7 @@
     .editable-slide-text { cursor: text; border-radius: 5px; outline: 1px solid transparent; outline-offset: 4px; transition: outline-color 0.15s, background 0.15s; }
     .editable-slide-text:hover { outline-color: rgba(255,255,255,0.24); }
     .editable-slide-text:focus { outline-color: rgba(0,229,255,0.72); background: rgba(0,0,0,0.14); }
-    .ig-slide[data-cover="true"] .ig-slide-title { font-size: 1.45rem; margin-bottom: 0; }
+    .ig-slide[data-cover="true"] .ig-slide-title { font-size: 2.25rem; line-height: 1.12; margin-bottom: 0; }
 
     /* Gradient backgrounds (fallback when no image) */
     .bg-gradient-blue   { background: linear-gradient(160deg, #0a0f1e 0%, #0d2137 50%, #0a3d6b 100%); }
@@ -757,6 +770,7 @@
 
     .caption-panel .panel-title { margin-bottom: -0.5rem; }
     .phone-screen { min-height: 760px; }
+    .preview-actions { width: min(860px, 100%); margin: 0 auto 1.25rem; }
 
     /* Action buttons row */
     .action-row {
@@ -927,6 +941,13 @@
     <p>Generate viral Instagram carousels in seconds · Powered by Gemini</p>
   </header>
 
+  <nav id="workspace-tabs" class="workspace-tabs" role="tablist" aria-label="Carousel workspace">
+    <button id="tab-topic" class="workspace-tab active" role="tab" aria-selected="true" aria-controls="topic-panel" data-panel="topic-panel">① Topic</button>
+    <button id="tab-sources" class="workspace-tab" role="tab" aria-selected="false" aria-controls="sources-panel" data-panel="sources-panel" disabled>② Sources</button>
+    <button id="tab-preview" class="workspace-tab" role="tab" aria-selected="false" aria-controls="preview-panel" data-panel="preview-panel" disabled>③ Preview</button>
+  </nav>
+
+  <section id="topic-panel" class="workspace-panel active" role="tabpanel" aria-labelledby="tab-topic">
   <!-- Genre Picker -->
   <div id="genre-picker">
     <h2>Choose your niche 🎯</h2>
@@ -948,21 +969,31 @@
     </div>
     <button class="btn btn-brainstorm" id="btn-brainstorm" disabled>Brainstorm a Topic 🎯</button>
 
-    <div id="post-generate-actions">
+    <button class="btn btn-regenerate" id="btn-regenerate">🔄 Regenerate Slides</button>
+
+    <div id="status"></div>
+  </div>
+  </section>
+
+  <section id="sources-panel" class="workspace-panel" role="tabpanel" aria-labelledby="tab-sources" hidden>
+    <div class="tab-panel-heading">Sources</div>
+    <p class="tab-panel-subtitle">Research links used to build this carousel.</p>
+    <section class="research-sources" id="research-sources" aria-live="polite" hidden>
+      <div class="research-sources-title">Sources checked</div>
+      <ol class="research-sources-list" id="research-sources-list"></ol>
+      <p class="research-sources-note" id="research-sources-note"></p>
+    </section>
+  </section>
+
+  <section id="preview-panel" class="workspace-panel" role="tabpanel" aria-labelledby="tab-preview" hidden>
+    <div id="post-generate-actions" class="preview-actions">
       <div class="action-row">
         <button class="action-btn btn-download" id="btn-download-top">⬇️ Download Slides</button>
         <button class="action-btn btn-copy" id="btn-copy-top">📋 Copy Caption</button>
       </div>
-      <button class="btn btn-regenerate" id="btn-regenerate">🔄 Regenerate Slides</button>
     </div>
-
-    <div id="status"></div>
-  </div>
-
-  <!-- ============================================================
-       OUTPUT: Instagram Preview + Caption Panel
-  ============================================================ -->
-  <div id="output-section">
+    <!-- Instagram preview and editable caption -->
+    <div id="output-section">
 
     <!-- LEFT: Phone mockup -->
     <div class="phone-wrapper">
@@ -1053,12 +1084,6 @@
 
       <textarea id="caption-box" placeholder="Your caption will appear here..."></textarea>
 
-      <section class="research-sources" id="research-sources" aria-live="polite" hidden>
-        <div class="research-sources-title">Sources checked</div>
-        <ol class="research-sources-list" id="research-sources-list"></ol>
-        <p class="research-sources-note" id="research-sources-note"></p>
-      </section>
-
       <div class="hashtag-preview" id="hashtag-chips"></div>
 
       <div class="copied-badge" id="copied-badge">
@@ -1066,6 +1091,7 @@
       </div>
     </div>
   </div>
+  </section>
 
   <!-- Hidden full-res render grid for download -->
   <div id="render-grid"></div>
@@ -1107,6 +1133,9 @@
     const btnDownloadTop = document.getElementById('btn-download-top');
     const btnCopyTop = document.getElementById('btn-copy-top');
     const btnRegenerate = document.getElementById('btn-regenerate');
+    const workspaceTabs = document.getElementById('workspace-tabs');
+    const workspaceTabButtons = [...workspaceTabs.querySelectorAll('.workspace-tab')];
+    const workspacePanels = [...document.querySelectorAll('.workspace-panel')];
     const copiedBadge   = document.getElementById('copied-badge');
     const renderGrid    = document.getElementById('render-grid');
 
@@ -1126,6 +1155,31 @@
     function setStatus(msg, spinner = false) {
       statusEl.innerHTML = spinner ? `<span class="spinner"></span>${msg}` : msg;
     }
+
+    function showWorkspaceTab(panelId, scrollToTabs = true) {
+      const targetButton = workspaceTabButtons.find(button => button.dataset.panel === panelId);
+      const targetPanel = document.getElementById(panelId);
+      if (!targetButton || !targetPanel || targetButton.disabled) return;
+      workspaceTabButtons.forEach(button => {
+        const selected = button === targetButton;
+        button.classList.toggle('active', selected);
+        button.setAttribute('aria-selected', String(selected));
+      });
+      workspacePanels.forEach(panel => {
+        const selected = panel === targetPanel;
+        panel.hidden = !selected;
+        panel.classList.toggle('active', selected);
+      });
+      if (scrollToTabs) {
+        const top = workspaceTabs.getBoundingClientRect().top + window.scrollY - 12;
+        window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+      }
+    }
+
+    workspaceTabs.addEventListener('click', event => {
+      const button = event.target.closest('.workspace-tab');
+      if (button && !button.disabled) showWorkspaceTab(button.dataset.panel);
+    });
 
     function renderResearchSources(sources) {
       researchSourcesList.replaceChildren();
@@ -1348,11 +1402,16 @@
       }
 
       btnGenerate.disabled = true;
+      showWorkspaceTab('topic-panel', false);
+      document.getElementById('tab-sources').disabled = true;
+      document.getElementById('tab-preview').disabled = true;
       outputSection.classList.remove('visible');
       igTrack.innerHTML = '';
       igDots.innerHTML  = '';
       hashtagChips.innerHTML = '';
       captionBox.value  = '';
+      btnRegenerate.classList.remove('visible');
+      postGenerateActions.classList.remove('visible');
       currentSources = [];
       researchSourcesPanel.hidden = true;
       researchSourcesList.replaceChildren();
@@ -1415,7 +1474,11 @@
           outputSection.classList.add('visible');
           controls.classList.add('has-generated');
           postGenerateActions.classList.add('visible');
-          setStatus('✅ Carousel ready! Scroll the preview → then download or copy caption.');
+          btnRegenerate.classList.add('visible');
+          document.getElementById('tab-sources').disabled = false;
+          document.getElementById('tab-preview').disabled = false;
+          showWorkspaceTab('preview-panel');
+          setStatus('✅ Carousel ready! Edit the slides and download them from Preview.');
           btnGenerate.disabled = false;
         }
       };
@@ -1439,6 +1502,43 @@
       const words = escapeHtml(title).split(/\s+/);
       const lastWord = words.pop() || '';
       return `${words.length ? `${words.join(' ')} ` : ''}<span class="highlight">${lastWord}</span>`;
+    }
+
+    function getCaretOffset(element) {
+      const selection = window.getSelection();
+      if (!selection?.rangeCount || !element.contains(selection.anchorNode)) return null;
+      const range = selection.getRangeAt(0).cloneRange();
+      range.selectNodeContents(element);
+      range.setEnd(selection.anchorNode, selection.anchorOffset);
+      return range.toString().length;
+    }
+
+    function setCaretOffset(element, offset) {
+      if (offset === null) return;
+      const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+      let node;
+      let remaining = offset;
+      while ((node = walker.nextNode())) {
+        if (remaining <= node.textContent.length) {
+          const range = document.createRange();
+          range.setStart(node, remaining);
+          range.collapse(true);
+          const selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(range);
+          return;
+        }
+        remaining -= node.textContent.length;
+      }
+      const last = element.lastChild;
+      if (last) {
+        const range = document.createRange();
+        range.selectNodeContents(last);
+        range.collapse(false);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
     }
 
     function getSlideCopy(slide) {
@@ -1486,7 +1586,12 @@
       const field = event.target.dataset.slideField;
       const slide = currentScript[Number(event.target.dataset.slideIndex)];
       if (!field || !slide) return;
-      if (field === 'title') slide.title = event.target.textContent.replace(/\s+/g, ' ').trim();
+      if (field === 'title') {
+        const caretOffset = getCaretOffset(event.target);
+        slide.title = event.target.textContent.replace(/\s+/g, ' ').trim();
+        event.target.innerHTML = formatTitle(slide.title);
+        setCaretOffset(event.target, Math.min(caretOffset ?? slide.title.length, slide.title.length));
+      }
       if (field === 'copy') {
         slide.body_text = event.target.innerText.trim();
         slide.hook = '';
@@ -1647,7 +1752,9 @@
 
     btnRegenerate.addEventListener('click', () => {
       controls.classList.remove('has-generated');
+      btnRegenerate.classList.remove('visible');
       postGenerateActions.classList.remove('visible');
+      showWorkspaceTab('topic-panel');
       btnGenerate.click();
     });
 
