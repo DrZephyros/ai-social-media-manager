@@ -246,9 +246,20 @@
     }
     .btn:active { transform: scale(0.98); }
     .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-    .btn-brainstorm { background: var(--instagram-gradient); color: #fff; box-shadow: 0 7px 24px rgba(214,41,118,.2); }
-    .btn-generate   { background: var(--instagram-gradient); color: #fff; box-shadow: 0 7px 24px rgba(214,41,118,.2); }
-    .btn-brainstorm:hover:not(:disabled), .btn-generate:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 10px 30px rgba(214,41,118,.34); }
+    .btn-brainstorm {
+      border: 1px solid transparent;
+      background: linear-gradient(rgba(14,16,25,.96), rgba(14,16,25,.96)) padding-box, var(--instagram-gradient) border-box;
+      color: #ffc3df;
+      box-shadow: 0 4px 16px rgba(214,41,118,.09);
+    }
+    .btn-generate { background: var(--instagram-gradient); color: #fff; box-shadow: 0 7px 24px rgba(214,41,118,.24); }
+    .btn-brainstorm:hover:not(:disabled) {
+      background: linear-gradient(rgba(214,41,118,.13), rgba(150,47,191,.13)) padding-box, var(--instagram-gradient) border-box;
+      color: #fff;
+      transform: translateY(-1px);
+      box-shadow: 0 8px 25px rgba(214,41,118,.2);
+    }
+    .btn-generate:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 10px 30px rgba(214,41,118,.38); }
 
     #controls.has-generated #btn-brainstorm,
     #controls.has-generated #btn-generate { display: none; }
