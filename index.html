@@ -811,17 +811,38 @@
       .account-status button { min-height: 38px; padding: .55rem .8rem; font-size: .76rem; }
       header { padding-top: 1.15rem; }
     }
-    .account-dialog { width: min(440px, calc(100vw - 2rem)); border: 1px solid rgba(255,255,255,.12); border-radius: 20px; padding: 1.5rem; color: var(--text); background: #101923; box-shadow: 0 24px 100px rgba(0,0,0,.6); }
-    .account-dialog::backdrop { background: rgba(0,0,0,.72); backdrop-filter: blur(8px); }
-    .account-dialog h2 { margin: 0 0 .5rem; font-size: 1.3rem; }
-    .account-dialog p { color: var(--muted); font-size: .85rem; line-height: 1.5; margin: 0 0 1rem; }
-    .account-dialog label { display: block; margin: .8rem 0 .35rem; font-size: .78rem; color: var(--muted); }
-    .account-dialog input { width: 100%; border: 1px solid rgba(255,255,255,.16); border-radius: 10px; padding: .8rem; color: var(--text); background: rgba(255,255,255,.06); font: inherit; }
-    .account-dialog .account-primary { width: 100%; margin-top: 1rem; border: 0; border-radius: 10px; padding: .85rem; color: #001115; background: var(--cyan); font: 700 .9rem Inter,sans-serif; cursor: pointer; }
-    .account-dialog .account-secondary { width: 100%; margin-top: .7rem; border: 0; background: none; color: var(--cyan); font: inherit; cursor: pointer; }
-    .account-dialog .account-close { float: right; border: 0; color: var(--muted); background: none; font-size: 1.3rem; cursor: pointer; }
-    #account-message { min-height: 1.3em; margin-top: .75rem; color: var(--cyan); font-size: .8rem; }
-    #turnstile-container { margin-top: .8rem; }
+    .account-dialog {
+      position: fixed; inset: 0; margin: auto;
+      width: min(460px, calc(100vw - 2rem)); max-height: min(720px, calc(100dvh - 2rem)); overflow-y: auto;
+      border: 1px solid rgba(140,190,210,.2); border-radius: 24px; padding: clamp(1.35rem, 5vw, 2rem);
+      color: var(--text); background: linear-gradient(150deg, #14212b, #0c131b 72%);
+      box-shadow: 0 28px 100px rgba(0,0,0,.7), 0 0 50px rgba(0,229,255,.08);
+      animation: account-dialog-enter .2s ease-out both;
+    }
+    .account-dialog::backdrop { background: rgba(2,6,10,.76); backdrop-filter: blur(10px); animation: account-backdrop-enter .2s ease-out both; }
+    @keyframes account-dialog-enter { from { opacity: 0; transform: translateY(12px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    @keyframes account-backdrop-enter { from { opacity: 0; } to { opacity: 1; } }
+    .account-dialog-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: .7rem; }
+    .account-dialog-eyebrow { margin-bottom: .55rem; color: var(--cyan); font-size: .65rem; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+    .account-dialog h2 { margin: 0; font-size: clamp(1.35rem, 4vw, 1.7rem); line-height: 1.2; letter-spacing: -.035em; }
+    .account-dialog p { margin: 0 0 1.35rem; color: rgba(230,239,245,.66); font-size: .88rem; line-height: 1.6; }
+    .account-dialog label { display: block; margin: 0 0 .45rem; color: rgba(230,239,245,.8); font-size: .78rem; font-weight: 650; }
+    .account-field { margin-top: 1rem; }
+    .account-dialog input { width: 100%; min-height: 50px; border: 1px solid rgba(190,215,230,.16); border-radius: 12px; padding: .85rem .95rem; color: var(--text); background: rgba(255,255,255,.045); font: inherit; transition: border-color .18s, box-shadow .18s, background .18s; }
+    .account-dialog input::placeholder { color: rgba(230,239,245,.36); }
+    .account-dialog input:focus { outline: none; border-color: rgba(0,229,255,.68); background: rgba(0,229,255,.035); box-shadow: 0 0 0 3px rgba(0,229,255,.11); }
+    .account-password-hint { margin-top: .4rem; color: rgba(230,239,245,.42); font-size: .7rem; }
+    .account-dialog .account-primary { width: 100%; min-height: 50px; margin-top: 1.2rem; border: 0; border-radius: 12px; padding: .85rem 1rem; color: #001115; background: linear-gradient(120deg, #55edff, #00d7ed); box-shadow: 0 8px 26px rgba(0,215,237,.17); font: 800 .92rem Inter,sans-serif; cursor: pointer; transition: transform .18s, box-shadow .18s, opacity .18s; }
+    .account-dialog .account-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 10px 32px rgba(0,215,237,.28); }
+    .account-dialog .account-primary:disabled { cursor: wait; opacity: .65; }
+    .account-dialog .account-secondary { display: block; width: 100%; margin-top: 1rem; border: 0; background: none; color: #57eafa; font: 650 .82rem Inter,sans-serif; cursor: pointer; }
+    .account-dialog .account-secondary:hover { color: #fff; }
+    .account-dialog .account-close { display: grid; place-items: center; flex: 0 0 36px; width: 36px; height: 36px; margin: -.35rem -.35rem 0 0; border: 1px solid rgba(255,255,255,.09); border-radius: 50%; color: rgba(230,239,245,.65); background: rgba(255,255,255,.045); font-size: 1.15rem; cursor: pointer; transition: color .18s, background .18s; }
+    .account-dialog .account-close:hover { color: #fff; background: rgba(255,255,255,.12); }
+    #account-message { min-height: 1.2em; margin-top: .8rem; color: #6aeeff; font-size: .78rem; line-height: 1.45; }
+    #account-message:empty { display: none; }
+    #turnstile-container { margin-top: 1rem; }
+    #turnstile-container:empty { display: none; }
 
     /* Action buttons row */
     .action-row {
@@ -994,12 +1015,14 @@
 
   <div class="account-status" id="account-status"><span id="account-status-text">Two free generations each week</span><button type="button" class="account-login" id="account-open">Sign in</button><button type="button" class="account-signup" id="account-signup">Sign up</button></div>
   <dialog class="account-dialog" id="account-dialog">
-    <button class="account-close" type="button" id="account-close" aria-label="Close">×</button>
-    <h2 id="account-title">Create your free account</h2>
+    <div class="account-dialog-head">
+      <div><div class="account-dialog-eyebrow">Free account · 2 generations weekly</div><h2 id="account-title">Create your free account</h2></div>
+      <button class="account-close" type="button" id="account-close" aria-label="Close">×</button>
+    </div>
     <p id="account-description">Verify your email to download carousels and receive two generations per week.</p>
     <form id="account-form">
-      <label for="account-email">Email</label><input id="account-email" type="email" autocomplete="email" required maxlength="254">
-      <label for="account-password">Password</label><input id="account-password" type="password" autocomplete="new-password" required minlength="8" maxlength="128">
+      <div class="account-field"><label for="account-email">Email address</label><input id="account-email" type="email" autocomplete="email" placeholder="you@example.com" required maxlength="254"></div>
+      <div class="account-field"><label for="account-password">Password</label><input id="account-password" type="password" autocomplete="new-password" placeholder="Create a password" required minlength="8" maxlength="128"><div class="account-password-hint">Use at least 8 characters.</div></div>
       <div id="turnstile-container"></div>
       <button class="account-primary" id="account-submit" type="submit">Create account</button>
     </form>
@@ -1272,7 +1295,7 @@
     }
     function renderTurnstile() {
       const container = document.getElementById('turnstile-container');
-      if (!turnstileSiteKey) { container.innerHTML = '<small style="color:var(--muted)">Bot check will appear after Turnstile is configured.</small>'; return; }
+      if (!turnstileSiteKey) { container.replaceChildren(); return; }
       if (!window.turnstile) {
         if (!document.getElementById('turnstile-script')) {
           const script = document.createElement('script');
