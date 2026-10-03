@@ -850,6 +850,11 @@
     .account-dialog input { width: 100%; min-height: 50px; border: 1px solid rgba(190,215,230,.16); border-radius: 12px; padding: .85rem .95rem; color: var(--text); background: rgba(255,255,255,.045); font: inherit; transition: border-color .18s, box-shadow .18s, background .18s; }
     .account-dialog input::placeholder { color: rgba(230,239,245,.36); }
     .account-dialog input:focus { outline: none; border-color: rgba(0,229,255,.68); background: rgba(0,229,255,.035); box-shadow: 0 0 0 3px rgba(0,229,255,.11); }
+    .account-password-control { position: relative; }
+    .account-password-control input { padding-right: 5rem; }
+    .account-password-toggle { position: absolute; top: 50%; right: .55rem; transform: translateY(-50%); border: 0; border-radius: 8px; padding: .4rem .5rem; color: #f17bb1; background: transparent; font: 700 .72rem Inter,sans-serif; cursor: pointer; }
+    .account-password-toggle:hover { color: #fff; background: rgba(214,41,118,.12); }
+    .account-password-toggle:focus-visible { outline: 2px solid #f17bb1; outline-offset: 2px; }
     .account-password-hint { margin-top: .4rem; color: rgba(230,239,245,.42); font-size: .7rem; }
     .account-dialog .account-primary { width: 100%; min-height: 50px; margin-top: 1.2rem; border: 0; border-radius: 12px; padding: .85rem 1rem; color: #fff; background: var(--instagram-gradient); box-shadow: 0 8px 26px rgba(214,41,118,.23); font: 800 .92rem Inter,sans-serif; cursor: pointer; transition: transform .18s, box-shadow .18s, opacity .18s; }
     .account-dialog .account-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 10px 32px rgba(214,41,118,.38); }
@@ -1045,7 +1050,7 @@
     <p id="account-description">Verify your email to download carousels and receive two generations per week.</p>
     <form id="account-form">
       <div class="account-field"><label for="account-email">Email address</label><input id="account-email" type="email" autocomplete="email" placeholder="you@example.com" required maxlength="254"></div>
-      <div class="account-field"><label for="account-password">Password</label><input id="account-password" type="password" autocomplete="new-password" placeholder="Create a password" required minlength="8" maxlength="128"><div class="account-password-hint">Use at least 8 characters.</div></div>
+      <div class="account-field"><label for="account-password">Password</label><div class="account-password-control"><input id="account-password" type="password" autocomplete="new-password" placeholder="Create a password" required minlength="8" maxlength="128"><button class="account-password-toggle" id="account-password-toggle" type="button" aria-controls="account-password" aria-pressed="false">Show</button></div><div class="account-password-hint">Use at least 8 characters.</div></div>
       <div id="turnstile-container"></div>
       <button class="account-primary" id="account-submit" type="submit">Create account</button>
     </form>
@@ -1267,12 +1272,19 @@
     const accountForm = document.getElementById('account-form');
     const accountEmail = document.getElementById('account-email');
     const accountPassword = document.getElementById('account-password');
+    const accountPasswordToggle = document.getElementById('account-password-toggle');
     const accountMessage = document.getElementById('account-message');
     const accountTitle = document.getElementById('account-title');
     const accountDescription = document.getElementById('account-description');
     const accountSubmit = document.getElementById('account-submit');
     const accountToggle = document.getElementById('account-toggle');
     let signingIn = false;
+    accountPasswordToggle.addEventListener('click', () => {
+      const showing = accountPassword.type === 'password';
+      accountPassword.type = showing ? 'text' : 'password';
+      accountPasswordToggle.textContent = showing ? 'Hide' : 'Show';
+      accountPasswordToggle.setAttribute('aria-pressed', String(showing));
+    });
     let pendingDownload = false;
     let turnstileToken = null;
     const firebaseConfig = window.APP_CONFIG?.firebaseConfig || {};
