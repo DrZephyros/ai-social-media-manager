@@ -874,6 +874,7 @@
     .account-dialog .account-primary:disabled { cursor: wait; opacity: .65; }
     .account-dialog .account-secondary { display: block; width: 100%; margin-top: 1rem; border: 0; background: none; color: #f17bb1; font: 650 .82rem Inter,sans-serif; cursor: pointer; }
     .account-dialog .account-secondary:hover { color: #fff; }
+    .account-dialog .account-secondary:disabled { cursor: wait; opacity: .65; }
     .account-dialog .account-close { display: grid; place-items: center; flex: 0 0 36px; width: 36px; height: 36px; margin: -.35rem -.35rem 0 0; border: 1px solid rgba(255,255,255,.09); border-radius: 50%; color: rgba(230,239,245,.65); background: rgba(255,255,255,.045); font-size: 1.15rem; cursor: pointer; transition: color .18s, background .18s; }
     .account-dialog .account-close:hover { color: #fff; background: rgba(255,255,255,.12); }
     #account-message { display: none; min-height: 0; margin-top: 1rem; border: 1px solid rgba(0,229,255,.2); border-radius: 14px; color: #dffaff; background: linear-gradient(120deg, rgba(0,229,255,.08), rgba(150,47,191,.07)); box-shadow: inset 0 1px rgba(255,255,255,.035); font-size: .8rem; line-height: 1.5; }
@@ -1077,6 +1078,7 @@
     </form>
     <button class="account-secondary" type="button" id="account-toggle">Already have an account? Sign in</button>
     <div id="account-message" role="status" aria-live="polite"></div>
+    <button class="account-secondary" type="button" id="account-resend-verification" hidden>Resend verification email</button>
   </dialog>
 
   <nav id="workspace-tabs" class="workspace-tabs" role="tablist" aria-label="Carousel workspace">
@@ -1299,6 +1301,7 @@
     const accountTitle = document.getElementById('account-title');
     const accountDescription = document.getElementById('account-description');
     const accountSubmit = document.getElementById('account-submit');
+    const accountResendVerification = document.getElementById('account-resend-verification');
     const accountToggle = document.getElementById('account-toggle');
     let signingIn = false;
     function setAccountMessage(detail, state = 'info', title = '') {
@@ -1369,6 +1372,8 @@
         ? 'Your carousel is ready. Verify your email to download it; your account includes two generations per week.'
         : (signIn ? 'Sign in with your verified email address.' : 'Verify your email to generate and download carousels with your two free weekly generations.');
       accountSubmit.textContent = signIn ? 'Sign in' : 'Create account';
+      accountSubmit.hidden = false;
+      accountResendVerification.hidden = true;
       accountPasswordHint.hidden = signIn;
       accountToggle.hidden = false;
       accountForm.reset();
@@ -1404,12 +1409,55 @@
       accountTitle.textContent = signingIn ? 'Welcome back' : (pendingDownload ? 'Create an account to download' : 'Create your free account');
       accountDescription.textContent = signingIn ? 'Sign in with your verified email address.' : 'Verify your email to access your free weekly generations.';
       accountSubmit.textContent = signingIn ? 'Sign in' : 'Create account';
+      accountSubmit.hidden = false;
+      accountResendVerification.hidden = true;
       accountPassword.autocomplete = signingIn ? 'current-password' : 'new-password';
       accountPasswordHint.hidden = signingIn;
       accountToggle.textContent = signingIn ? 'New here? Create an account' : 'Already have an account? Sign in';
       setAccountMessage('');
       turnstileToken = null;
       renderTurnstile();
+    });
+    accountResendVerification.addEventListener('click', async () => {
+      const email = accountEmail.value.trim();
+      const password = accountPassword.value;
+      if (!email || !password) {
+        setAccountMessage('Enter the same email and password you used to create this account.', 'error', 'Account details needed');
+        return;
+      }
+      accountResendVerification.disabled = true;
+      accountResendVerification.textContent = 'Sending…';
+      try {
+        const credential = await firebaseAuth.signInWithEmailAndPassword(email, password);
+        await credential.user.reload();
+        if (credential.user.emailVerified) {
+          await firebaseAuth.signOut();
+          signingIn = true;
+          accountTitle.textContent = 'Welcome back';
+          accountDescription.textContent = 'Your email is verified. Sign in to continue.';
+          accountSubmit.textContent = 'Sign in';
+          accountSubmit.hidden = false;
+          accountResendVerification.hidden = true;
+          accountPassword.autocomplete = 'current-password';
+          accountPasswordHint.hidden = true;
+          accountToggle.hidden = false;
+          accountToggle.textContent = 'New here? Create an account';
+          setAccountMessage('Your email is verified. Sign in with your account details to continue.', 'notice', 'Email verified');
+          return;
+        }
+        await credential.user.sendEmailVerification();
+        await firebaseAuth.signOut();
+        setAccountMessage('Firebase accepted another verification request. Check Inbox, Spam, and Promotions.', 'notice', 'Verification email requested');
+      } catch (error) {
+        if (firebaseAuth.currentUser) await firebaseAuth.signOut().catch(() => {});
+        const detail = error.code === 'auth/too-many-requests'
+          ? 'Firebase is temporarily limiting verification requests. Wait a little while before trying again.'
+          : (error.message || 'Could not resend the verification email.');
+        setAccountMessage(detail, 'error', 'Couldn’t resend email');
+      } finally {
+        accountResendVerification.disabled = false;
+        accountResendVerification.textContent = 'Resend verification email';
+      }
     });
     accountForm.addEventListener('submit', async event => {
       event.preventDefault();
@@ -1427,9 +1475,10 @@
         if (signingIn) {
           const credential = await firebaseAuth.signInWithEmailAndPassword(accountEmail.value.trim(), accountPassword.value);
           if (!credential.user.emailVerified) {
-            await credential.user.sendEmailVerification({ url: window.location.origin });
+            await credential.user.sendEmailVerification();
             await firebaseAuth.signOut();
-            setAccountMessage('We sent a fresh verification link. Open it, then come back here and sign in again.', 'notice', 'Check your inbox');
+            accountResendVerification.hidden = false;
+            setAccountMessage('Firebase accepted another verification request. Check Inbox, Spam, and Promotions.', 'notice', 'Verification email requested');
             return;
           }
           setAccountMessage('Signed in successfully.', 'notice', 'You’re signed in');
@@ -1437,9 +1486,11 @@
           if (pendingDownload) downloadSlides(btnDownloadTop);
         } else {
           const credential = await firebaseAuth.createUserWithEmailAndPassword(accountEmail.value.trim(), accountPassword.value);
-          await credential.user.sendEmailVerification({ url: window.location.origin });
+          await credential.user.sendEmailVerification();
           await firebaseAuth.signOut();
-          setAccountMessage('We sent a verification link to your email. Open it to verify your account, then come back here to sign in.', 'notice', 'Check your inbox');
+          setAccountMessage('Firebase accepted the verification email request. Check Inbox, Spam, and Promotions.', 'notice', 'Verification email requested');
+          accountSubmit.hidden = true;
+          accountResendVerification.hidden = false;
           accountToggle.hidden = true;
         }
       } catch (error) {
