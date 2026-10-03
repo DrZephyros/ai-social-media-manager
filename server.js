@@ -33,11 +33,18 @@ if (firebaseServiceAccount?.private_key) {
     firebaseServiceAccount.private_key = firebaseServiceAccount.private_key.replace(/\\n/g, '\n');
 }
 const firebaseProjectId = process.env.FIREBASE_PROJECT_ID?.trim() || firebaseServiceAccount?.project_id;
-const firebaseAdminApp = firebaseProjectId && firebaseServiceAccount?.client_email && firebaseServiceAccount?.private_key
-    ? (getApps()[0] || initializeApp({ credential: cert(firebaseServiceAccount), projectId: firebaseProjectId }))
-    : null;
-const firebaseAuth = firebaseAdminApp ? getAuth(firebaseAdminApp) : null;
-const firestore = firebaseAdminApp ? getFirestore(firebaseAdminApp) : null;
+let firebaseAdminApp = null;
+let firebaseAuth = null;
+let firestore = null;
+try {
+    if (firebaseProjectId && firebaseServiceAccount?.client_email && firebaseServiceAccount?.private_key) {
+        firebaseAdminApp = getApps()[0] || initializeApp({ credential: cert(firebaseServiceAccount), projectId: firebaseProjectId });
+        firebaseAuth = getAuth(firebaseAdminApp);
+        firestore = getFirestore(firebaseAdminApp);
+    }
+} catch (error) {
+    console.error('Firebase Admin initialization failed:', error.message);
+}
 const ipWindows = new Map();
 const IP_WINDOW_MS = 60 * 60 * 1000;
 const IP_MAX_GENERATIONS = 5;
