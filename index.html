@@ -191,7 +191,7 @@
       font-weight: 600;
       cursor: pointer;
     }
-    .genre-option:hover, .genre-option[aria-selected="true"] { background: rgba(0,229,255,0.1); color: var(--cyan); }
+    .genre-option:hover, .genre-option[aria-selected="true"] { background: linear-gradient(110deg, rgba(250,126,30,.12), rgba(214,41,118,.16), rgba(79,91,213,.12)); color: #ff9ac4; }
     .genre-option.hidden { display: none; }
     #custom-genre-row {
       margin-top: 0.75rem;
@@ -246,8 +246,9 @@
     }
     .btn:active { transform: scale(0.98); }
     .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-    .btn-brainstorm { background: linear-gradient(135deg, #00b4db, var(--cyan)); color: #000; }
-    .btn-generate   { background: #ffffff; color: #000; }
+    .btn-brainstorm { background: var(--instagram-gradient); color: #fff; box-shadow: 0 7px 24px rgba(214,41,118,.2); }
+    .btn-generate   { background: var(--instagram-gradient); color: #fff; box-shadow: 0 7px 24px rgba(214,41,118,.2); }
+    .btn-brainstorm:hover:not(:disabled), .btn-generate:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 10px 30px rgba(214,41,118,.34); }
 
     #controls.has-generated #btn-brainstorm,
     #controls.has-generated #btn-generate { display: none; }
@@ -256,7 +257,8 @@
     #post-generate-actions.visible { display: flex; }
     #post-generate-actions .action-row { width: 100%; }
     #post-generate-actions .action-btn { min-height: 50px; }
-    .btn-regenerate { display: none; background: #fff; color: #000; }
+    .btn-regenerate { display: none; background: var(--instagram-gradient); color: #fff; box-shadow: 0 7px 24px rgba(214,41,118,.2); }
+    .btn-regenerate:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 10px 30px rgba(214,41,118,.34); }
     .btn-regenerate.visible { display: block; }
 
     #topic-row { display: flex; flex-direction: column; gap: 0.75rem; }
@@ -296,7 +298,7 @@
     .workspace-tabs { width: min(1120px, calc(100% - 2rem)); margin: 1.5rem auto 0; display: flex; align-items: center; justify-content: space-evenly; padding: 0.7rem 1.5rem; border: 1px solid rgba(255,255,255,0.09); border-radius: 18px; background: rgba(12,17,26,0.88); backdrop-filter: blur(14px); position: sticky; top: 0.6rem; z-index: 20; box-shadow: 0 12px 40px rgba(0,0,0,0.22); }
     .workspace-tab { --tab-accent: #00e5ff; --tab-glow: rgba(0,229,255,0.18); min-height: 62px; display: flex; align-items: center; justify-content: center; padding: 0 2.8rem; border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; background: rgba(255,255,255,0.025); color: rgba(220,228,238,0.78); font: inherit; font-size: 1.12rem; font-weight: 780; cursor: pointer; transition: color 0.2s, background 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.2s; }
     .workspace-tab[data-step="topic"] { --tab-accent: #ffd84d; --tab-glow: rgba(255,216,77,0.2); }
-    .workspace-tab[data-step="sources"] { --tab-accent: #4d8dff; --tab-glow: rgba(77,141,255,0.2); }
+    .workspace-tab[data-step="sources"] { --tab-accent: #d62976; --tab-glow: rgba(214,41,118,0.24); }
     .workspace-tab[data-step="preview"] { --tab-accent: #ff55b8; --tab-glow: rgba(255,85,184,0.2); }
     .workspace-tab:hover:not(:disabled) { color: #fff; border-color: color-mix(in srgb, var(--tab-accent) 35%, transparent); background: color-mix(in srgb, var(--tab-accent) 7%, transparent); box-shadow: 0 0 20px var(--tab-glow), inset 0 0 14px color-mix(in srgb, var(--tab-accent) 5%, transparent); }
     .workspace-tab.active { color: #fff; border-color: color-mix(in srgb, var(--tab-accent) 65%, transparent); background: color-mix(in srgb, var(--tab-accent) 13%, transparent); box-shadow: 0 0 23px var(--tab-glow), inset 0 0 18px color-mix(in srgb, var(--tab-accent) 8%, transparent); }
@@ -841,7 +843,7 @@
     .account-dialog .account-primary { width: 100%; min-height: 50px; margin-top: 1.2rem; border: 0; border-radius: 12px; padding: .85rem 1rem; color: #fff; background: var(--instagram-gradient); box-shadow: 0 8px 26px rgba(214,41,118,.23); font: 800 .92rem Inter,sans-serif; cursor: pointer; transition: transform .18s, box-shadow .18s, opacity .18s; }
     .account-dialog .account-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 10px 32px rgba(214,41,118,.38); }
     .account-dialog .account-primary:disabled { cursor: wait; opacity: .65; }
-    .account-dialog .account-secondary { display: block; width: 100%; margin-top: 1rem; border: 0; background: none; color: #57eafa; font: 650 .82rem Inter,sans-serif; cursor: pointer; }
+    .account-dialog .account-secondary { display: block; width: 100%; margin-top: 1rem; border: 0; background: none; color: #f17bb1; font: 650 .82rem Inter,sans-serif; cursor: pointer; }
     .account-dialog .account-secondary:hover { color: #fff; }
     .account-dialog .account-close { display: grid; place-items: center; flex: 0 0 36px; width: 36px; height: 36px; margin: -.35rem -.35rem 0 0; border: 1px solid rgba(255,255,255,.09); border-radius: 50%; color: rgba(230,239,245,.65); background: rgba(255,255,255,.045); font-size: 1.15rem; cursor: pointer; transition: color .18s, background .18s; }
     .account-dialog .account-close:hover { color: #fff; background: rgba(255,255,255,.12); }
@@ -876,11 +878,11 @@
     .action-btn:active { transform: scale(0.97); }
 
     .btn-copy {
-      background: rgba(0,229,255,0.12);
-      color: var(--cyan);
-      border: 1px solid rgba(0,229,255,0.25);
+      background: linear-gradient(115deg, rgba(250,126,30,.18), rgba(214,41,118,.2) 56%, rgba(79,91,213,.18));
+      color: #fff;
+      border: 1px solid rgba(214,41,118,.38);
     }
-    .btn-copy:hover { background: rgba(0,229,255,0.2); }
+    .btn-copy:hover { background: linear-gradient(115deg, rgba(250,126,30,.28), rgba(214,41,118,.32) 56%, rgba(79,91,213,.27)); }
 
     .btn-download {
       background: rgba(255,255,255,0.08);
