@@ -106,7 +106,7 @@
     }
 
     /* ---- Header ---- */
-    header { text-align: center; margin-bottom: 3rem; }
+    header { text-align: center; margin-bottom: 3rem; padding-top: .65rem; }
     header h1 {
       font-size: 3rem; font-weight: 900; letter-spacing: -1px;
       background: linear-gradient(135deg, #fff 30%, var(--cyan));
@@ -799,8 +799,18 @@
     .phone-screen { min-height: 760px; }
     .preview-actions { width: min(860px, 100%); margin: 0 auto 1.25rem; }
 
-    .account-status { margin: 0 auto 1.25rem; width: min(860px, 100%); display: flex; justify-content: flex-end; align-items: center; gap: .6rem; color: var(--muted); font-size: .78rem; }
-    .account-status button { background: none; border: 0; color: var(--cyan); cursor: pointer; font: inherit; }
+    .account-status { position: absolute; z-index: 30; top: 1.15rem; right: 1.5rem; display: flex; align-items: center; gap: .65rem; color: var(--muted); font-size: .76rem; }
+    .account-status button { min-height: 42px; padding: .65rem 1.05rem; border-radius: 999px; cursor: pointer; font: 750 .85rem Inter,sans-serif; transition: transform .18s, box-shadow .18s, background .18s; }
+    .account-status button:hover { transform: translateY(-2px); }
+    .account-status .account-login { color: var(--text); border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.08); }
+    .account-status .account-signup { color: #001115; border: 1px solid rgba(0,229,255,.8); background: linear-gradient(135deg, #67f1ff, #00cde5); box-shadow: 0 5px 24px rgba(0,229,255,.22); }
+    .account-status .account-signup:hover { box-shadow: 0 7px 30px rgba(0,229,255,.38); }
+    @media (max-width: 560px) {
+      .account-status { top: .7rem; right: .7rem; gap: .4rem; }
+      .account-status span { display: none; }
+      .account-status button { min-height: 38px; padding: .55rem .8rem; font-size: .76rem; }
+      header { padding-top: 1.15rem; }
+    }
     .account-dialog { width: min(440px, calc(100vw - 2rem)); border: 1px solid rgba(255,255,255,.12); border-radius: 20px; padding: 1.5rem; color: var(--text); background: #101923; box-shadow: 0 24px 100px rgba(0,0,0,.6); }
     .account-dialog::backdrop { background: rgba(0,0,0,.72); backdrop-filter: blur(8px); }
     .account-dialog h2 { margin: 0 0 .5rem; font-size: 1.3rem; }
@@ -982,7 +992,7 @@
     <p>Generate viral Instagram carousels in seconds · Powered by Gemini</p>
   </header>
 
-  <div class="account-status" id="account-status"><span id="account-status-text">Two free generations each week</span><button type="button" id="account-open">Sign in</button></div>
+  <div class="account-status" id="account-status"><span id="account-status-text">Two free generations each week</span><button type="button" class="account-login" id="account-open">Sign in</button><button type="button" class="account-signup" id="account-signup">Sign up</button></div>
   <dialog class="account-dialog" id="account-dialog">
     <button class="account-close" type="button" id="account-close" aria-label="Close">×</button>
     <h2 id="account-title">Create your free account</h2>
@@ -1207,6 +1217,7 @@
     const accountDialog = document.getElementById('account-dialog');
     const accountStatusText = document.getElementById('account-status-text');
     const accountOpen = document.getElementById('account-open');
+    const accountSignup = document.getElementById('account-signup');
     const accountForm = document.getElementById('account-form');
     const accountEmail = document.getElementById('account-email');
     const accountPassword = document.getElementById('account-password');
@@ -1228,9 +1239,15 @@
       if (session?.user) {
         accountStatusText.textContent = session.user.email || 'Signed in';
         accountOpen.textContent = 'Sign out';
+        accountOpen.classList.remove('account-login');
+        accountOpen.classList.add('account-signup');
+        accountSignup.hidden = true;
       } else {
         accountStatusText.textContent = 'Two free generations each week';
         accountOpen.textContent = 'Sign in';
+        accountOpen.classList.add('account-login');
+        accountOpen.classList.remove('account-signup');
+        accountSignup.hidden = false;
       }
     }
     async function getAuthHeaders() {
@@ -1239,13 +1256,14 @@
       return { Authorization: `Bearer ${token}` };
     }
     if (firebaseAuth) firebaseAuth.onAuthStateChanged(user => updateAccountStatus(user ? { user } : null));
-    function openAccountDialog({ download = false } = {}) {
+    function openAccountDialog({ download = false, signIn = false } = {}) {
       pendingDownload = download;
-      signingIn = false;
-      accountTitle.textContent = download ? 'Create an account to download' : 'Create your free account';
+      signingIn = signIn;
+      accountTitle.textContent = signIn ? 'Welcome back' : (download ? 'Create an account to download' : 'Create your free account');
       accountDescription.textContent = download
         ? 'Your carousel is ready. Verify your email to download it; your account includes two generations per week.'
-        : 'Verify your email to generate and download carousels with your two free weekly generations.';
+        : (signIn ? 'Sign in with your verified email address.' : 'Verify your email to generate and download carousels with your two free weekly generations.');
+      accountSubmit.textContent = signIn ? 'Sign in' : 'Create account';
       accountToggle.hidden = false;
       accountForm.reset();
       accountMessage.textContent = '';
@@ -1271,8 +1289,9 @@
         await firebaseAuth.signOut();
         return;
       }
-      openAccountDialog();
+      openAccountDialog({ signIn: true });
     });
+    accountSignup.addEventListener('click', () => openAccountDialog());
     document.getElementById('account-close').addEventListener('click', () => accountDialog.close());
     accountToggle.addEventListener('click', () => {
       signingIn = !signingIn;
