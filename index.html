@@ -868,7 +868,7 @@
     .account-password-toggle { position: absolute; top: 50%; right: .55rem; transform: translateY(-50%); border: 0; border-radius: 8px; padding: .4rem .5rem; color: #f17bb1; background: transparent; font: 700 .72rem Inter,sans-serif; cursor: pointer; }
     .account-password-toggle:hover { color: #fff; background: rgba(214,41,118,.12); }
     .account-password-toggle:focus-visible { outline: 2px solid #f17bb1; outline-offset: 2px; }
-    .account-password-hint { margin-top: .4rem; color: rgba(230,239,245,.42); font-size: .7rem; }
+    .account-password-hint { margin-top: .4rem; color: rgba(230,239,245,.55); font-size: .72rem; }
     .account-dialog .account-primary { width: 100%; min-height: 50px; margin-top: 1.2rem; border: 0; border-radius: 12px; padding: .85rem 1rem; color: #fff; background: var(--instagram-gradient); box-shadow: 0 8px 26px rgba(214,41,118,.23); font: 800 .92rem Inter,sans-serif; cursor: pointer; transition: transform .18s, box-shadow .18s, opacity .18s; }
     .account-dialog .account-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 10px 32px rgba(214,41,118,.38); }
     .account-dialog .account-primary:disabled { cursor: wait; opacity: .65; }
@@ -876,8 +876,16 @@
     .account-dialog .account-secondary:hover { color: #fff; }
     .account-dialog .account-close { display: grid; place-items: center; flex: 0 0 36px; width: 36px; height: 36px; margin: -.35rem -.35rem 0 0; border: 1px solid rgba(255,255,255,.09); border-radius: 50%; color: rgba(230,239,245,.65); background: rgba(255,255,255,.045); font-size: 1.15rem; cursor: pointer; transition: color .18s, background .18s; }
     .account-dialog .account-close:hover { color: #fff; background: rgba(255,255,255,.12); }
-    #account-message { min-height: 1.2em; margin-top: .8rem; color: #6aeeff; font-size: .78rem; line-height: 1.45; }
-    #account-message:empty { display: none; }
+    #account-message { display: none; min-height: 0; margin-top: 1rem; border: 1px solid rgba(0,229,255,.2); border-radius: 14px; color: #dffaff; background: linear-gradient(120deg, rgba(0,229,255,.08), rgba(150,47,191,.07)); box-shadow: inset 0 1px rgba(255,255,255,.035); font-size: .8rem; line-height: 1.5; }
+    #account-message:not(:empty) { display: grid; grid-template-columns: 2.1rem minmax(0,1fr); align-items: start; gap: .75rem; padding: .9rem 1rem; }
+    #account-message::before { content: '✉'; display: grid; place-items: center; width: 2.1rem; height: 2.1rem; border: 1px solid rgba(0,229,255,.22); border-radius: 11px; color: #bffaff; background: rgba(0,229,255,.1); font-size: 1rem; }
+    #account-message[data-state="error"] { border-color: rgba(255,91,139,.34); color: #ffe6ee; background: linear-gradient(120deg, rgba(255,91,139,.1), rgba(214,41,118,.06)); }
+    #account-message[data-state="error"]::before { content: '!'; border-color: rgba(255,91,139,.3); color: #ffd2df; background: rgba(255,91,139,.13); font-weight: 900; }
+    #account-message[data-state="pending"] { border-color: rgba(255,190,85,.28); background: rgba(255,190,85,.07); }
+    #account-message[data-state="pending"]::before { content: '…'; border-color: rgba(255,190,85,.25); color: #ffe2a5; background: rgba(255,190,85,.1); font-weight: 900; }
+    .account-message-copy { min-width: 0; }
+    .account-message-title { display: block; margin-bottom: .15rem; color: #fff; font-size: .87rem; font-weight: 800; letter-spacing: -.01em; }
+    .account-message-detail { display: block; color: rgba(230,239,245,.76); }
     #turnstile-container { margin-top: 1rem; }
     #turnstile-container:empty { display: none; }
 
@@ -1286,12 +1294,36 @@
     const accountEmail = document.getElementById('account-email');
     const accountPassword = document.getElementById('account-password');
     const accountPasswordToggle = document.getElementById('account-password-toggle');
+    const accountPasswordHint = document.querySelector('.account-password-hint');
     const accountMessage = document.getElementById('account-message');
     const accountTitle = document.getElementById('account-title');
     const accountDescription = document.getElementById('account-description');
     const accountSubmit = document.getElementById('account-submit');
     const accountToggle = document.getElementById('account-toggle');
     let signingIn = false;
+    function setAccountMessage(detail, state = 'info', title = '') {
+      accountMessage.replaceChildren();
+      if (!detail && !title) {
+        delete accountMessage.dataset.state;
+        return;
+      }
+      accountMessage.dataset.state = state;
+      const copy = document.createElement('div');
+      copy.className = 'account-message-copy';
+      if (title) {
+        const heading = document.createElement('strong');
+        heading.className = 'account-message-title';
+        heading.textContent = title;
+        copy.append(heading);
+      }
+      if (detail) {
+        const text = document.createElement('span');
+        text.className = 'account-message-detail';
+        text.textContent = detail;
+        copy.append(text);
+      }
+      accountMessage.append(copy);
+    }
     accountPasswordToggle.addEventListener('click', () => {
       const showing = accountPassword.type === 'password';
       accountPassword.type = showing ? 'text' : 'password';
@@ -1337,9 +1369,10 @@
         ? 'Your carousel is ready. Verify your email to download it; your account includes two generations per week.'
         : (signIn ? 'Sign in with your verified email address.' : 'Verify your email to generate and download carousels with your two free weekly generations.');
       accountSubmit.textContent = signIn ? 'Sign in' : 'Create account';
+      accountPasswordHint.hidden = signIn;
       accountToggle.hidden = false;
       accountForm.reset();
-      accountMessage.textContent = '';
+      setAccountMessage('');
       accountDialog.showModal();
       renderTurnstile();
     }
@@ -1372,17 +1405,18 @@
       accountDescription.textContent = signingIn ? 'Sign in with your verified email address.' : 'Verify your email to access your free weekly generations.';
       accountSubmit.textContent = signingIn ? 'Sign in' : 'Create account';
       accountPassword.autocomplete = signingIn ? 'current-password' : 'new-password';
+      accountPasswordHint.hidden = signingIn;
       accountToggle.textContent = signingIn ? 'New here? Create an account' : 'Already have an account? Sign in';
-      accountMessage.textContent = '';
+      setAccountMessage('');
       turnstileToken = null;
       renderTurnstile();
     });
     accountForm.addEventListener('submit', async event => {
       event.preventDefault();
-      if (!firebaseAuth) { accountMessage.textContent = 'Firebase account sign-in is not configured yet.'; return; }
-      if (turnstileSiteKey && !turnstileToken) { accountMessage.textContent = 'Complete the bot check first.'; return; }
+      if (!firebaseAuth) { setAccountMessage('Firebase account sign-in is not configured yet.', 'error', 'Sign-in is unavailable'); return; }
+      if (turnstileSiteKey && !turnstileToken) { setAccountMessage('Complete the bot check, then try again.', 'error', 'One quick check'); return; }
       accountSubmit.disabled = true;
-      accountMessage.textContent = signingIn ? 'Signing in…' : 'Creating account…';
+      setAccountMessage(signingIn ? 'Checking your credentials…' : 'Setting up your free account…', 'pending', signingIn ? 'Signing in' : 'Creating account');
       try {
         if (turnstileSiteKey) {
           const check = await fetch('/api/turnstile/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: turnstileToken }) });
@@ -1395,20 +1429,25 @@
           if (!credential.user.emailVerified) {
             await credential.user.sendEmailVerification({ url: window.location.origin });
             await firebaseAuth.signOut();
-            throw new Error('Please verify your email first. We sent you a new verification link.');
+            setAccountMessage('We sent a fresh verification link. Open it, then come back here and sign in again.', 'notice', 'Check your inbox');
+            return;
           }
-          accountMessage.textContent = 'Signed in successfully.';
+          setAccountMessage('Signed in successfully.', 'notice', 'You’re signed in');
           accountDialog.close();
           if (pendingDownload) downloadSlides(btnDownloadTop);
         } else {
           const credential = await firebaseAuth.createUserWithEmailAndPassword(accountEmail.value.trim(), accountPassword.value);
           await credential.user.sendEmailVerification({ url: window.location.origin });
           await firebaseAuth.signOut();
-          accountMessage.textContent = 'Check your email and click the verification link, then sign in to continue.';
+          setAccountMessage('We sent a verification link to your email. Open it to verify your account, then come back here to sign in.', 'notice', 'Check your inbox');
           accountToggle.hidden = true;
         }
       } catch (error) {
-        accountMessage.textContent = error.message || 'Could not complete account action.';
+        if (error.code === 'auth/unauthorized-continue-uri') {
+          setAccountMessage(`Add ${window.location.host} to Firebase Authentication → Settings → Authorized domains, then try again.`, 'error', 'This site needs approval');
+        } else {
+          setAccountMessage(error.message || 'Could not complete account action.', 'error', signingIn ? 'Couldn’t sign in' : 'Couldn’t create account');
+        }
         if (window.turnstile && turnstileSiteKey) window.turnstile.reset();
       } finally {
         accountSubmit.disabled = false;
