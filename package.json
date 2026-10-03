@@ -4,6 +4,9 @@
   "description": "",
   "type": "module",
   "main": "index.js",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -11,11 +14,13 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@google-cloud/firestore": "^9.3.1",
     "@napi-rs/canvas": "^1.0.9",
     "axios": "^1.20.0",
     "cors": "^2.8.6",
     "dotenv": "^18.0.4",
     "express": "^5.2.1",
+    "firebase-admin": "^14.5.0",
     "form-data": "^4.0.6",
     "html2canvas": "^1.4.1",
     "localtunnel": "^2.0.2"

@@ -738,5 +738,13 @@ Output ONLY a JSON object: { "caption": "your multi-line caption here" }`;
 
     const responseText = await generateGeminiContent(systemInstruction, JSON.stringify({ topic, genre, script }), 0.85, { thinkingLevel: 'medium', timeoutMs: 45000, maxRetries: 1 });
     const data = JSON.parse(responseText);
-    return data.caption;
+    const caption = String(data.caption || '').trim();
+    if (/\bcomment down below\b/i.test(caption)) return caption;
+
+    // Keep the requested call to action in the generated website caption itself.
+    const lines = caption.split('\n');
+    const hashtagLineIndex = lines.findIndex(line => /^\s*#[\p{L}\p{N}_]+/u.test(line));
+    const insertionIndex = hashtagLineIndex === -1 ? lines.length : hashtagLineIndex;
+    lines.splice(insertionIndex, 0, 'Comment down below.');
+    return lines.join('\n').replace(/\n{3,}/g, '\n\n');
 }

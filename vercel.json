@@ -12,6 +12,10 @@
   ],
   "rewrites": [
     {
+      "source": "/app-config.js",
+      "destination": "/server.js"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "/server.js"
     },

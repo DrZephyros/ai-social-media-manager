@@ -6,6 +6,9 @@
   <title>AI Insta-Manager — g0wtham.exe</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+  <script src="/app-config.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -796,6 +799,20 @@
     .phone-screen { min-height: 760px; }
     .preview-actions { width: min(860px, 100%); margin: 0 auto 1.25rem; }
 
+    .account-status { margin: 0 auto 1.25rem; width: min(860px, 100%); display: flex; justify-content: flex-end; align-items: center; gap: .6rem; color: var(--muted); font-size: .78rem; }
+    .account-status button { background: none; border: 0; color: var(--cyan); cursor: pointer; font: inherit; }
+    .account-dialog { width: min(440px, calc(100vw - 2rem)); border: 1px solid rgba(255,255,255,.12); border-radius: 20px; padding: 1.5rem; color: var(--text); background: #101923; box-shadow: 0 24px 100px rgba(0,0,0,.6); }
+    .account-dialog::backdrop { background: rgba(0,0,0,.72); backdrop-filter: blur(8px); }
+    .account-dialog h2 { margin: 0 0 .5rem; font-size: 1.3rem; }
+    .account-dialog p { color: var(--muted); font-size: .85rem; line-height: 1.5; margin: 0 0 1rem; }
+    .account-dialog label { display: block; margin: .8rem 0 .35rem; font-size: .78rem; color: var(--muted); }
+    .account-dialog input { width: 100%; border: 1px solid rgba(255,255,255,.16); border-radius: 10px; padding: .8rem; color: var(--text); background: rgba(255,255,255,.06); font: inherit; }
+    .account-dialog .account-primary { width: 100%; margin-top: 1rem; border: 0; border-radius: 10px; padding: .85rem; color: #001115; background: var(--cyan); font: 700 .9rem Inter,sans-serif; cursor: pointer; }
+    .account-dialog .account-secondary { width: 100%; margin-top: .7rem; border: 0; background: none; color: var(--cyan); font: inherit; cursor: pointer; }
+    .account-dialog .account-close { float: right; border: 0; color: var(--muted); background: none; font-size: 1.3rem; cursor: pointer; }
+    #account-message { min-height: 1.3em; margin-top: .75rem; color: var(--cyan); font-size: .8rem; }
+    #turnstile-container { margin-top: .8rem; }
+
     /* Action buttons row */
     .action-row {
       display: flex;
@@ -964,6 +981,21 @@
     <h1>AI Insta-Manager</h1>
     <p>Generate viral Instagram carousels in seconds · Powered by Gemini</p>
   </header>
+
+  <div class="account-status" id="account-status"><span id="account-status-text">Two free generations each week</span><button type="button" id="account-open">Sign in</button></div>
+  <dialog class="account-dialog" id="account-dialog">
+    <button class="account-close" type="button" id="account-close" aria-label="Close">×</button>
+    <h2 id="account-title">Create your free account</h2>
+    <p id="account-description">Verify your email to download carousels and receive two generations per week.</p>
+    <form id="account-form">
+      <label for="account-email">Email</label><input id="account-email" type="email" autocomplete="email" required maxlength="254">
+      <label for="account-password">Password</label><input id="account-password" type="password" autocomplete="new-password" required minlength="8" maxlength="128">
+      <div id="turnstile-container"></div>
+      <button class="account-primary" id="account-submit" type="submit">Create account</button>
+    </form>
+    <button class="account-secondary" type="button" id="account-toggle">Already have an account? Sign in</button>
+    <div id="account-message" role="status" aria-live="polite"></div>
+  </dialog>
 
   <nav id="workspace-tabs" class="workspace-tabs" role="tablist" aria-label="Carousel workspace">
     <button id="tab-topic" class="workspace-tab active" role="tab" aria-selected="true" aria-controls="topic-panel" data-step="topic" data-panel="topic-panel">
@@ -1172,6 +1204,124 @@
     const workspacePanels = [...document.querySelectorAll('.workspace-panel')];
     const copiedBadge   = document.getElementById('copied-badge');
     const renderGrid    = document.getElementById('render-grid');
+    const accountDialog = document.getElementById('account-dialog');
+    const accountStatusText = document.getElementById('account-status-text');
+    const accountOpen = document.getElementById('account-open');
+    const accountForm = document.getElementById('account-form');
+    const accountEmail = document.getElementById('account-email');
+    const accountPassword = document.getElementById('account-password');
+    const accountMessage = document.getElementById('account-message');
+    const accountTitle = document.getElementById('account-title');
+    const accountDescription = document.getElementById('account-description');
+    const accountSubmit = document.getElementById('account-submit');
+    const accountToggle = document.getElementById('account-toggle');
+    let signingIn = false;
+    let pendingDownload = false;
+    let turnstileToken = null;
+    const firebaseConfig = window.APP_CONFIG?.firebaseConfig || {};
+    const turnstileSiteKey = window.APP_CONFIG?.turnstileSiteKey || '';
+    const firebaseReady = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId && window.firebase?.auth);
+    if (firebaseReady && !window.firebase.apps.length) window.firebase.initializeApp(firebaseConfig);
+    const firebaseAuth = firebaseReady ? window.firebase.auth() : null;
+
+    function updateAccountStatus(session) {
+      if (session?.user) {
+        accountStatusText.textContent = session.user.email || 'Signed in';
+        accountOpen.textContent = 'Sign out';
+      } else {
+        accountStatusText.textContent = 'Two free generations each week';
+        accountOpen.textContent = 'Sign in';
+      }
+    }
+    async function getAuthHeaders() {
+      if (!firebaseAuth?.currentUser) return {};
+      const token = await firebaseAuth.currentUser.getIdToken();
+      return { Authorization: `Bearer ${token}` };
+    }
+    if (firebaseAuth) firebaseAuth.onAuthStateChanged(user => updateAccountStatus(user ? { user } : null));
+    function openAccountDialog({ download = false } = {}) {
+      pendingDownload = download;
+      signingIn = false;
+      accountTitle.textContent = download ? 'Create an account to download' : 'Create your free account';
+      accountDescription.textContent = download
+        ? 'Your carousel is ready. Verify your email to download it; your account includes two generations per week.'
+        : 'Verify your email to generate and download carousels with your two free weekly generations.';
+      accountToggle.hidden = false;
+      accountForm.reset();
+      accountMessage.textContent = '';
+      accountDialog.showModal();
+      renderTurnstile();
+    }
+    function renderTurnstile() {
+      const container = document.getElementById('turnstile-container');
+      if (!turnstileSiteKey) { container.innerHTML = '<small style="color:var(--muted)">Bot check will appear after Turnstile is configured.</small>'; return; }
+      if (!window.turnstile) {
+        if (!document.getElementById('turnstile-script')) {
+          const script = document.createElement('script');
+          script.id = 'turnstile-script'; script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'; script.async = true; script.defer = true;
+          script.onload = renderTurnstile; document.head.appendChild(script);
+        }
+        return;
+      }
+      container.replaceChildren();
+      window.turnstile.render(container, { sitekey: turnstileSiteKey, callback: token => { turnstileToken = token; }, 'expired-callback': () => { turnstileToken = null; } });
+    }
+    accountOpen.addEventListener('click', async () => {
+      if (firebaseAuth?.currentUser) {
+        await firebaseAuth.signOut();
+        return;
+      }
+      openAccountDialog();
+    });
+    document.getElementById('account-close').addEventListener('click', () => accountDialog.close());
+    accountToggle.addEventListener('click', () => {
+      signingIn = !signingIn;
+      accountTitle.textContent = signingIn ? 'Welcome back' : (pendingDownload ? 'Create an account to download' : 'Create your free account');
+      accountDescription.textContent = signingIn ? 'Sign in with your verified email address.' : 'Verify your email to access your free weekly generations.';
+      accountSubmit.textContent = signingIn ? 'Sign in' : 'Create account';
+      accountPassword.autocomplete = signingIn ? 'current-password' : 'new-password';
+      accountToggle.textContent = signingIn ? 'New here? Create an account' : 'Already have an account? Sign in';
+      accountMessage.textContent = '';
+      turnstileToken = null;
+      renderTurnstile();
+    });
+    accountForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      if (!firebaseAuth) { accountMessage.textContent = 'Firebase account sign-in is not configured yet.'; return; }
+      if (turnstileSiteKey && !turnstileToken) { accountMessage.textContent = 'Complete the bot check first.'; return; }
+      accountSubmit.disabled = true;
+      accountMessage.textContent = signingIn ? 'Signing in…' : 'Creating account…';
+      try {
+        if (turnstileSiteKey) {
+          const check = await fetch('/api/turnstile/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: turnstileToken }) });
+          const result = await check.json();
+          if (!check.ok) throw new Error(result.error || 'Bot check failed.');
+          turnstileToken = null;
+        }
+        if (signingIn) {
+          const credential = await firebaseAuth.signInWithEmailAndPassword(accountEmail.value.trim(), accountPassword.value);
+          if (!credential.user.emailVerified) {
+            await credential.user.sendEmailVerification({ url: window.location.origin });
+            await firebaseAuth.signOut();
+            throw new Error('Please verify your email first. We sent you a new verification link.');
+          }
+          accountMessage.textContent = 'Signed in successfully.';
+          accountDialog.close();
+          if (pendingDownload) downloadSlides(btnDownloadTop);
+        } else {
+          const credential = await firebaseAuth.createUserWithEmailAndPassword(accountEmail.value.trim(), accountPassword.value);
+          await credential.user.sendEmailVerification({ url: window.location.origin });
+          await firebaseAuth.signOut();
+          accountMessage.textContent = 'Check your email and click the verification link, then sign in to continue.';
+          accountToggle.hidden = true;
+        }
+      } catch (error) {
+        accountMessage.textContent = error.message || 'Could not complete account action.';
+        if (window.turnstile && turnstileSiteKey) window.turnstile.reset();
+      } finally {
+        accountSubmit.disabled = false;
+      }
+    });
 
     const bgMap = {
       'gradient-blue':   'bg-gradient-blue',
@@ -1434,7 +1584,7 @@
       try {
         const res  = await fetch('/api/brainstorm', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...await getAuthHeaders() },
           body: JSON.stringify({ genre })
         });
         const data = await res.json();
@@ -1484,7 +1634,27 @@
       researchSourcesNote.textContent = '';
       setStatus('Searching free web sources, then writing your story...', true);
 
-      const evtSource = new EventSource(`/api/generate-stream?topic=${encodeURIComponent(topic)}&genre=${encodeURIComponent(genre || '')}`);
+      let evtSource;
+      getAuthHeaders().then(headers => {
+        if (!headers.Authorization) {
+          btnGenerate.disabled = false;
+          openAccountDialog();
+          setStatus('Create an account and verify your email before generating.');
+          return;
+        }
+        fetch('/api/generation-ticket', { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify({ topic, genre }) })
+          .then(async ticketResponse => {
+            const ticketData = await ticketResponse.json();
+            if (!ticketResponse.ok) throw new Error(ticketData.error || 'Could not start generation.');
+            evtSource = new EventSource(`/api/generate-stream?ticket=${encodeURIComponent(ticketData.ticket)}`);
+            attachGenerationStream(evtSource);
+          }).catch(error => {
+          setStatus(`❌ ${error.message}`);
+          btnGenerate.disabled = false;
+        });
+      });
+
+      function attachGenerationStream(evtSource) {
 
       evtSource.onmessage = async (e) => {
         const payload = JSON.parse(e.data);
@@ -1553,6 +1723,7 @@
         evtSource.close();
         btnGenerate.disabled = false;
       };
+      }
     });
 
     /* ============================================================
@@ -1849,6 +2020,18 @@
     }
 
     async function downloadSlides(button) {
+      const authHeaders = await getAuthHeaders();
+      if (!authHeaders.Authorization) {
+        openAccountDialog({ download: true });
+        return;
+      }
+      const authorized = await fetch('/api/download-authorize', { method: 'POST', headers: authHeaders });
+      if (!authorized.ok) {
+        const result = await authorized.json().catch(() => ({}));
+        if (authorized.status === 401) openAccountDialog({ download: true });
+        else alert(result.error || 'Please verify your email and sign in to download.');
+        return;
+      }
       // Read the live contenteditable DOM before any awaits. This also catches
       // the final keystroke when the debounced render has not run yet.
       syncPreviewEdits();
