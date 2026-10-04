@@ -827,6 +827,26 @@
     .app-toast[hidden] { display: none; }
     .app-toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
     .app-toast-icon { display: grid; width: 1.6rem; height: 1.6rem; flex: 0 0 auto; place-items: center; border-radius: 50%; color: #071713; background: linear-gradient(135deg, #8df7c6, #00e5ff); font-size: 1rem; }
+    .app-loading { position: fixed; z-index: 3000; inset: 0; display: grid; overflow: hidden; place-items: center; padding: 2rem; background: radial-gradient(ellipse at 50% 45%, #171126 0%, #0b1018 44%, #06090e 100%); opacity: 1; visibility: visible; transition: opacity .42s ease, visibility .42s ease; }
+    .app-loading[hidden] { display: none; }
+    .app-loading::before, .app-loading::after { position: absolute; border: 1px solid rgba(255,255,255,.055); border-radius: 50%; content: ''; pointer-events: none; }
+    .app-loading::before { width: min(76vw, 620px); aspect-ratio: 1; box-shadow: 0 0 100px rgba(214,41,118,.08), inset 0 0 80px rgba(79,91,213,.06); }
+    .app-loading::after { width: min(54vw, 420px); aspect-ratio: 1; border-color: rgba(0,229,255,.1); }
+    .app-loading.is-leaving { opacity: 0; visibility: hidden; pointer-events: none; }
+    .app-loading-content { position: relative; z-index: 1; display: grid; justify-items: center; text-align: center; }
+    .app-loading-orbit { display: grid; width: 106px; aspect-ratio: 1; margin-bottom: 1.65rem; place-items: center; border-radius: 32px; background: conic-gradient(from 0deg, #feda75, #fa7e1e, #d62976, #962fbf, #4f5bd5, #00e5ff, #feda75); animation: app-loading-spin 3s linear infinite; box-shadow: 0 0 48px rgba(214,41,118,.26); }
+    .app-loading-camera { display: grid; width: 94px; aspect-ratio: 1; place-items: center; border: 1px solid rgba(255,255,255,.14); border-radius: 28px; color: #fff; background: #11121b; box-shadow: inset 0 0 25px rgba(255,255,255,.04); }
+    .app-loading-camera svg { width: 43px; height: 43px; filter: drop-shadow(0 0 14px rgba(250,126,30,.55)); }
+    .app-loading-title { margin: 0; color: #fff; font-size: clamp(1.5rem, 5vw, 2rem); font-weight: 900; letter-spacing: -.045em; }
+    .app-loading-title span { color: transparent; background: var(--instagram-gradient); background-clip: text; -webkit-background-clip: text; }
+    .app-loading-caption { margin: .65rem 0 1.15rem; color: rgba(255,255,255,.62); font-size: .92rem; }
+    .app-loading-dots { display: flex; gap: .38rem; }
+    .app-loading-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--instagram-gradient); animation: app-loading-bounce .9s ease-in-out infinite alternate; }
+    .app-loading-dots i:nth-child(2) { animation-delay: .16s; }
+    .app-loading-dots i:nth-child(3) { animation-delay: .32s; }
+    @keyframes app-loading-spin { to { transform: rotate(360deg); } }
+    @keyframes app-loading-bounce { to { opacity: .35; transform: translateY(-5px); } }
+    @media (prefers-reduced-motion: reduce) { .app-loading-orbit, .app-loading-dots i { animation: none; } }
     @media (max-width: 560px) {
       .account-status { top: .7rem; right: .7rem; gap: .4rem; }
       .account-status span { display: none; }
@@ -1031,7 +1051,15 @@
     }
   </style>
 </head>
-<body>
+<body aria-busy="true">
+  <div class="app-loading" id="app-loading" role="status" aria-live="polite" aria-label="Loading your workspace">
+    <div class="app-loading-content">
+      <div class="app-loading-orbit" aria-hidden="true"><div class="app-loading-camera"><svg viewBox="0 0 32 32" fill="none"><rect x="4" y="4" width="24" height="24" rx="7" stroke="currentColor" stroke-width="2.2"/><circle cx="16" cy="16" r="5.2" stroke="currentColor" stroke-width="2.2"/><circle cx="23.4" cy="8.8" r="1.5" fill="currentColor"/></svg></div></div>
+      <p class="app-loading-title">AI <span>Insta-Manager</span></p>
+      <p class="app-loading-caption">Getting your workspace ready</p>
+      <div class="app-loading-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+    </div>
+  </div>
   <div class="bg-animation">
     <div class="blob blob1"></div>
     <div class="blob blob2"></div>
@@ -1364,7 +1392,7 @@
       if (!authSession?.access_token) { updateAccountStatus(null); return; }
       const response = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${authSession.access_token}` } });
       if (!response.ok && !await refreshAuthSession()) { updateAccountStatus(null); return; }
-      updateAccountStatus(authSession ? { user: authSession.user } : null);
+      return updateAccountStatus(authSession ? { user: authSession.user } : null);
     }
     let quotaSnapshot = null;
     let quotaRequestPending = false;
@@ -1432,7 +1460,7 @@
       if (authSession?.user && !quotaSnapshot && !quotaRequestPending) refreshGenerationQuota();
     }, 30000);
 
-    function updateAccountStatus(session) {
+    function updateAccountStatus(session, loadQuota = true) {
       if (session?.user) {
         accountStatusText.textContent = session.user.email || 'Signed in';
         accountStatusText.hidden = false;
@@ -1442,7 +1470,7 @@
         accountSignup.hidden = true;
         generationQuota.textContent = 'Loading weekly quota…';
         generationQuota.hidden = false;
-        refreshGenerationQuota();
+        if (loadQuota) return refreshGenerationQuota();
       } else {
         accountStatusText.textContent = '';
         accountStatusText.hidden = true;
@@ -1459,7 +1487,21 @@
       if (authSession.expires_at && authSession.expires_at * 1000 < Date.now() + 60000) await refreshAuthSession();
       return authSession?.access_token ? { Authorization: `Bearer ${authSession.access_token}` } : {};
     }
-    validateAuthSession();
+    async function initializeApp() {
+      const appLoading = document.getElementById('app-loading');
+      updateAccountStatus(authSession ? { user: authSession.user } : null, false);
+      const sessionValidation = validateAuthSession();
+      const startupWork = Promise.allSettled([sessionValidation]);
+      const minimumDisplay = new Promise(resolve => window.setTimeout(resolve, 650));
+      const safetyTimeout = new Promise(resolve => window.setTimeout(resolve, 10000));
+      await Promise.race([Promise.all([startupWork, minimumDisplay]), safetyTimeout]);
+      appLoading.classList.add('is-leaving');
+      window.setTimeout(() => {
+        appLoading.hidden = true;
+        document.body.removeAttribute('aria-busy');
+      }, 440);
+    }
+    initializeApp();
     document.addEventListener('visibilitychange', async () => {
       if (document.visibilityState !== 'visible' || !authSession?.user) return;
       await validateAuthSession();
