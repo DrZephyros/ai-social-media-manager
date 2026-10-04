@@ -255,12 +255,16 @@ app.post('/api/download-authorize', async (req, res) => {
 });
 
 app.get('/api/generation-quota', async (req, res) => {
-    const auth = await requireAuthenticatedUser(req, res);
-    if (!auth) return;
-    if (!firestore) return res.status(503).json({ error: 'Generation quota is not available right now.' });
+    let stage = 'authentication';
     try {
+        const auth = await requireAuthenticatedUser(req, res);
+        if (!auth) return;
+        stage = 'Firestore configuration';
+        if (!firestore) return res.status(503).json({ error: 'Generation quota is not available right now.' });
+        stage = 'Firestore read';
         const now = Date.now();
         const snapshot = await firestore.collection('generation_quota').doc(auth.user.uid).get();
+        stage = 'quota formatting';
         const recent = (snapshot.data()?.recentGenerations || [])
             .filter(item => item?.createdAt?.toMillis?.() > now - 7 * 24 * 60 * 60 * 1000)
             .sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis());
@@ -272,8 +276,8 @@ app.get('/api/generation-quota', async (req, res) => {
             serverTime: now,
         });
     } catch (error) {
-        console.error('Generation quota lookup failed:', error.message);
-        res.status(503).json({ error: 'Could not load your generation quota.' });
+        console.error(`Generation quota request failed during ${stage}:`, error);
+        if (!res.headersSent) res.status(500).json({ error: `Quota request failed during ${stage} (${error.code || 'internal-error'}).` });
     }
 });
 
