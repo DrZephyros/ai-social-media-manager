@@ -117,7 +117,7 @@ function wait(ms) {
 async function generateGeminiContent(systemInstruction, userContent, temperature = 0.7, options = {}) {
     const apiKeys = getGeminiApiKeys();
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
-    const { thinkingLevel = 'high', timeoutMs = 45000, maxRetries = 3 } = options;
+    const { thinkingLevel = 'high', timeoutMs = 45000, maxRetries = 3, responseSchema } = options;
     let apiKeyIndex = 0;
     for (let retry = 0; ; retry++) {
         let response;
@@ -130,6 +130,7 @@ async function generateGeminiContent(systemInstruction, userContent, temperature
                     contents: [{ role: 'user', parts: [{ text: userContent }] }],
                     generationConfig: {
                         responseMimeType: 'application/json',
+                        ...(responseSchema ? { responseSchema } : {}),
                         temperature,
                         thinkingConfig: { thinkingLevel },
                     },
@@ -563,13 +564,46 @@ HARD LAYOUT LIMITS:
         thinkingLevel: 'low',
         timeoutMs: 45000,
         maxRetries: 0,
+        responseSchema: {
+            type: 'object',
+            properties: {
+                slides: {
+                    type: 'array',
+                    minItems: 5,
+                    maxItems: 7,
+                    items: {
+                        type: 'object',
+                        properties: {
+                            slide_number: { type: 'integer' },
+                            title: { type: 'string' },
+                            body_text: { type: 'string' },
+                            hook: { type: 'string' },
+                            bg_type: { type: 'string' },
+                            image_query: { type: 'string' },
+                        },
+                        required: ['slide_number', 'title', 'body_text', 'hook', 'bg_type', 'image_query'],
+                    },
+                },
+            },
+            required: ['slides'],
+        },
     });
-    const revised = JSON.parse(response);
-    if (!Array.isArray(revised.slides) || revised.slides.length < 5 || revised.slides.length > 7) {
-        throw new Error('The script editor returned an invalid narrative slide count. Please regenerate the slides.');
+    try {
+        const revised = JSON.parse(response);
+        if (!Array.isArray(revised.slides) || revised.slides.length < 5 || revised.slides.length > 7
+            || revised.slides.some(slide => !slide || typeof slide !== 'object'
+                || typeof slide.title !== 'string' || typeof slide.body_text !== 'string'
+                || typeof slide.hook !== 'string' || typeof slide.bg_type !== 'string'
+                || typeof slide.image_query !== 'string')) {
+            console.warn('Script editor returned malformed slides; keeping the original Gemini draft.');
+            return slides;
+        }
+        revised.slides.forEach((slide, index) => { slide.slide_number = index + 1; });
+        return revised.slides;
+    } catch (error) {
+        console.warn(`Could not apply script editor output; keeping the original Gemini draft: ${error.message}`);
+        return slides;
     }
-    revised.slides.forEach((slide, index) => { slide.slide_number = index + 1; });
-    return revised.slides;
 }
 
 export async function generateScript(topic, genre = null) {
