@@ -621,6 +621,16 @@
       font-weight: 500;
       text-shadow: 0 1px 4px rgba(0,0,0,0.5);
     }
+    .ig-slide-hook {
+      margin-top: 0.8rem;
+      padding-left: 0.75rem;
+      border-left: 3px solid var(--cyan);
+      color: #7af1ff;
+      font-size: 1rem;
+      font-weight: 750;
+      line-height: 1.35;
+      text-shadow: 0 1px 5px rgba(0,0,0,0.65);
+    }
     .editable-slide-text { cursor: text; border-radius: 5px; outline: 1px solid transparent; outline-offset: 4px; transition: outline-color 0.15s, background 0.15s; }
     .editable-slide-text:hover { outline-color: rgba(255,255,255,0.24); }
     .editable-slide-text:focus { outline-color: rgba(0,229,255,0.72); background: rgba(0,0,0,0.14); }
@@ -2062,8 +2072,8 @@
       }
     }
 
-    function getSlideCopy(slide) {
-      return [slide.body_text, slide.hook].filter(Boolean).join(' ').trim();
+    function getSlideBody(slide) {
+      return String(slide.body_text || '').trim();
     }
 
     function renderPhonePreview(slides, preserveIndex = false) {
@@ -2086,7 +2096,8 @@
           <div class="ig-slide-content">
             <div class="ig-slide-main">
               <div class="ig-slide-title editable-slide-text" contenteditable="true" role="textbox" aria-label="Slide ${i + 1} title" spellcheck="true" data-slide-index="${i}" data-slide-field="title">${formatTitle(slide.title)}</div>
-              ${i === 0 || !getSlideCopy(slide) ? '' : `<div class="ig-slide-body editable-slide-text" contenteditable="true" role="textbox" aria-label="Slide ${i + 1} text" spellcheck="true" data-slide-index="${i}" data-slide-field="copy">${escapeHtml(getSlideCopy(slide)).replace(/\n/g, '<br>')}</div>`}
+              ${i === 0 || !getSlideBody(slide) ? '' : `<div class="ig-slide-body editable-slide-text" contenteditable="true" role="textbox" aria-label="Slide ${i + 1} body text" spellcheck="true" data-slide-index="${i}" data-slide-field="copy">${escapeHtml(getSlideBody(slide)).replace(/\n/g, '<br>')}</div>`}
+              ${i === 0 || !slide.hook ? '' : `<div class="ig-slide-hook editable-slide-text" contenteditable="true" role="textbox" aria-label="Slide ${i + 1} suspense line" spellcheck="true" data-slide-index="${i}" data-slide-field="hook">${escapeHtml(slide.hook).replace(/\n/g, '<br>')}</div>`}
             </div>
           </div>
         `;
@@ -2115,7 +2126,9 @@
       }
       if (field === 'copy') {
         slide.body_text = event.target.innerText.trim();
-        slide.hook = '';
+      }
+      if (field === 'hook') {
+        slide.hook = event.target.innerText.trim();
       }
       clearTimeout(renderGridUpdateTimer);
       renderGridUpdateTimer = setTimeout(() => buildRenderGrid(currentScript), 150);
@@ -2195,6 +2208,7 @@
           #render-grid .slide-title { font-size: 2.6rem; font-weight: 900; line-height: 1.12; color: #fff; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 1.05rem; text-shadow: 0 2px 8px rgba(0,0,0,0.6); overflow-wrap: break-word; }
           #render-grid .slide-title .highlight { color: var(--cyan); }
           #render-grid .slide-body { font-size: 1.35rem; line-height: 1.45; color: rgba(255,255,255,0.88); font-weight: 500; text-shadow: 0 1px 4px rgba(0,0,0,0.5); overflow-wrap: break-word; }
+          #render-grid .slide-hook { margin-top: 1rem; padding-left: 0.8rem; border-left: 4px solid var(--cyan); color: #7af1ff; font-size: 1.25rem; font-weight: 750; line-height: 1.35; text-shadow: 0 1px 5px rgba(0,0,0,0.65); overflow-wrap: break-word; }
           #render-grid .slide-card[data-cover="true"] .slide-title { font-size: 3rem; margin-bottom: 0; }
         `;
         document.head.appendChild(style);
@@ -2214,7 +2228,8 @@
           <div class="slide-content">
             <div class="slide-main">
               <div class="slide-title">${formatTitle(slide.title)}</div>
-              ${i === 0 || !getSlideCopy(slide) ? '' : `<div class="slide-body">${escapeHtml(getSlideCopy(slide)).replace(/\n/g, '<br>')}</div>`}
+              ${i === 0 || !getSlideBody(slide) ? '' : `<div class="slide-body">${escapeHtml(getSlideBody(slide)).replace(/\n/g, '<br>')}</div>`}
+              ${i === 0 || !slide.hook ? '' : `<div class="slide-hook">${escapeHtml(slide.hook).replace(/\n/g, '<br>')}</div>`}
             </div>
           </div>
         `;
@@ -2230,7 +2245,7 @@
         const body = card.querySelector('.slide-body');
         const main = card.querySelector('.slide-main');
         const content = card.querySelector('.slide-content');
-        if (!title || !body || !main || !content) return;
+        if (!title || !main || !content) return;
         main.style.transform = '';
         main.style.transformOrigin = 'center center';
         let fontSize = card.dataset.cover === 'true' ? 48 : 42;
@@ -2240,10 +2255,10 @@
           title.style.fontSize = `${fontSize}px`;
         }
         let bodySize = 21.6;
-        body.style.fontSize = `${bodySize}px`;
+        if (body) body.style.fontSize = `${bodySize}px`;
         const fits = () => main.scrollHeight <= content.clientHeight + 1
           && title.scrollWidth <= title.clientWidth + 1;
-        while (bodySize > 14 && !fits()) {
+        while (body && bodySize > 14 && !fits()) {
           bodySize -= 0.5;
           body.style.fontSize = `${bodySize}px`;
         }
@@ -2298,7 +2313,8 @@
           slide.title = field.textContent.replace(/\s+/g, ' ').trim();
         } else if (field.dataset.slideField === 'copy') {
           slide.body_text = field.innerText.trim();
-          slide.hook = '';
+        } else if (field.dataset.slideField === 'hook') {
+          slide.hook = field.innerText.trim();
         }
       });
       buildRenderGrid(currentScript);
