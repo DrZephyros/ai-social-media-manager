@@ -1497,7 +1497,6 @@
         if (!response.ok) throw new Error(result.error || `Quota request failed (${response.status}).`);
         quotaSnapshot = result;
         quotaErrorMessage = '';
-        quotaExpiryRefreshAttempted = false;
         quotaRefresh.title = 'Refresh quota';
         quotaRefresh.setAttribute('aria-label', 'Refresh generation quota');
         renderGenerationQuota();
