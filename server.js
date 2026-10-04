@@ -254,32 +254,54 @@ function readGenerationTicket(value) {
 }
 
 app.get('/api/generate-stream', async (req, res) => {
-    const ticketValue = typeof req.query.ticket === 'string' ? req.query.ticket : '';
-    const ticket = readGenerationTicket(ticketValue);
-    if (!ticket) return res.status(401).json({ error: 'Generation session expired. Please try again.' });
-    const { topic, genre: selectedGenre, userId } = ticket;
-    if (!topic) return res.status(400).end();
-    if (!allowIpGeneration(req)) return res.status(429).json({ error: 'Too many generations from this network. Please try again in an hour.' });
-
-    let reservation;
-    try {
-        reservation = await reserveGeneration(userId);
-    } catch (quotaError) {
-        console.error('Generation quota reservation failed:', quotaError.message);
-        return res.status(503).json({ error: 'Could not check your weekly generation limit. Please try again.' });
-    }
-    if (!reservation?.allowed) {
-        return res.status(429).json({ error: `You have used your 2 free generations this week. Your limit resets ${new Date(reservation.resetsAt).toLocaleString('en', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' })} UTC.` });
-    }
-
     res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
     res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
     res.flushHeaders();
 
     const send = (data) => res.write(`data: ${JSON.stringify(data)}\n\n`);
+    const keepAlive = setInterval(() => {
+        if (!res.writableEnded) res.write(': keep-alive\n\n');
+    }, 15000);
+    keepAlive.unref?.();
+    res.on('close', () => clearInterval(keepAlive));
+    let userId = null;
+    let reservation = null;
 
     try {
+        const ticketValue = typeof req.query.ticket === 'string' ? req.query.ticket : '';
+        const ticket = readGenerationTicket(ticketValue);
+        if (!ticket) {
+            send({ error: 'Generation session expired. Please try again.' });
+            return;
+        }
+
+        const { topic, genre: selectedGenre } = ticket;
+        userId = ticket.userId;
+        if (!topic) {
+            send({ error: 'Enter a topic before generating slides.' });
+            return;
+        }
+
+        try {
+            reservation = await reserveGeneration(userId);
+        } catch (quotaError) {
+            console.error('Generation quota reservation failed:', quotaError.message);
+            send({ error: 'Could not check your weekly generation limit. Please try again.' });
+            return;
+        }
+        if (!reservation?.allowed) {
+            send({ error: `You have used your 2 free generations this week. Your limit resets ${new Date(reservation.resetsAt).toLocaleString('en', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' })} UTC.` });
+            return;
+        }
+        if (!allowIpGeneration(req)) {
+            await releaseGeneration(userId, reservation.reservationId).catch(() => {});
+            reservation = null;
+            send({ error: 'Too many generations from this network. Please try again in an hour.' });
+            return;
+        }
+
         send({ status: '🔎 Searching free web sources for this story...' });
 
         const research = await generateScript(topic, selectedGenre);
@@ -297,9 +319,13 @@ app.get('/api/generate-stream', async (req, res) => {
             sources: research.sources,
         });
     } catch (err) {
-        send({ error: err.message });
-        await releaseGeneration(userId, reservation.reservationId).catch(() => {});
+        console.error('Carousel generation failed:', err);
+        send({ error: err.message || 'Carousel generation failed. Please try again.' });
+        if (userId && reservation?.reservationId) {
+            await releaseGeneration(userId, reservation.reservationId).catch(() => {});
+        }
     } finally {
+        clearInterval(keepAlive);
         res.end();
     }
 });
