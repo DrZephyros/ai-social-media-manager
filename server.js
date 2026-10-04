@@ -288,11 +288,11 @@ app.get('/api/generate-stream', async (req, res) => {
             reservation = await reserveGeneration(userId);
         } catch (quotaError) {
             console.error('Generation quota reservation failed:', quotaError.message);
-            send({ error: 'Could not check your weekly generation limit. Please try again.' });
+            send({ error: 'Could not check your generation limit. Please try again.' });
             return;
         }
         if (!reservation?.allowed) {
-            send({ error: `You have used your 2 free generations this week. Your limit resets ${new Date(reservation.resetsAt).toLocaleString('en', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' })} UTC.` });
+            send({ error: `You have used your 2 free generations for this 3-day period. Your limit resets ${new Date(reservation.resetsAt).toLocaleString('en', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' })} UTC.` });
             return;
         }
         if (!allowIpGeneration(req)) {
@@ -346,7 +346,8 @@ app.get('/api/generation-quota', async (req, res) => {
         if (!supabase) return res.status(503).json({ error: 'Generation quota is not available right now.' });
         stage = 'Supabase read';
         const now = Date.now();
-        const cutoff = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString();
+        const quotaPeriodMs = 3 * 24 * 60 * 60 * 1000;
+        const cutoff = new Date(now - quotaPeriodMs).toISOString();
         const { data, error } = await supabase.from('generation_quota')
             .select('created_at')
             .eq('user_id', auth.user.uid)
@@ -355,7 +356,7 @@ app.get('/api/generation-quota', async (req, res) => {
         if (error) throw error;
         stage = 'quota formatting';
         const recent = data || [];
-        const nextRenewalAt = recent.length ? new Date(recent[0].created_at).getTime() + 7 * 24 * 60 * 60 * 1000 : null;
+        const nextRenewalAt = recent.length ? new Date(recent[0].created_at).getTime() + quotaPeriodMs : null;
         res.json({
             limit: 2,
             used: recent.length,

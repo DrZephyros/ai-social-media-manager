@@ -834,6 +834,13 @@
     .account-status .account-signup:hover { box-shadow: 0 7px 30px rgba(214,41,118,.48); }
     .generation-quota { display: inline-flex; max-width: 36vw; min-height: 42px; overflow: hidden; align-items: center; gap: .6rem; padding: .38rem .85rem .38rem .42rem; border: 1px solid transparent; border-radius: 14px; color: #fff; background: linear-gradient(115deg, rgba(24,19,34,.96), rgba(15,26,37,.96)) padding-box, linear-gradient(115deg, #feda75 0%, #fa7e1e 28%, #d62976 62%, #4f5bd5 100%) border-box; box-shadow: 0 5px 22px rgba(214,41,118,.16), inset 0 1px rgba(255,255,255,.08); font-size: .76rem; font-weight: 800; letter-spacing: -.015em; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
     .generation-quota::before { display: grid; width: 28px; height: 28px; flex: 0 0 auto; place-items: center; border-radius: 9px; color: #fff; background: var(--instagram-gradient); box-shadow: 0 2px 12px rgba(214,41,118,.3); content: '✦'; font-size: .9rem; }
+    .quota-refresh { display: grid; width: 34px; height: 34px; flex: 0 0 auto; place-items: center; padding: 0; border: 1px solid rgba(255,255,255,.14); border-radius: 50%; color: rgba(255,255,255,.82); background: rgba(255,255,255,.06); cursor: pointer; transition: color .18s, background .18s, border-color .18s, transform .18s; }
+    .account-status button.quota-refresh[hidden] { display: none; }
+    .quota-refresh:hover:not(:disabled) { transform: rotate(35deg); border-color: rgba(250,126,170,.55); color: #fff; background: rgba(214,41,118,.15); }
+    .quota-refresh:disabled { cursor: wait; opacity: .65; }
+    .quota-refresh svg { width: 17px; height: 17px; }
+    .quota-refresh.is-refreshing svg { animation: quota-refresh-spin .8s linear infinite; }
+    @keyframes quota-refresh-spin { to { transform: rotate(360deg); } }
     .generation-quota.is-countdown { gap: .55rem; padding: .34rem .62rem .34rem .38rem; border-radius: 16px; box-shadow: 0 6px 24px rgba(214,41,118,.2), 0 0 18px rgba(79,91,213,.1), inset 0 1px rgba(255,255,255,.1); }
     .quota-countdown-label { color: rgba(255,255,255,.76); font-size: .58rem; font-weight: 850; letter-spacing: .055em; text-transform: uppercase; }
     .quota-countdown { display: inline-flex; align-items: center; gap: .22rem; }
@@ -879,6 +886,8 @@
       .account-status .quota-time-unit small { font-size: .4rem; }
       .account-status .generation-quota[hidden] { display: none; }
       .account-status button { min-height: 38px; padding: .55rem .8rem; font-size: .76rem; }
+      .account-status button.quota-refresh { width: 30px; height: 30px; min-height: 30px; padding: 0; }
+      .account-status .quota-refresh svg { width: 15px; height: 15px; }
       header { padding-top: 1.15rem; }
     }
     .account-dialog {
@@ -1104,20 +1113,20 @@
   <header>
     <h1>AI Insta-Manager</h1>
     <p>Generate viral Instagram carousels in seconds · Powered by Gemini</p>
-    <div class="generation-highlight" aria-label="Two free generations every week">
+    <div class="generation-highlight" aria-label="Two free generations every three days">
       <span class="generation-highlight-icon" aria-hidden="true">✦</span>
-      <span class="generation-highlight-copy"><strong>2 FREE GENERATIONS</strong><small>Every week</small></span>
+      <span class="generation-highlight-copy"><strong>2 FREE GENERATIONS</strong><small>Every 3 days</small></span>
     </div>
   </header>
 
-  <div class="account-status" id="account-status"><span id="account-status-text" hidden></span><span id="generation-quota" class="generation-quota" hidden></span><button type="button" class="account-login" id="account-open">Sign in</button><button type="button" class="account-signup" id="account-signup">Sign up</button></div>
+  <div class="account-status" id="account-status"><span id="account-status-text" hidden></span><span id="generation-quota" class="generation-quota" hidden></span><button type="button" class="quota-refresh" id="quota-refresh" aria-label="Refresh generation quota" title="Refresh quota" hidden><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 7v5h-5M4.8 9a7.5 7.5 0 0 1 12.7-2L20 12M4 17v-5h5m10.2 3a7.5 7.5 0 0 1-12.7 2L4 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button type="button" class="account-login" id="account-open">Sign in</button><button type="button" class="account-signup" id="account-signup">Sign up</button></div>
   <div class="app-toast" id="app-toast" role="status" aria-live="polite" hidden><span class="app-toast-icon" aria-hidden="true">✓</span><span id="app-toast-message">Signed out</span></div>
   <dialog class="account-dialog" id="account-dialog">
     <div class="account-dialog-head">
-      <div><div class="account-dialog-eyebrow">Free account · 2 generations weekly</div><h2 id="account-title">Create your free account</h2></div>
+      <div><div class="account-dialog-eyebrow">Free account · 2 generations every 3 days</div><h2 id="account-title">Create your free account</h2></div>
       <button class="account-close" type="button" id="account-close" aria-label="Close">×</button>
     </div>
-    <p id="account-description">Create an account to download carousels and receive two generations per week.</p>
+    <p id="account-description">Create an account to download carousels and receive two generations every 3 days.</p>
     <form id="account-form">
       <div class="account-field"><label for="account-email">Email address</label><input id="account-email" type="email" autocomplete="email" placeholder="you@example.com" required maxlength="254"></div>
       <div class="account-field"><label for="account-password">Password</label><div class="account-password-control"><input id="account-password" type="password" autocomplete="new-password" placeholder="Create a password" required minlength="8" maxlength="128"><button class="account-password-toggle" id="account-password-toggle" type="button" aria-controls="account-password" aria-pressed="false">Show</button></div><div class="account-password-hint">Use at least 8 characters.</div></div>
@@ -1338,6 +1347,7 @@
     const accountDialog = document.getElementById('account-dialog');
     const accountStatusText = document.getElementById('account-status-text');
     const generationQuota = document.getElementById('generation-quota');
+    const quotaRefresh = document.getElementById('quota-refresh');
     const accountOpen = document.getElementById('account-open');
     const accountSignup = document.getElementById('account-signup');
     const accountForm = document.getElementById('account-form');
@@ -1423,14 +1433,19 @@
     let quotaSnapshot = null;
     let quotaRequestPending = false;
     let quotaErrorMessage = '';
+    let quotaExpiryRefreshAttempted = false;
+
+    quotaRefresh.addEventListener('click', () => refreshGenerationQuota());
 
     function renderGenerationQuota() {
       if (!authSession?.user) {
+        generationQuota.classList.remove('is-countdown');
         generationQuota.hidden = true;
         return;
       }
       if (!quotaSnapshot) {
-        generationQuota.textContent = quotaRequestPending ? 'Loading weekly quota…' : quotaErrorMessage ? `Quota issue: ${quotaErrorMessage}` : 'Weekly quota unavailable';
+        generationQuota.classList.remove('is-countdown');
+        generationQuota.textContent = quotaRequestPending ? 'Loading quota…' : quotaErrorMessage ? `Quota issue: ${quotaErrorMessage}` : 'Quota unavailable';
         if (quotaErrorMessage) generationQuota.title = quotaErrorMessage;
         generationQuota.hidden = false;
         return;
@@ -1441,8 +1456,11 @@
       } else if (nextRenewalAt) {
         const seconds = Math.max(0, Math.ceil((nextRenewalAt - Date.now()) / 1000));
         if (!seconds) {
-          generationQuota.textContent = 'Renewing now…';
-          refreshGenerationQuota();
+          generationQuota.textContent = 'Renewing…';
+          if (!quotaExpiryRefreshAttempted) {
+            quotaExpiryRefreshAttempted = true;
+            refreshGenerationQuota();
+          }
         } else {
           const days = Math.floor(seconds / 86400);
           const hours = Math.floor(seconds % 86400 / 3600);
@@ -1469,26 +1487,34 @@
         return;
       }
       quotaRequestPending = true;
+      quotaRefresh.disabled = true;
+      quotaRefresh.classList.add('is-refreshing');
+      quotaRefresh.setAttribute('aria-busy', 'true');
+      renderGenerationQuota();
       try {
         const response = await fetch('/api/generation-quota', { headers: await getAuthHeaders() });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.error || `Quota request failed (${response.status}).`);
         quotaSnapshot = result;
         quotaErrorMessage = '';
+        quotaExpiryRefreshAttempted = false;
+        quotaRefresh.title = 'Refresh quota';
+        quotaRefresh.setAttribute('aria-label', 'Refresh generation quota');
         renderGenerationQuota();
       } catch (error) {
-        quotaSnapshot = null;
         quotaErrorMessage = error.message || 'Could not load your generation quota.';
+        quotaRefresh.title = `Refresh failed: ${quotaErrorMessage}`;
+        quotaRefresh.setAttribute('aria-label', `Refresh quota failed: ${quotaErrorMessage}`);
         renderGenerationQuota();
       } finally {
         quotaRequestPending = false;
-        if (!quotaSnapshot) renderGenerationQuota();
+        quotaRefresh.disabled = false;
+        quotaRefresh.classList.remove('is-refreshing');
+        quotaRefresh.setAttribute('aria-busy', 'false');
+        renderGenerationQuota();
       }
     }
     window.setInterval(renderGenerationQuota, 1000);
-    window.setInterval(() => {
-      if (authSession?.user && !quotaSnapshot && !quotaRequestPending) refreshGenerationQuota();
-    }, 30000);
 
     function updateAccountStatus(session, loadQuota = true) {
       if (session?.user) {
@@ -1498,7 +1524,8 @@
         accountOpen.classList.remove('account-login');
         accountOpen.classList.add('account-signup');
         accountSignup.hidden = true;
-        generationQuota.textContent = 'Loading weekly quota…';
+        quotaRefresh.hidden = false;
+        generationQuota.textContent = 'Loading quota…';
         generationQuota.hidden = false;
         if (loadQuota) return refreshGenerationQuota();
       } else {
@@ -1508,6 +1535,7 @@
         accountOpen.classList.add('account-login');
         accountOpen.classList.remove('account-signup');
         accountSignup.hidden = Boolean(session?.user);
+        quotaRefresh.hidden = true;
         quotaSnapshot = null;
         renderGenerationQuota();
       }
@@ -1542,8 +1570,8 @@
       signingIn = signIn;
       accountTitle.textContent = signIn ? 'Welcome back' : (download ? 'Create an account to download' : 'Create your free account');
       accountDescription.textContent = download
-        ? 'Your carousel is ready. Create an account to download it; your account includes two generations per week.'
-        : (signIn ? 'Sign in to your account.' : 'Create an account for two free generations per week.');
+        ? 'Your carousel is ready. Create an account to download it; your account includes two generations every 3 days.'
+        : (signIn ? 'Sign in to your account.' : 'Create an account for two free generations every 3 days.');
       accountSubmit.textContent = signIn ? 'Sign in' : 'Create account';
       accountSubmit.hidden = false;
       accountPasswordHint.hidden = signIn;
@@ -1584,7 +1612,7 @@
     accountToggle.addEventListener('click', () => {
       signingIn = !signingIn;
       accountTitle.textContent = signingIn ? 'Welcome back' : (pendingDownload ? 'Create an account to download' : 'Create your free account');
-      accountDescription.textContent = signingIn ? 'Sign in to your account.' : 'Create an account for two free generations per week.';
+      accountDescription.textContent = signingIn ? 'Sign in to your account.' : 'Create an account for two free generations every 3 days.';
       accountSubmit.textContent = signingIn ? 'Sign in' : 'Create account';
       accountSubmit.hidden = false;
       accountPassword.autocomplete = signingIn ? 'current-password' : 'new-password';
