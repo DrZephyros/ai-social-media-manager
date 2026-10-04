@@ -1343,7 +1343,7 @@
     const firebaseAuth = firebaseReady ? window.firebase.auth() : null;
 
     function updateAccountStatus(session) {
-      if (session?.user) {
+      if (session?.user?.emailVerified) {
         accountStatusText.textContent = session.user.email || 'Signed in';
         accountStatusText.hidden = false;
         accountOpen.textContent = 'Sign out';
@@ -1356,7 +1356,26 @@
         accountOpen.textContent = 'Sign in';
         accountOpen.classList.add('account-login');
         accountOpen.classList.remove('account-signup');
-        accountSignup.hidden = false;
+        accountSignup.hidden = Boolean(session?.user);
+      }
+    }
+    function verificationErrorMessage(error) {
+      switch (error?.code) {
+        case 'auth/operation-not-allowed':
+          return 'Email and password sign-in is disabled for this Firebase project. Enable it in Firebase Authentication → Sign-in method.';
+        case 'auth/unauthorized-continue-uri':
+        case 'auth/unauthorized-domain':
+          return `Add ${window.location.host} to Firebase Authentication → Settings → Authorized domains, then try again.`;
+        case 'auth/too-many-requests':
+          return 'Firebase is temporarily limiting email requests. Wait a little while before trying again.';
+        case 'auth/network-request-failed':
+          return 'Could not reach Firebase. Check your connection and try again.';
+        case 'auth/invalid-email':
+          return 'Enter a valid email address and try again.';
+        case 'auth/quota-exceeded':
+          return 'Firebase has reached its email sending limit. Try again later or check the project’s Authentication usage.';
+        default:
+          return error?.message || 'Could not send the verification email. Try again.';
       }
     }
     async function getAuthHeaders() {
@@ -1365,6 +1384,11 @@
       return { Authorization: `Bearer ${token}` };
     }
     if (firebaseAuth) firebaseAuth.onAuthStateChanged(user => updateAccountStatus(user ? { user } : null));
+    document.addEventListener('visibilitychange', async () => {
+      if (document.visibilityState !== 'visible' || !firebaseAuth?.currentUser) return;
+      await firebaseAuth.currentUser.reload().catch(() => {});
+      updateAccountStatus(firebaseAuth.currentUser ? { user: firebaseAuth.currentUser } : null);
+    });
     function openAccountDialog({ download = false, signIn = false } = {}) {
       pendingDownload = download;
       signingIn = signIn;
@@ -1448,13 +1472,15 @@
         }
         await credential.user.sendEmailVerification();
         await firebaseAuth.signOut();
+        updateAccountStatus({ user: credential.user });
         setAccountMessage('Firebase accepted another verification request. Check Inbox, Spam, and Promotions.', 'notice', 'Verification email requested');
       } catch (error) {
-        if (firebaseAuth.currentUser) await firebaseAuth.signOut().catch(() => {});
-        const detail = error.code === 'auth/too-many-requests'
-          ? 'Firebase is temporarily limiting verification requests. Wait a little while before trying again.'
-          : (error.message || 'Could not resend the verification email.');
-        setAccountMessage(detail, 'error', 'Couldn’t resend email');
+        if (firebaseAuth.currentUser) {
+          const user = firebaseAuth.currentUser;
+          await firebaseAuth.signOut().catch(() => {});
+          updateAccountStatus({ user });
+        }
+        setAccountMessage(verificationErrorMessage(error), 'error', 'Couldn’t resend email');
       } finally {
         accountResendVerification.disabled = false;
         accountResendVerification.textContent = 'Resend verification email';
@@ -1476,10 +1502,15 @@
         if (signingIn) {
           const credential = await firebaseAuth.signInWithEmailAndPassword(accountEmail.value.trim(), accountPassword.value);
           if (!credential.user.emailVerified) {
-            await credential.user.sendEmailVerification();
+            try {
+              await credential.user.sendEmailVerification();
+              setAccountMessage('Firebase accepted another verification request. Check Inbox, Spam, and Promotions.', 'notice', 'Verification email requested');
+            } catch (error) {
+              setAccountMessage(verificationErrorMessage(error), 'error', 'Couldn’t send verification email');
+            }
             await firebaseAuth.signOut();
+            updateAccountStatus({ user: credential.user });
             accountResendVerification.hidden = false;
-            setAccountMessage('Firebase accepted another verification request. Check Inbox, Spam, and Promotions.', 'notice', 'Verification email requested');
             return;
           }
           setAccountMessage('Signed in successfully.', 'notice', 'You’re signed in');
@@ -1487,16 +1518,22 @@
           if (pendingDownload) downloadSlides(btnDownloadTop);
         } else {
           const credential = await firebaseAuth.createUserWithEmailAndPassword(accountEmail.value.trim(), accountPassword.value);
-          await credential.user.sendEmailVerification();
-          await firebaseAuth.signOut();
-          setAccountMessage('Firebase accepted the verification email request. Check Inbox, Spam, and Promotions.', 'notice', 'Verification email requested');
+          updateAccountStatus({ user: credential.user });
+          try {
+            await credential.user.sendEmailVerification();
+            setAccountMessage('Firebase accepted the verification email request. Check Inbox, Spam, and Promotions.', 'notice', 'Verification email requested');
+          } catch (error) {
+            setAccountMessage(`Your account was created, but Firebase could not send the verification email. ${verificationErrorMessage(error)}`, 'error', 'Account created · email not sent');
+          } finally {
+            await firebaseAuth.signOut();
+          }
           accountSubmit.hidden = true;
           accountResendVerification.hidden = false;
           accountToggle.hidden = true;
         }
       } catch (error) {
-        if (error.code === 'auth/unauthorized-continue-uri') {
-          setAccountMessage(`Add ${window.location.host} to Firebase Authentication → Settings → Authorized domains, then try again.`, 'error', 'This site needs approval');
+        if (error.code === 'auth/unauthorized-continue-uri' || error.code === 'auth/unauthorized-domain' || error.code === 'auth/operation-not-allowed') {
+          setAccountMessage(verificationErrorMessage(error), 'error', 'Firebase setup required');
         } else {
           setAccountMessage(error.message || 'Could not complete account action.', 'error', signingIn ? 'Couldn’t sign in' : 'Couldn’t create account');
         }
