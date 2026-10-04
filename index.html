@@ -1403,14 +1403,7 @@
         try {
           await firebaseAuth.signOut();
           updateAccountStatus(null);
-          accountStatusText.textContent = 'Signed out';
-          accountStatusText.hidden = false;
-          window.setTimeout(() => {
-            if (!firebaseAuth.currentUser && accountStatusText.textContent === 'Signed out') {
-              accountStatusText.hidden = true;
-              accountStatusText.textContent = '';
-            }
-          }, 2500);
+          window.alert('Signed out');
         } catch (error) {
           accountStatusText.textContent = error.message || 'Could not sign out';
           accountStatusText.hidden = false;
