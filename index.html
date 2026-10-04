@@ -834,7 +834,7 @@
     .account-status .account-signup:hover { box-shadow: 0 7px 30px rgba(214,41,118,.48); }
     .generation-quota { display: inline-flex; max-width: 36vw; min-height: 42px; overflow: hidden; align-items: center; gap: .6rem; padding: .38rem .85rem .38rem .42rem; border: 1px solid transparent; border-radius: 14px; color: #fff; background: linear-gradient(115deg, rgba(24,19,34,.96), rgba(15,26,37,.96)) padding-box, linear-gradient(115deg, #feda75 0%, #fa7e1e 28%, #d62976 62%, #4f5bd5 100%) border-box; box-shadow: 0 5px 22px rgba(214,41,118,.16), inset 0 1px rgba(255,255,255,.08); font-size: .76rem; font-weight: 800; letter-spacing: -.015em; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
     .generation-quota::before { display: grid; width: 28px; height: 28px; flex: 0 0 auto; place-items: center; border-radius: 9px; color: #fff; background: var(--instagram-gradient); box-shadow: 0 2px 12px rgba(214,41,118,.3); content: '✦'; font-size: .9rem; }
-    .quota-refresh { display: grid; width: 34px; height: 34px; flex: 0 0 auto; place-items: center; padding: 0; border: 1px solid rgba(255,255,255,.14); border-radius: 50%; color: rgba(255,255,255,.82); background: rgba(255,255,255,.06); cursor: pointer; transition: color .18s, background .18s, border-color .18s, transform .18s; }
+    .account-status button.quota-refresh { display: grid; width: 42px; height: 42px; min-height: 42px; flex: 0 0 42px; place-items: center; margin: 0; padding: 0; border: 1px solid rgba(255,255,255,.14); border-radius: 50%; color: rgba(255,255,255,.82); background: rgba(255,255,255,.06); font: inherit; line-height: 1; cursor: pointer; transition: color .18s, background .18s, border-color .18s, transform .18s; }
     .account-status button.quota-refresh[hidden] { display: none; }
     .quota-refresh:hover:not(:disabled) { transform: rotate(35deg); border-color: rgba(250,126,170,.55); color: #fff; background: rgba(214,41,118,.15); }
     .quota-refresh:disabled { cursor: wait; opacity: .65; }
@@ -886,7 +886,7 @@
       .account-status .quota-time-unit small { font-size: .4rem; }
       .account-status .generation-quota[hidden] { display: none; }
       .account-status button { min-height: 38px; padding: .55rem .8rem; font-size: .76rem; }
-      .account-status button.quota-refresh { width: 30px; height: 30px; min-height: 30px; padding: 0; }
+      .account-status button.quota-refresh { width: 38px; height: 38px; min-height: 38px; flex-basis: 38px; padding: 0; }
       .account-status .quota-refresh svg { width: 15px; height: 15px; }
       header { padding-top: 1.15rem; }
     }
