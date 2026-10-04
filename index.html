@@ -117,6 +117,8 @@
     .generation-highlight-copy { display: grid; gap: .12rem; }
     .generation-highlight-copy strong { font-size: .9rem; font-weight: 850; letter-spacing: .035em; }
     .generation-highlight-copy small { color: rgba(255,255,255,.7); font-size: .7rem; font-weight: 600; }
+    .generation-highlight.is-premium { border-color: rgba(255,225,143,.55); background: linear-gradient(115deg, rgba(246,189,69,.2), rgba(214,41,118,.2) 58%, rgba(79,91,213,.2)); box-shadow: 0 8px 32px rgba(246,189,69,.14), inset 0 1px rgba(255,255,255,.14); }
+    .generation-highlight.is-premium .generation-highlight-icon { color: #35250b; background: linear-gradient(135deg, #fff1a6, #f6bd45 60%, #f5d77e); box-shadow: 0 4px 18px rgba(246,189,69,.3); }
 
     /* ---- Genre Picker ---- */
     #genre-picker {
@@ -1115,9 +1117,9 @@
   <header>
     <h1>AI Insta-Manager</h1>
     <p>Generate viral Instagram carousels in seconds · Powered by Gemini</p>
-    <div class="generation-highlight" aria-label="Two free generations every three days">
-      <span class="generation-highlight-icon" aria-hidden="true">✦</span>
-      <span class="generation-highlight-copy"><strong>2 FREE GENERATIONS</strong><small>Every 3 days</small></span>
+    <div class="generation-highlight" id="generation-highlight" aria-label="Two free generations every three days">
+      <span class="generation-highlight-icon" id="generation-highlight-icon" aria-hidden="true">✦</span>
+      <span class="generation-highlight-copy"><strong id="generation-highlight-title">2 FREE GENERATIONS</strong><small id="generation-highlight-subtitle">Every 3 days</small></span>
     </div>
   </header>
 
@@ -1349,6 +1351,10 @@
     const accountDialog = document.getElementById('account-dialog');
     const accountStatusText = document.getElementById('account-status-text');
     const generationQuota = document.getElementById('generation-quota');
+    const generationHighlight = document.getElementById('generation-highlight');
+    const generationHighlightIcon = document.getElementById('generation-highlight-icon');
+    const generationHighlightTitle = document.getElementById('generation-highlight-title');
+    const generationHighlightSubtitle = document.getElementById('generation-highlight-subtitle');
     const quotaRefresh = document.getElementById('quota-refresh');
     const accountOpen = document.getElementById('account-open');
     const accountSignup = document.getElementById('account-signup');
@@ -1439,13 +1445,35 @@
 
     quotaRefresh.addEventListener('click', () => refreshGenerationQuota());
 
+    function renderGenerationHighlight(premium) {
+      generationHighlight.classList.toggle('is-premium', premium === true);
+      if (premium === true) {
+        generationHighlight.setAttribute('aria-label', 'Premium account with unlimited generations');
+        generationHighlightIcon.textContent = '♛';
+        generationHighlightTitle.textContent = 'PREMIUM ACCOUNT';
+        generationHighlightSubtitle.textContent = 'Unlimited generations';
+      } else if (premium === null) {
+        generationHighlight.setAttribute('aria-label', 'Checking account plan');
+        generationHighlightIcon.textContent = '✦';
+        generationHighlightTitle.textContent = 'CHECKING ACCOUNT';
+        generationHighlightSubtitle.textContent = 'Loading your plan…';
+      } else {
+        generationHighlight.setAttribute('aria-label', 'Two free generations every three days');
+        generationHighlightIcon.textContent = '✦';
+        generationHighlightTitle.textContent = '2 FREE GENERATIONS';
+        generationHighlightSubtitle.textContent = 'Every 3 days';
+      }
+    }
+
     function renderGenerationQuota() {
       if (!authSession?.user) {
+        renderGenerationHighlight(false);
         generationQuota.classList.remove('is-countdown');
         generationQuota.hidden = true;
         return;
       }
       if (!quotaSnapshot) {
+        renderGenerationHighlight(null);
         generationQuota.classList.remove('is-countdown');
         generationQuota.classList.remove('is-premium');
         generationQuota.textContent = quotaRequestPending ? 'Loading quota…' : quotaErrorMessage ? `Quota issue: ${quotaErrorMessage}` : 'Quota unavailable';
@@ -1454,6 +1482,7 @@
         return;
       }
       if (quotaSnapshot.premium === true) {
+        renderGenerationHighlight(true);
         generationQuota.classList.remove('is-countdown');
         generationQuota.classList.add('is-premium');
         generationQuota.textContent = 'PREMIUM · Unlimited generations';
@@ -1462,6 +1491,7 @@
         quotaRefresh.hidden = true;
         return;
       }
+      renderGenerationHighlight(false);
       generationQuota.classList.remove('is-premium');
       quotaRefresh.hidden = false;
       const { remaining, nextRenewalAt } = quotaSnapshot;
@@ -1531,6 +1561,7 @@
 
     function updateAccountStatus(session, loadQuota = true) {
       if (session?.user) {
+        renderGenerationHighlight(null);
         accountStatusText.textContent = session.user.email || 'Signed in';
         accountStatusText.hidden = false;
         accountOpen.textContent = 'Sign out';
@@ -1542,6 +1573,7 @@
         generationQuota.hidden = false;
         if (loadQuota) return refreshGenerationQuota();
       } else {
+        renderGenerationHighlight(false);
         accountStatusText.textContent = '';
         accountStatusText.hidden = true;
         accountOpen.textContent = 'Sign in';
