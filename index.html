@@ -837,7 +837,7 @@
     .account-status .account-login { color: var(--text); border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.08); }
     .account-status .account-signup { color: #fff; border: 1px solid rgba(255,255,255,.2); background: var(--instagram-gradient); box-shadow: 0 5px 24px rgba(214,41,118,.3); }
     .account-status .account-signup:hover { box-shadow: 0 7px 30px rgba(214,41,118,.48); }
-    .generation-quota { padding: .55rem .75rem; border: 1px solid rgba(0,229,255,.2); border-radius: 12px; color: #dffaff; background: rgba(0,229,255,.07); font-size: .7rem; font-weight: 700; white-space: nowrap; }
+    .generation-quota { padding: .6rem .8rem; border: 1px solid rgba(0,229,255,.38); border-radius: 12px; color: #e7fdff; background: linear-gradient(120deg, rgba(0,117,137,.42), rgba(0,229,255,.16)); box-shadow: 0 4px 18px rgba(0,229,255,.1); font-size: .72rem; font-weight: 750; white-space: nowrap; }
     @media (max-width: 560px) {
       .account-status { top: .7rem; right: .7rem; gap: .4rem; }
       .account-status span { display: none; }
@@ -1347,8 +1347,13 @@
     let quotaRequestPending = false;
 
     function renderGenerationQuota() {
-      if (!quotaSnapshot || !firebaseAuth?.currentUser) {
+      if (!firebaseAuth?.currentUser) {
         generationQuota.hidden = true;
+        return;
+      }
+      if (!quotaSnapshot) {
+        generationQuota.textContent = quotaRequestPending ? 'Loading weekly quota…' : 'Weekly quota unavailable';
+        generationQuota.hidden = false;
         return;
       }
       const { remaining, nextRenewalAt } = quotaSnapshot;
@@ -1385,7 +1390,10 @@
         quotaSnapshot = await response.json();
         renderGenerationQuota();
       } catch {
-        generationQuota.hidden = true;
+        quotaSnapshot = null;
+        generationQuota.textContent = 'Weekly quota unavailable';
+        generationQuota.title = 'Could not load quota. Refresh the page to try again.';
+        generationQuota.hidden = false;
       } finally {
         quotaRequestPending = false;
       }
@@ -1400,6 +1408,8 @@
         accountOpen.classList.remove('account-login');
         accountOpen.classList.add('account-signup');
         accountSignup.hidden = true;
+        generationQuota.textContent = 'Loading weekly quota…';
+        generationQuota.hidden = false;
         refreshGenerationQuota();
       } else {
         accountStatusText.textContent = '';
