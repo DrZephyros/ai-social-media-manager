@@ -1,0 +1,3 @@
+We’re feeding AI its own synthetic echoes, and it’s slowly losing the ability to distinguish truth from noise.
+
+Would you trust a model trained only on human-written history over one fed by the current, synthetic-heavy internet? 👇

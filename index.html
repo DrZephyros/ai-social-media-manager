@@ -6,22 +6,7 @@
   <title>AI Insta-Manager — g0wtham.exe</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
-  <script>
-    window.APP_CONFIG = {
-      firebaseConfig: {
-        apiKey: 'AIzaSyAMDVYZeclh8hyNXAX_Ns6BM_bvAXwvCSY',
-        authDomain: 'ai-media-pipeline-df8b0.firebaseapp.com',
-        projectId: 'ai-media-pipeline-df8b0',
-        storageBucket: 'ai-media-pipeline-df8b0.firebasestorage.app',
-        messagingSenderId: '98037244710',
-        appId: '1:98037244710:web:e63dfc76b54e5b648d57e7',
-        measurementId: 'G-EY5VFGS2JC'
-      },
-      turnstileSiteKey: ''
-    };
-  </script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="/app-config.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -1356,17 +1341,37 @@
     });
     let pendingDownload = false;
     let turnstileToken = null;
-    const firebaseConfig = window.APP_CONFIG?.firebaseConfig || {};
     const turnstileSiteKey = window.APP_CONFIG?.turnstileSiteKey || '';
-    const firebaseReady = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId && window.firebase?.auth);
-    if (firebaseReady && !window.firebase.apps.length) window.firebase.initializeApp(firebaseConfig);
-    const firebaseAuth = firebaseReady ? window.firebase.auth() : null;
+    const AUTH_SESSION_KEY = 'ai-insta-manager-auth-session';
+    let authSession = null;
+    function saveAuthSession(session) {
+      authSession = session || null;
+      if (authSession) localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(authSession));
+      else localStorage.removeItem(AUTH_SESSION_KEY);
+    }
+    try { authSession = JSON.parse(localStorage.getItem(AUTH_SESSION_KEY) || 'null'); } catch { saveAuthSession(null); }
+    async function refreshAuthSession() {
+      if (!authSession?.refresh_token) return null;
+      const response = await fetch('/api/auth/refresh', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh_token: authSession.refresh_token }) });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.session) { saveAuthSession(null); return null; }
+      saveAuthSession(result.session);
+      return authSession;
+    }
+    async function validateAuthSession() {
+      if (!authSession?.access_token) { updateAccountStatus(null); return; }
+      if (authSession.expires_at && authSession.expires_at * 1000 < Date.now() + 60000) await refreshAuthSession();
+      if (!authSession?.access_token) { updateAccountStatus(null); return; }
+      const response = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${authSession.access_token}` } });
+      if (!response.ok && !await refreshAuthSession()) { updateAccountStatus(null); return; }
+      updateAccountStatus(authSession ? { user: authSession.user } : null);
+    }
     let quotaSnapshot = null;
     let quotaRequestPending = false;
     let quotaErrorMessage = '';
 
     function renderGenerationQuota() {
-      if (!firebaseAuth?.currentUser) {
+      if (!authSession?.user) {
         generationQuota.hidden = true;
         return;
       }
@@ -1398,7 +1403,7 @@
 
     async function refreshGenerationQuota() {
       if (quotaRequestPending) return;
-      if (!firebaseAuth?.currentUser) {
+      if (!authSession?.user) {
         quotaSnapshot = null;
         renderGenerationQuota();
         return;
@@ -1422,7 +1427,7 @@
     }
     window.setInterval(renderGenerationQuota, 1000);
     window.setInterval(() => {
-      if (firebaseAuth?.currentUser && !quotaSnapshot && !quotaRequestPending) refreshGenerationQuota();
+      if (authSession?.user && !quotaSnapshot && !quotaRequestPending) refreshGenerationQuota();
     }, 30000);
 
     function updateAccountStatus(session) {
@@ -1448,15 +1453,14 @@
       }
     }
     async function getAuthHeaders() {
-      if (!firebaseAuth?.currentUser) return {};
-      const token = await firebaseAuth.currentUser.getIdToken();
-      return { Authorization: `Bearer ${token}` };
+      if (!authSession?.access_token) return {};
+      if (authSession.expires_at && authSession.expires_at * 1000 < Date.now() + 60000) await refreshAuthSession();
+      return authSession?.access_token ? { Authorization: `Bearer ${authSession.access_token}` } : {};
     }
-    if (firebaseAuth) firebaseAuth.onAuthStateChanged(user => updateAccountStatus(user ? { user } : null));
+    validateAuthSession();
     document.addEventListener('visibilitychange', async () => {
-      if (document.visibilityState !== 'visible' || !firebaseAuth?.currentUser) return;
-      await firebaseAuth.currentUser.reload().catch(() => {});
-      updateAccountStatus(firebaseAuth.currentUser ? { user: firebaseAuth.currentUser } : null);
+      if (document.visibilityState !== 'visible' || !authSession?.user) return;
+      await validateAuthSession();
       refreshGenerationQuota();
     });
     function openAccountDialog({ download = false, signIn = false } = {}) {
@@ -1490,15 +1494,13 @@
       window.turnstile.render(container, { sitekey: turnstileSiteKey, callback: token => { turnstileToken = token; }, 'expired-callback': () => { turnstileToken = null; } });
     }
     accountOpen.addEventListener('click', async () => {
-      if (firebaseAuth?.currentUser) {
+      if (authSession?.user) {
         try {
-          await firebaseAuth.signOut();
-          updateAccountStatus(null);
-          showToast('Signed out');
-        } catch (error) {
-          accountStatusText.textContent = error.message || 'Could not sign out';
-          accountStatusText.hidden = false;
-        }
+          await fetch('/api/auth/signout', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) }, body: JSON.stringify({ refresh_token: authSession.refresh_token }) });
+        } catch (error) { console.warn('Could not revoke the Supabase session remotely:', error.message); }
+        saveAuthSession(null);
+        updateAccountStatus(null);
+        showToast('Signed out');
         return;
       }
       openAccountDialog({ signIn: true });
@@ -1521,7 +1523,7 @@
 
     accountForm.addEventListener('submit', async event => {
       event.preventDefault();
-      if (!firebaseAuth) { setAccountMessage('Firebase account sign-in is not configured yet.', 'error', 'Sign-in is unavailable'); return; }
+      if (!navigator.onLine) { setAccountMessage('Connect to the internet and try again.', 'error', 'Sign-in unavailable'); return; }
       if (turnstileSiteKey && !turnstileToken) { setAccountMessage('Complete the bot check, then try again.', 'error', 'One quick check'); return; }
       accountSubmit.disabled = true;
       setAccountMessage(signingIn ? 'Checking your credentials…' : 'Setting up your free account…', 'pending', signingIn ? 'Signing in' : 'Creating account');
@@ -1532,18 +1534,17 @@
           if (!check.ok) throw new Error(result.error || 'Bot check failed.');
           turnstileToken = null;
         }
-        if (signingIn) {
-          const credential = await firebaseAuth.signInWithEmailAndPassword(accountEmail.value.trim(), accountPassword.value);
-          setAccountMessage('Signed in successfully.', 'notice', 'You’re signed in');
-          accountDialog.close();
-          if (pendingDownload) downloadSlides(btnDownloadTop);
-        } else {
-          const credential = await firebaseAuth.createUserWithEmailAndPassword(accountEmail.value.trim(), accountPassword.value);
-          updateAccountStatus({ user: credential.user });
-          setAccountMessage('Your account is ready. You’re signed in.', 'notice', 'Account created');
-          accountDialog.close();
-          if (pendingDownload) downloadSlides(btnDownloadTop);
-        }
+        const response = await fetch(signingIn ? '/api/auth/signin' : '/api/auth/signup', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: accountEmail.value.trim(), password: accountPassword.value })
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.session) throw new Error(result.error || 'Could not complete account action.');
+        saveAuthSession(result.session);
+        updateAccountStatus({ user: result.user || result.session.user });
+        setAccountMessage(signingIn ? 'Signed in successfully.' : 'Your account is ready. You’re signed in.', 'notice', signingIn ? 'You’re signed in' : 'Account created');
+        accountDialog.close();
+        if (pendingDownload) downloadSlides(btnDownloadTop);
       } catch (error) {
         setAccountMessage(error.message || 'Could not complete account action.', 'error', signingIn ? 'Couldn’t sign in' : 'Couldn’t create account');
         if (window.turnstile && turnstileSiteKey) window.turnstile.reset();
@@ -2145,9 +2146,9 @@
           #render-grid .slide-card[data-mood="gold"] .slide-card-bg::after { background: linear-gradient(to bottom, rgba(80,60,0,0.1) 0%, rgba(60,40,0,0.3) 30%, rgba(30,20,0,0.75) 65%, rgba(10,5,0,0.95) 100%); }
           #render-grid .slide-content { position: relative; z-index: 2; flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 1.5rem 2.35rem; min-height: 0; overflow: hidden; }
           #render-grid .slide-main { width: 100%; min-width: 0; }
-          #render-grid .slide-title { font-size: 2.6rem; font-weight: 900; line-height: 1.12; color: #fff; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 1.05rem; text-shadow: 0 2px 8px rgba(0,0,0,0.6); overflow-wrap: anywhere; }
+          #render-grid .slide-title { font-size: 2.6rem; font-weight: 900; line-height: 1.12; color: #fff; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 1.05rem; text-shadow: 0 2px 8px rgba(0,0,0,0.6); overflow-wrap: break-word; }
           #render-grid .slide-title .highlight { color: var(--cyan); }
-          #render-grid .slide-body { font-size: 1.35rem; line-height: 1.45; color: rgba(255,255,255,0.88); font-weight: 500; text-shadow: 0 1px 4px rgba(0,0,0,0.5); overflow-wrap: anywhere; }
+          #render-grid .slide-body { font-size: 1.35rem; line-height: 1.45; color: rgba(255,255,255,0.88); font-weight: 500; text-shadow: 0 1px 4px rgba(0,0,0,0.5); overflow-wrap: break-word; }
           #render-grid .slide-card[data-cover="true"] .slide-title { font-size: 3rem; margin-bottom: 0; }
         `;
         document.head.appendChild(style);

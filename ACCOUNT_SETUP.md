@@ -1,35 +1,21 @@
-# Firebase account and generation quota setup
+# Account and quota setup
 
-The app now uses Firebase Authentication for email/password accounts and Cloud Firestore for the rolling weekly quota. No phone verification, SMS provider, or SQL migration is needed. Firebase lists email/password Auth as no-cost and Firestore includes daily no-cost quotas (1 GiB stored data, 50,000 reads/day, and 20,000 writes/day). [Firebase pricing](https://firebase.google.com/pricing) [Firestore quotas](https://firebase.google.com/docs/firestore/quotas)
+The app uses Supabase Auth for email and password accounts. New accounts are marked confirmed immediately, so signup does not send verification emails. The server uses a Supabase secret key; it must only be configured in server environments and must never be added to browser code or committed files.
 
-## Firebase setup
+## Supabase project
 
-1. Open [Firebase Console](https://console.firebase.google.com/) and create a project. Choose the Spark (no-cost) plan; do not enable billing for this setup.
-2. In **Build → Authentication → Get started → Sign-in method**, enable **Email/Password**.
-3. In **Authentication → Settings → Authorized domains**, add your production domain and localhost for development.
-4. In **Build → Firestore Database**, create the database. Choose a location and start in production mode; this app accesses quota records through the server Admin SDK.
-5. In **Project settings → General → Your apps**, register a Web app and copy its Firebase config object.
-6. In **Project settings → Service accounts**, generate a private key JSON for server access. Keep this private key secret. Firebase documents the service-account setup for trusted server environments [here](https://firebase.google.com/docs/admin/setup).
+1. Create a Supabase project.
+2. Copy the Project URL from **Project Settings → API** (or **Connect**).
+3. Create or rotate a **Secret key** under **Project Settings → API Keys**. Secret keys bypass row level security, so store the value only in Vercel as `SUPABASE_SECRET_KEY` and in a local ignored `.env` for development.
+4. Add `SUPABASE_URL` with the project URL to Vercel and local `.env`.
+5. Optionally set `GENERATION_TICKET_SECRET` to a separate random secret. If omitted, the server uses the Supabase secret key to sign short-lived generation tickets.
 
-## Cloudflare Turnstile
+## One-time database setup
 
-1. Create a free widget at [Cloudflare Turnstile](https://dash.cloudflare.com/?to=/:account/turnstile) for the production hostname and localhost.
-2. Copy its site key and secret key.
+Run the SQL in [`supabase/migrations/20261004000000_generation_quota.sql`](supabase/migrations/20261004000000_generation_quota.sql) once in the Supabase Dashboard's **SQL Editor**. It creates the quota table and the atomic reservation functions used to enforce two generations per rolling seven-day period.
 
-## Environment variables
+## Local development
 
-Set these in local .env and in Vercel Environment Variables:
+Copy `.env.example` to `.env` and fill in the app's existing AI provider keys plus `SUPABASE_URL` and `SUPABASE_SECRET_KEY`. Keep `.env` private. Do not put the Supabase secret key in `index.html`, a `NEXT_PUBLIC_` variable, or source control.
 
-- FIREBASE_PROJECT_ID: Firebase project ID.
-- FIREBASE_WEB_CONFIG: the web app config as a single-line JSON object (apiKey, authDomain, projectId, appId, and other values copied from Firebase).
-- FIREBASE_SERVICE_ACCOUNT_JSON: the complete service account key JSON on the server only. Never put this in browser config or commit it.
-- TURNSTILE_SITE_KEY
-- TURNSTILE_SECRET_KEY (server only)
-
-The Firestore generation_quota collection is created automatically after a user’s first generation.
-
-## Quota behavior
-
-A verified account may start two generations in any rolling seven-day window. Failed generation calls release their quota reservation. Each network address is also limited to five generation attempts per hour per server process; the account quota is the durable enforcement layer.
-
-Email verification is disabled. Any account that can sign in may generate and download. Downloads require a signed-in account. Free-tier limits may change, so review the provider dashboards before launch.
+Existing Firebase accounts are not migrated automatically. Since there are currently no users to preserve, people can create fresh accounts after the Supabase configuration is deployed.

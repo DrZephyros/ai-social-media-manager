@@ -1,0 +1,3 @@
+When AI models begin training on their own synthetic output, they aren't getting smarter; they’re losing the nuance of reality. 📉
+
+Would you trust an AI model more if it explicitly disclosed that it was trained only on verified human data? 👇

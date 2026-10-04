@@ -1,0 +1,3 @@
+Training AI on its own synthetic output is like making a photocopy of a photocopy until the original detail vanishes. Once models start relying on their own echoes, they rapidly lose the nuance that makes them useful.
+
+Is the industry-wide scramble for human-authored data just a temporary fix for a problem that AI was always destined to hit? 👇

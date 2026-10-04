@@ -1,0 +1,3 @@
+We’re feeding AI its own synthetic output, but the internet is starting to choke on its own machine-made sludge.
+
+If the web becomes a closed loop of AI-generated noise, how do we preserve the human data that actually makes these models useful? 👇

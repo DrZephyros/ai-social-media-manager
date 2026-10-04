@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
@@ -5,11 +6,8 @@ import { fileURLToPath } from 'url';
 import { generateTopic, generateScript, generateCaption } from './engine.js';
 import axios from 'axios';
 import FormData from 'form-data';
-import { cert, getApps, initializeApp } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
-import { FieldValue, Timestamp, getFirestore } from 'firebase-admin/firestore';
 import { createHash, createHmac, randomUUID, timingSafeEqual } from 'crypto';
-import appConfigRouter from './app-config.js';
+import { createClient } from '@supabase/supabase-js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,32 +16,18 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
-app.use(appConfigRouter);
 app.use(express.static(__dirname));
 
-let firebaseServiceAccount = null;
-try {
-    firebaseServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_JSON
-        ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON)
-        : null;
-} catch (error) {
-    console.error('FIREBASE_SERVICE_ACCOUNT_JSON is not valid JSON:', error.message);
-}
-if (firebaseServiceAccount?.private_key) {
-    firebaseServiceAccount.private_key = firebaseServiceAccount.private_key.replace(/\\n/g, '\n');
-}
-const firebaseProjectId = process.env.FIREBASE_PROJECT_ID?.trim() || firebaseServiceAccount?.project_id;
-let firebaseAdminApp = null;
-let firebaseAuth = null;
-let firestore = null;
-try {
-    if (firebaseProjectId && firebaseServiceAccount?.client_email && firebaseServiceAccount?.private_key) {
-        firebaseAdminApp = getApps()[0] || initializeApp({ credential: cert(firebaseServiceAccount), projectId: firebaseProjectId });
-        firebaseAuth = getAuth(firebaseAdminApp);
-        firestore = getFirestore(firebaseAdminApp);
-    }
-} catch (error) {
-    console.error('Firebase Admin initialization failed:', error.message);
+const supabaseUrl = process.env.SUPABASE_URL?.trim();
+const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY?.trim();
+const generationTicketSecret = process.env.GENERATION_TICKET_SECRET?.trim() || supabaseSecretKey;
+const supabaseConfigured = Boolean(supabaseUrl && supabaseSecretKey);
+
+function createSupabaseClient() {
+    if (!supabaseConfigured) return null;
+    return createClient(supabaseUrl, supabaseSecretKey, {
+        auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
+    });
 }
 const ipWindows = new Map();
 const IP_WINDOW_MS = 60 * 60 * 1000;
@@ -70,8 +54,8 @@ function allowIpGeneration(req) {
 }
 
 async function requireAuthenticatedUser(req, res) {
-    if (!firebaseAuth) {
-        res.status(503).json({ error: 'Firebase accounts are not configured yet. Add the Firebase project and service-account environment variables.' });
+    if (!supabaseConfigured) {
+        res.status(503).json({ error: 'Supabase is not configured. Set SUPABASE_URL and SUPABASE_SECRET_KEY on the server.' });
         return null;
     }
     const authorization = req.headers.authorization || '';
@@ -80,47 +64,120 @@ async function requireAuthenticatedUser(req, res) {
         res.status(401).json({ error: 'Create an account or sign in to continue.' });
         return null;
     }
-    let decoded;
+    const supabase = createSupabaseClient();
     try {
-        decoded = await firebaseAuth.verifyIdToken(match[1]);
+        const { data, error } = await supabase.auth.getUser(match[1]);
+        if (error || !data.user) throw error || new Error('No user in session');
+        return { user: { uid: data.user.id, email: data.user.email || null }, token: match[1] };
     } catch {
         res.status(401).json({ error: 'Your session has expired. Please sign in again.' });
         return null;
     }
-    // The verified ID token already carries the user's UID and email; avoid an
-    // extra Admin Auth lookup for every authenticated API request.
-    const user = { uid: decoded.uid, email: decoded.email || null };
-    return { user, token: match[1] };
 }
 
 async function reserveGeneration(userId) {
-    const ref = firestore.collection('generation_quota').doc(userId);
-    const now = Timestamp.now();
-    const cutoff = now.toMillis() - 7 * 24 * 60 * 60 * 1000;
-    return firestore.runTransaction(async transaction => {
-        const snapshot = await transaction.get(ref);
-        const recent = (snapshot.data()?.recentGenerations || [])
-            .filter(item => item?.createdAt?.toMillis?.() > cutoff);
-        if (recent.length >= 2) {
-            const oldest = recent.reduce((a, b) => a.createdAt.toMillis() < b.createdAt.toMillis() ? a : b);
-            return { allowed: false, resetsAt: oldest.createdAt.toMillis() + 7 * 24 * 60 * 60 * 1000 };
-        }
-        const reservationId = randomUUID();
-        recent.push({ id: reservationId, createdAt: now });
-        transaction.set(ref, { recentGenerations: recent, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
-        return { allowed: true, reservationId };
-    });
+    const supabase = createSupabaseClient();
+    if (!supabase) throw new Error('Supabase is not configured.');
+    const { data, error } = await supabase.rpc('reserve_generation', { p_user_id: userId });
+    if (error) throw error;
+    return data;
 }
 
 async function releaseGeneration(userId, reservationId) {
-    const ref = firestore.collection('generation_quota').doc(userId);
-    await firestore.runTransaction(async transaction => {
-        const snapshot = await transaction.get(ref);
-        if (!snapshot.exists) return;
-        const recent = (snapshot.data()?.recentGenerations || []).filter(item => item.id !== reservationId);
-        transaction.set(ref, { recentGenerations: recent, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+    const supabase = createSupabaseClient();
+    if (!supabase) throw new Error('Supabase is not configured.');
+    const { error } = await supabase.rpc('release_generation', {
+        p_user_id: userId,
+        p_reservation_id: reservationId,
     });
+    if (error) throw error;
 }
+
+/** Strip legacy "Firebase:" prefix and translate common auth error codes into friendly messages. */
+function friendlyAuthError(rawMessage) {
+    let msg = (rawMessage || 'Something went wrong.').replace(/^Firebase:\s*/i, '').trim();
+    if (/email.*(already|in use|exists)|duplicate.*email|already.*registered/i.test(msg)) {
+        return 'An account with this email already exists. Try signing in instead.';
+    }
+    if (/invalid.*password|wrong.*password/i.test(msg)) {
+        return 'The password is incorrect. Please try again.';
+    }
+    if (/user.*not.*found|no.*user/i.test(msg)) {
+        return 'No account found with this email. Create one first.';
+    }
+    // Strip trailing Firebase error codes like (auth/email-already-in-use)
+    msg = msg.replace(/\s*\(auth\/[^)]+\)\s*\.?$/, '').trim();
+    return msg || 'Something went wrong.';
+}
+
+app.post('/api/auth/signup', async (req, res) => {
+    if (!supabaseConfigured) return res.status(503).json({ error: 'Supabase is not configured yet.' });
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim() : '';
+    const password = typeof req.body?.password === 'string' ? req.body.password : '';
+    if (!email || !password) return res.status(400).json({ error: 'Email and password are required.' });
+    const supabase = createSupabaseClient();
+    try {
+        const { error: createError } = await supabase.auth.admin.createUser({ email, password, email_confirm: true });
+        if (createError) return res.status(400).json({ error: friendlyAuthError(createError.message) });
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error || !data.session) return res.status(401).json({ error: friendlyAuthError(error?.message) || 'Account was created but could not be signed in.' });
+        res.json({ session: data.session, user: { id: data.user.id, email: data.user.email } });
+    } catch (error) {
+        console.error('Supabase signup failed:', error.message);
+        res.status(500).json({ error: 'Could not create your account right now.' });
+    }
+});
+
+app.post('/api/auth/signin', async (req, res) => {
+    if (!supabaseConfigured) return res.status(503).json({ error: 'Supabase is not configured yet.' });
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim() : '';
+    const password = typeof req.body?.password === 'string' ? req.body.password : '';
+    if (!email || !password) return res.status(400).json({ error: 'Email and password are required.' });
+    try {
+        const { data, error } = await createSupabaseClient().auth.signInWithPassword({ email, password });
+        if (error || !data.session) return res.status(401).json({ error: friendlyAuthError(error?.message) || 'Could not sign in.' });
+        res.json({ session: data.session, user: { id: data.user.id, email: data.user.email } });
+    } catch (error) {
+        console.error('Supabase sign-in failed:', error.message);
+        res.status(500).json({ error: 'Could not sign in right now.' });
+    }
+});
+
+app.post('/api/auth/refresh', async (req, res) => {
+    if (!supabaseConfigured) return res.status(503).json({ error: 'Supabase is not configured yet.' });
+    const refreshToken = typeof req.body?.refresh_token === 'string' ? req.body.refresh_token : '';
+    if (!refreshToken) return res.status(400).json({ error: 'Session refresh token is required.' });
+    try {
+        const { data, error } = await createSupabaseClient().auth.refreshSession({ refresh_token: refreshToken });
+        if (error || !data.session) return res.status(401).json({ error: 'Your session expired. Please sign in again.' });
+        res.json({ session: data.session, user: { id: data.user.id, email: data.user.email } });
+    } catch (error) {
+        console.error('Supabase session refresh failed:', error.message);
+        res.status(500).json({ error: 'Could not refresh your session.' });
+    }
+});
+
+app.get('/api/auth/me', async (req, res) => {
+    const auth = await requireAuthenticatedUser(req, res);
+    if (!auth) return;
+    res.json({ user: { id: auth.user.uid, email: auth.user.email } });
+});
+
+app.post('/api/auth/signout', async (req, res) => {
+    if (!supabaseConfigured) return res.json({ ok: true });
+    const accessToken = req.headers.authorization?.match(/^Bearer\s+(.+)$/i)?.[1];
+    const refreshToken = typeof req.body?.refresh_token === 'string' ? req.body.refresh_token : '';
+    if (accessToken && refreshToken) {
+        try {
+            const supabase = createSupabaseClient();
+            await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+            await supabase.auth.signOut({ scope: 'local' });
+        } catch (error) {
+            console.warn('Supabase sign-out revoke failed:', error.message);
+        }
+    }
+    res.json({ ok: true });
+});
 
 // Store the latest generated script for the publish endpoint
 let latestScript = null;
@@ -175,9 +232,8 @@ app.post('/api/generation-ticket', async (req, res) => {
     if (typeof topic !== 'string' || !topic.trim() || topic.length > 500) return res.status(400).json({ error: 'Enter a topic up to 500 characters.' });
     if (typeof genre !== 'string' || !genre.trim() || genre.trim().length > 120) return res.status(400).json({ error: 'Select a niche before generating slides.' });
     const payload = Buffer.from(JSON.stringify({ userId: auth.user.uid, topic: topic.trim(), genre: genre.trim(), expiresAt: Date.now() + 60_000 })).toString('base64url');
-    const secret = firebaseServiceAccount?.private_key;
-    if (!secret) return res.status(503).json({ error: 'Firebase service account is not configured.' });
-    const signature = createHmac('sha256', secret).update(payload).digest('base64url');
+    if (!generationTicketSecret) return res.status(503).json({ error: 'Generation signing secret is not configured.' });
+    const signature = createHmac('sha256', generationTicketSecret).update(payload).digest('base64url');
     const ticket = `${payload}.${signature}`;
     res.json({ ticket });
 });
@@ -186,7 +242,7 @@ function readGenerationTicket(value) {
     if (typeof value !== 'string' || value.length > 4096) return null;
     const [payload, signature, extra] = value.split('.');
     if (!payload || !signature || extra) return null;
-    const expected = createHmac('sha256', firebaseServiceAccount?.private_key || '').update(payload).digest();
+    const expected = createHmac('sha256', generationTicketSecret || '').update(payload).digest();
     let supplied;
     try { supplied = Buffer.from(signature, 'base64url'); } catch { return null; }
     if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) return null;
@@ -259,20 +315,26 @@ app.get('/api/generation-quota', async (req, res) => {
     try {
         const auth = await requireAuthenticatedUser(req, res);
         if (!auth) return;
-        stage = 'Firestore configuration';
-        if (!firestore) return res.status(503).json({ error: 'Generation quota is not available right now.' });
-        stage = 'Firestore read';
+        stage = 'Supabase configuration';
+        const supabase = createSupabaseClient();
+        if (!supabase) return res.status(503).json({ error: 'Generation quota is not available right now.' });
+        stage = 'Supabase read';
         const now = Date.now();
-        const snapshot = await firestore.collection('generation_quota').doc(auth.user.uid).get();
+        const cutoff = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString();
+        const { data, error } = await supabase.from('generation_quota')
+            .select('created_at')
+            .eq('user_id', auth.user.uid)
+            .gt('created_at', cutoff)
+            .order('created_at', { ascending: true });
+        if (error) throw error;
         stage = 'quota formatting';
-        const recent = (snapshot.data()?.recentGenerations || [])
-            .filter(item => item?.createdAt?.toMillis?.() > now - 7 * 24 * 60 * 60 * 1000)
-            .sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis());
+        const recent = data || [];
+        const nextRenewalAt = recent.length ? new Date(recent[0].created_at).getTime() + 7 * 24 * 60 * 60 * 1000 : null;
         res.json({
             limit: 2,
             used: recent.length,
             remaining: Math.max(0, 2 - recent.length),
-            nextRenewalAt: recent.length ? recent[0].createdAt.toMillis() + 7 * 24 * 60 * 60 * 1000 : null,
+            nextRenewalAt,
             serverTime: now,
         });
     } catch (error) {
