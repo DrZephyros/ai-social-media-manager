@@ -838,6 +838,10 @@
     .account-status .account-signup { color: #fff; border: 1px solid rgba(255,255,255,.2); background: var(--instagram-gradient); box-shadow: 0 5px 24px rgba(214,41,118,.3); }
     .account-status .account-signup:hover { box-shadow: 0 7px 30px rgba(214,41,118,.48); }
     .generation-quota { max-width: 36vw; overflow: hidden; padding: .6rem .8rem; border: 1px solid rgba(0,229,255,.38); border-radius: 12px; color: #e7fdff; background: linear-gradient(120deg, rgba(0,117,137,.42), rgba(0,229,255,.16)); box-shadow: 0 4px 18px rgba(0,229,255,.1); font-size: .72rem; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
+    .app-toast { position: fixed; z-index: 1000; top: max(1.25rem, env(safe-area-inset-top)); left: 50%; display: flex; align-items: center; gap: .7rem; min-width: min(280px, calc(100vw - 2rem)); padding: .9rem 1.15rem; border: 1px solid rgba(0,229,255,.4); border-radius: 16px; color: var(--text); background: linear-gradient(130deg, rgba(15,32,42,.97), rgba(24,18,39,.97)); box-shadow: 0 14px 45px rgba(0,0,0,.45), 0 0 28px rgba(0,229,255,.16); font-size: .9rem; font-weight: 750; opacity: 0; pointer-events: none; transform: translate(-50%, -12px); transition: opacity .2s ease, transform .2s ease; }
+    .app-toast[hidden] { display: none; }
+    .app-toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
+    .app-toast-icon { display: grid; width: 1.6rem; height: 1.6rem; flex: 0 0 auto; place-items: center; border-radius: 50%; color: #071713; background: linear-gradient(135deg, #8df7c6, #00e5ff); font-size: 1rem; }
     @media (max-width: 560px) {
       .account-status { top: .7rem; right: .7rem; gap: .4rem; }
       .account-status span { display: none; }
@@ -1068,6 +1072,7 @@
   </header>
 
   <div class="account-status" id="account-status"><span id="account-status-text" hidden></span><span id="generation-quota" class="generation-quota" hidden></span><button type="button" class="account-login" id="account-open">Sign in</button><button type="button" class="account-signup" id="account-signup">Sign up</button></div>
+  <div class="app-toast" id="app-toast" role="status" aria-live="polite" hidden><span class="app-toast-icon" aria-hidden="true">✓</span><span id="app-toast-message">Signed out</span></div>
   <dialog class="account-dialog" id="account-dialog">
     <div class="account-dialog-head">
       <div><div class="account-dialog-eyebrow">Free account · 2 generations weekly</div><h2 id="account-title">Create your free account</h2></div>
@@ -1306,6 +1311,19 @@
     const accountDescription = document.getElementById('account-description');
     const accountSubmit = document.getElementById('account-submit');
     const accountToggle = document.getElementById('account-toggle');
+    const appToast = document.getElementById('app-toast');
+    const appToastMessage = document.getElementById('app-toast-message');
+    let appToastTimer;
+    function showToast(message) {
+      appToastMessage.textContent = message;
+      appToast.hidden = false;
+      requestAnimationFrame(() => appToast.classList.add('is-visible'));
+      window.clearTimeout(appToastTimer);
+      appToastTimer = window.setTimeout(() => {
+        appToast.classList.remove('is-visible');
+        window.setTimeout(() => { appToast.hidden = true; }, 220);
+      }, 2600);
+    }
     let signingIn = false;
     function setAccountMessage(detail, state = 'info', title = '') {
       accountMessage.replaceChildren();
@@ -1476,7 +1494,7 @@
         try {
           await firebaseAuth.signOut();
           updateAccountStatus(null);
-          window.alert('Signed out');
+          showToast('Signed out');
         } catch (error) {
           accountStatusText.textContent = error.message || 'Could not sign out';
           accountStatusText.hidden = false;
