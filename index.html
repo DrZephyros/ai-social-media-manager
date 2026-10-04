@@ -837,7 +837,7 @@
     .account-status .account-login { color: var(--text); border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.08); }
     .account-status .account-signup { color: #fff; border: 1px solid rgba(255,255,255,.2); background: var(--instagram-gradient); box-shadow: 0 5px 24px rgba(214,41,118,.3); }
     .account-status .account-signup:hover { box-shadow: 0 7px 30px rgba(214,41,118,.48); }
-    .generation-quota { padding: .6rem .8rem; border: 1px solid rgba(0,229,255,.38); border-radius: 12px; color: #e7fdff; background: linear-gradient(120deg, rgba(0,117,137,.42), rgba(0,229,255,.16)); box-shadow: 0 4px 18px rgba(0,229,255,.1); font-size: .72rem; font-weight: 750; white-space: nowrap; }
+    .generation-quota { max-width: 36vw; overflow: hidden; padding: .6rem .8rem; border: 1px solid rgba(0,229,255,.38); border-radius: 12px; color: #e7fdff; background: linear-gradient(120deg, rgba(0,117,137,.42), rgba(0,229,255,.16)); box-shadow: 0 4px 18px rgba(0,229,255,.1); font-size: .72rem; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
     @media (max-width: 560px) {
       .account-status { top: .7rem; right: .7rem; gap: .4rem; }
       .account-status span { display: none; }
@@ -1345,6 +1345,7 @@
     const firebaseAuth = firebaseReady ? window.firebase.auth() : null;
     let quotaSnapshot = null;
     let quotaRequestPending = false;
+    let quotaErrorMessage = '';
 
     function renderGenerationQuota() {
       if (!firebaseAuth?.currentUser) {
@@ -1352,7 +1353,8 @@
         return;
       }
       if (!quotaSnapshot) {
-        generationQuota.textContent = quotaRequestPending ? 'Loading weekly quota…' : 'Weekly quota unavailable';
+        generationQuota.textContent = quotaRequestPending ? 'Loading weekly quota…' : quotaErrorMessage ? `Quota issue: ${quotaErrorMessage}` : 'Weekly quota unavailable';
+        if (quotaErrorMessage) generationQuota.title = quotaErrorMessage;
         generationQuota.hidden = false;
         return;
       }
@@ -1386,19 +1388,24 @@
       quotaRequestPending = true;
       try {
         const response = await fetch('/api/generation-quota', { headers: await getAuthHeaders() });
-        if (!response.ok) throw new Error('Quota unavailable');
-        quotaSnapshot = await response.json();
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || `Quota request failed (${response.status}).`);
+        quotaSnapshot = result;
+        quotaErrorMessage = '';
         renderGenerationQuota();
-      } catch {
+      } catch (error) {
         quotaSnapshot = null;
-        generationQuota.textContent = 'Weekly quota unavailable';
-        generationQuota.title = 'Could not load quota. Refresh the page to try again.';
-        generationQuota.hidden = false;
+        quotaErrorMessage = error.message || 'Could not load your generation quota.';
+        renderGenerationQuota();
       } finally {
         quotaRequestPending = false;
+        if (!quotaSnapshot) renderGenerationQuota();
       }
     }
     window.setInterval(renderGenerationQuota, 1000);
+    window.setInterval(() => {
+      if (firebaseAuth?.currentUser && !quotaSnapshot && !quotaRequestPending) refreshGenerationQuota();
+    }, 30000);
 
     function updateAccountStatus(session) {
       if (session?.user) {
