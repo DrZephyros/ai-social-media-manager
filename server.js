@@ -69,7 +69,7 @@ function allowIpGeneration(req) {
     return true;
 }
 
-async function requireVerifiedUser(req, res) {
+async function requireAuthenticatedUser(req, res) {
     if (!firebaseAuth) {
         res.status(503).json({ error: 'Firebase accounts are not configured yet. Add the Firebase project and service-account environment variables.' });
         return null;
@@ -88,10 +88,6 @@ async function requireVerifiedUser(req, res) {
         return null;
     }
     const user = await firebaseAuth.getUser(decoded.uid);
-    if (!user.emailVerified) {
-        res.status(403).json({ error: 'Verify your email address before continuing.' });
-        return null;
-    }
     return { user, token: match[1] };
 }
 
@@ -129,7 +125,7 @@ let latestScript = null;
 
 app.post('/api/brainstorm', async (req, res) => {
     try {
-        if (!await requireVerifiedUser(req, res)) return;
+        if (!await requireAuthenticatedUser(req, res)) return;
         if (!allowIpGeneration(req)) return res.status(429).json({ error: 'Too many requests from this network. Please try again later.' });
         const { genre } = req.body || {};
         if (typeof genre !== 'string' || !genre.trim() || genre.trim().length > 120) {
@@ -171,7 +167,7 @@ app.get('/api/images', async (req, res) => {
 
 // SSE endpoint: streams status updates then returns the script JSON
 app.post('/api/generation-ticket', async (req, res) => {
-    const auth = await requireVerifiedUser(req, res);
+    const auth = await requireAuthenticatedUser(req, res);
     if (!auth) return;
     const { topic, genre } = req.body || {};
     if (typeof topic !== 'string' || !topic.trim() || topic.length > 500) return res.status(400).json({ error: 'Enter a topic up to 500 characters.' });
@@ -251,7 +247,7 @@ app.get('/api/generate-stream', async (req, res) => {
 });
 
 app.post('/api/download-authorize', async (req, res) => {
-    const auth = await requireVerifiedUser(req, res);
+    const auth = await requireAuthenticatedUser(req, res);
     if (!auth) return;
     res.json({ ok: true, user: { id: auth.user.uid, email: auth.user.email } });
 });

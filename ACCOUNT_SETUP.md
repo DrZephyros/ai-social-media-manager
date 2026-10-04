@@ -7,10 +7,9 @@ The app now uses Firebase Authentication for email/password accounts and Cloud F
 1. Open [Firebase Console](https://console.firebase.google.com/) and create a project. Choose the Spark (no-cost) plan; do not enable billing for this setup.
 2. In **Build → Authentication → Get started → Sign-in method**, enable **Email/Password**.
 3. In **Authentication → Settings → Authorized domains**, add your production domain and localhost for development.
-4. In **Authentication → Templates → Email address verification**, confirm the template is enabled and has a valid sender address. Customize its sender/name and action link as needed; the email is delivered by Firebase Authentication, so check the project's Authentication usage and spam folder if Firebase accepts the request but no message arrives. Firebase's default delivery has project email limits; use a custom SMTP configuration if you need reliable branded delivery or higher throughput.
-5. In **Build → Firestore Database**, create the database. Choose a location and start in production mode; this app accesses quota records through the server Admin SDK.
-6. In **Project settings → General → Your apps**, register a Web app and copy its Firebase config object.
-7. In **Project settings → Service accounts**, generate a private key JSON for server access. Keep this private key secret. Firebase documents the service-account setup for trusted server environments [here](https://firebase.google.com/docs/admin/setup).
+4. In **Build → Firestore Database**, create the database. Choose a location and start in production mode; this app accesses quota records through the server Admin SDK.
+5. In **Project settings → General → Your apps**, register a Web app and copy its Firebase config object.
+6. In **Project settings → Service accounts**, generate a private key JSON for server access. Keep this private key secret. Firebase documents the service-account setup for trusted server environments [here](https://firebase.google.com/docs/admin/setup).
 
 ## Cloudflare Turnstile
 
@@ -33,4 +32,4 @@ The Firestore generation_quota collection is created automatically after a user�
 
 A verified account may start two generations in any rolling seven-day window. Failed generation calls release their quota reservation. Each network address is also limited to five generation attempts per hour per server process; the account quota is the durable enforcement layer.
 
-Users must verify their email before generating or downloading. Downloads keep working while signed in. Free-tier limits may change, so review the provider dashboards before launch.
+Email verification is disabled. Any account that can sign in may generate and download. Downloads require a signed-in account. Free-tier limits may change, so review the provider dashboards before launch.

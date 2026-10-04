@@ -1079,7 +1079,6 @@
     </form>
     <button class="account-secondary" type="button" id="account-toggle">Already have an account? Sign in</button>
     <div id="account-message" role="status" aria-live="polite"></div>
-    <button class="account-secondary" type="button" id="account-resend-verification" hidden>Resend verification email</button>
   </dialog>
 
   <nav id="workspace-tabs" class="workspace-tabs" role="tablist" aria-label="Carousel workspace">
@@ -1302,7 +1301,6 @@
     const accountTitle = document.getElementById('account-title');
     const accountDescription = document.getElementById('account-description');
     const accountSubmit = document.getElementById('account-submit');
-    const accountResendVerification = document.getElementById('account-resend-verification');
     const accountToggle = document.getElementById('account-toggle');
     let signingIn = false;
     function setAccountMessage(detail, state = 'info', title = '') {
@@ -1343,7 +1341,7 @@
     const firebaseAuth = firebaseReady ? window.firebase.auth() : null;
 
     function updateAccountStatus(session) {
-      if (session?.user?.emailVerified) {
+      if (session?.user) {
         accountStatusText.textContent = session.user.email || 'Signed in';
         accountStatusText.hidden = false;
         accountOpen.textContent = 'Sign out';
@@ -1357,25 +1355,6 @@
         accountOpen.classList.add('account-login');
         accountOpen.classList.remove('account-signup');
         accountSignup.hidden = Boolean(session?.user);
-      }
-    }
-    function verificationErrorMessage(error) {
-      switch (error?.code) {
-        case 'auth/operation-not-allowed':
-          return 'Email and password sign-in is disabled for this Firebase project. Enable it in Firebase Authentication → Sign-in method.';
-        case 'auth/unauthorized-continue-uri':
-        case 'auth/unauthorized-domain':
-          return `Add ${window.location.host} to Firebase Authentication → Settings → Authorized domains, then try again.`;
-        case 'auth/too-many-requests':
-          return 'Firebase is temporarily limiting email requests. Wait a little while before trying again.';
-        case 'auth/network-request-failed':
-          return 'Could not reach Firebase. Check your connection and try again.';
-        case 'auth/invalid-email':
-          return 'Enter a valid email address and try again.';
-        case 'auth/quota-exceeded':
-          return 'Firebase has reached its email sending limit. Try again later or check the project’s Authentication usage.';
-        default:
-          return error?.message || 'Could not send the verification email. Try again.';
       }
     }
     async function getAuthHeaders() {
@@ -1394,11 +1373,10 @@
       signingIn = signIn;
       accountTitle.textContent = signIn ? 'Welcome back' : (download ? 'Create an account to download' : 'Create your free account');
       accountDescription.textContent = download
-        ? 'Your carousel is ready. Verify your email to download it; your account includes two generations per week.'
-        : (signIn ? 'Sign in with your verified email address.' : 'Verify your email to generate and download carousels with your two free weekly generations.');
+        ? 'Your carousel is ready. Create an account to download it; your account includes two generations per week.'
+        : (signIn ? 'Sign in to your account.' : 'Create an account for two free generations per week.');
       accountSubmit.textContent = signIn ? 'Sign in' : 'Create account';
       accountSubmit.hidden = false;
-      accountResendVerification.hidden = true;
       accountPasswordHint.hidden = signIn;
       accountToggle.hidden = false;
       accountForm.reset();
@@ -1432,10 +1410,9 @@
     accountToggle.addEventListener('click', () => {
       signingIn = !signingIn;
       accountTitle.textContent = signingIn ? 'Welcome back' : (pendingDownload ? 'Create an account to download' : 'Create your free account');
-      accountDescription.textContent = signingIn ? 'Sign in with your verified email address.' : 'Verify your email to access your free weekly generations.';
+      accountDescription.textContent = signingIn ? 'Sign in to your account.' : 'Create an account for two free generations per week.';
       accountSubmit.textContent = signingIn ? 'Sign in' : 'Create account';
       accountSubmit.hidden = false;
-      accountResendVerification.hidden = true;
       accountPassword.autocomplete = signingIn ? 'current-password' : 'new-password';
       accountPasswordHint.hidden = signingIn;
       accountToggle.textContent = signingIn ? 'New here? Create an account' : 'Already have an account? Sign in';
@@ -1443,49 +1420,7 @@
       turnstileToken = null;
       renderTurnstile();
     });
-    accountResendVerification.addEventListener('click', async () => {
-      const email = accountEmail.value.trim();
-      const password = accountPassword.value;
-      if (!email || !password) {
-        setAccountMessage('Enter the same email and password you used to create this account.', 'error', 'Account details needed');
-        return;
-      }
-      accountResendVerification.disabled = true;
-      accountResendVerification.textContent = 'Sending…';
-      try {
-        const credential = await firebaseAuth.signInWithEmailAndPassword(email, password);
-        await credential.user.reload();
-        if (credential.user.emailVerified) {
-          await firebaseAuth.signOut();
-          signingIn = true;
-          accountTitle.textContent = 'Welcome back';
-          accountDescription.textContent = 'Your email is verified. Sign in to continue.';
-          accountSubmit.textContent = 'Sign in';
-          accountSubmit.hidden = false;
-          accountResendVerification.hidden = true;
-          accountPassword.autocomplete = 'current-password';
-          accountPasswordHint.hidden = true;
-          accountToggle.hidden = false;
-          accountToggle.textContent = 'New here? Create an account';
-          setAccountMessage('Your email is verified. Sign in with your account details to continue.', 'notice', 'Email verified');
-          return;
-        }
-        await credential.user.sendEmailVerification();
-        await firebaseAuth.signOut();
-        updateAccountStatus({ user: credential.user });
-        setAccountMessage('Firebase accepted another verification request. Check Inbox, Spam, and Promotions.', 'notice', 'Verification email requested');
-      } catch (error) {
-        if (firebaseAuth.currentUser) {
-          const user = firebaseAuth.currentUser;
-          await firebaseAuth.signOut().catch(() => {});
-          updateAccountStatus({ user });
-        }
-        setAccountMessage(verificationErrorMessage(error), 'error', 'Couldn’t resend email');
-      } finally {
-        accountResendVerification.disabled = false;
-        accountResendVerification.textContent = 'Resend verification email';
-      }
-    });
+
     accountForm.addEventListener('submit', async event => {
       event.preventDefault();
       if (!firebaseAuth) { setAccountMessage('Firebase account sign-in is not configured yet.', 'error', 'Sign-in is unavailable'); return; }
@@ -1501,42 +1436,18 @@
         }
         if (signingIn) {
           const credential = await firebaseAuth.signInWithEmailAndPassword(accountEmail.value.trim(), accountPassword.value);
-          if (!credential.user.emailVerified) {
-            try {
-              await credential.user.sendEmailVerification();
-              setAccountMessage('Firebase accepted another verification request. Check Inbox, Spam, and Promotions.', 'notice', 'Verification email requested');
-            } catch (error) {
-              setAccountMessage(verificationErrorMessage(error), 'error', 'Couldn’t send verification email');
-            }
-            await firebaseAuth.signOut();
-            updateAccountStatus({ user: credential.user });
-            accountResendVerification.hidden = false;
-            return;
-          }
           setAccountMessage('Signed in successfully.', 'notice', 'You’re signed in');
           accountDialog.close();
           if (pendingDownload) downloadSlides(btnDownloadTop);
         } else {
           const credential = await firebaseAuth.createUserWithEmailAndPassword(accountEmail.value.trim(), accountPassword.value);
           updateAccountStatus({ user: credential.user });
-          try {
-            await credential.user.sendEmailVerification();
-            setAccountMessage('Firebase accepted the verification email request. Check Inbox, Spam, and Promotions.', 'notice', 'Verification email requested');
-          } catch (error) {
-            setAccountMessage(`Your account was created, but Firebase could not send the verification email. ${verificationErrorMessage(error)}`, 'error', 'Account created · email not sent');
-          } finally {
-            await firebaseAuth.signOut();
-          }
-          accountSubmit.hidden = true;
-          accountResendVerification.hidden = false;
-          accountToggle.hidden = true;
+          setAccountMessage('Your account is ready. You’re signed in.', 'notice', 'Account created');
+          accountDialog.close();
+          if (pendingDownload) downloadSlides(btnDownloadTop);
         }
       } catch (error) {
-        if (error.code === 'auth/unauthorized-continue-uri' || error.code === 'auth/unauthorized-domain' || error.code === 'auth/operation-not-allowed') {
-          setAccountMessage(verificationErrorMessage(error), 'error', 'Firebase setup required');
-        } else {
-          setAccountMessage(error.message || 'Could not complete account action.', 'error', signingIn ? 'Couldn’t sign in' : 'Couldn’t create account');
-        }
+        setAccountMessage(error.message || 'Could not complete account action.', 'error', signingIn ? 'Couldn’t sign in' : 'Couldn’t create account');
         if (window.turnstile && turnstileSiteKey) window.turnstile.reset();
       } finally {
         accountSubmit.disabled = false;
@@ -1859,7 +1770,7 @@
         if (!headers.Authorization) {
           btnGenerate.disabled = false;
           openAccountDialog();
-          setStatus('Create an account and verify your email before generating.');
+          setStatus('Create an account or sign in before generating.');
           return;
         }
         fetch('/api/generation-ticket', { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify({ topic, genre }) })
@@ -2249,7 +2160,7 @@
       if (!authorized.ok) {
         const result = await authorized.json().catch(() => ({}));
         if (authorized.status === 401) openAccountDialog({ download: true });
-        else alert(result.error || 'Please verify your email and sign in to download.');
+        else alert(result.error || 'Please sign in to download.');
         return;
       }
       // Read the live contenteditable DOM before any awaits. This also catches
