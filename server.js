@@ -87,7 +87,9 @@ async function requireAuthenticatedUser(req, res) {
         res.status(401).json({ error: 'Your session has expired. Please sign in again.' });
         return null;
     }
-    const user = await firebaseAuth.getUser(decoded.uid);
+    // The verified ID token already carries the user's UID and email; avoid an
+    // extra Admin Auth lookup for every authenticated API request.
+    const user = { uid: decoded.uid, email: decoded.email || null };
     return { user, token: match[1] };
 }
 
