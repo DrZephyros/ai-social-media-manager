@@ -1382,22 +1382,24 @@
         return;
       }
       const { remaining, nextRenewalAt } = quotaSnapshot;
-      if (!nextRenewalAt) {
-        generationQuota.textContent = `${remaining} generations left · no renewal pending`;
-      } else {
+      if (remaining > 0) {
+        generationQuota.textContent = `${remaining} generation${remaining === 1 ? '' : 's'} remaining`;
+      } else if (nextRenewalAt) {
         const seconds = Math.max(0, Math.ceil((nextRenewalAt - Date.now()) / 1000));
         if (!seconds) {
-          generationQuota.textContent = `${remaining} generations left · renewing now`;
+          generationQuota.textContent = 'Renewing now…';
           refreshGenerationQuota();
         } else {
           const days = Math.floor(seconds / 86400);
           const hours = Math.floor(seconds % 86400 / 3600);
           const minutes = Math.floor(seconds % 3600 / 60);
           const countdown = days ? `${days}d ${hours}h` : hours ? `${hours}h ${minutes}m` : `${minutes}m ${seconds % 60}s`;
-          generationQuota.textContent = `${remaining} generations left · next in ${countdown}`;
+          generationQuota.textContent = `0 generations remaining · renews in ${countdown}`;
         }
+      } else {
+        generationQuota.textContent = '0 generations remaining';
       }
-      generationQuota.title = nextRenewalAt ? `Next generation renewal: ${new Date(nextRenewalAt).toLocaleString()}` : 'Your weekly limit renews seven days after each generation.';
+      generationQuota.removeAttribute('title');
       generationQuota.hidden = false;
     }
 
