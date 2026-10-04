@@ -837,9 +837,12 @@
     .account-status .account-login { color: var(--text); border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.08); }
     .account-status .account-signup { color: #fff; border: 1px solid rgba(255,255,255,.2); background: var(--instagram-gradient); box-shadow: 0 5px 24px rgba(214,41,118,.3); }
     .account-status .account-signup:hover { box-shadow: 0 7px 30px rgba(214,41,118,.48); }
+    .generation-quota { padding: .55rem .75rem; border: 1px solid rgba(0,229,255,.2); border-radius: 12px; color: #dffaff; background: rgba(0,229,255,.07); font-size: .7rem; font-weight: 700; white-space: nowrap; }
     @media (max-width: 560px) {
       .account-status { top: .7rem; right: .7rem; gap: .4rem; }
       .account-status span { display: none; }
+      .account-status .generation-quota { display: block; max-width: 52vw; overflow: hidden; padding: .45rem .55rem; font-size: .62rem; text-overflow: ellipsis; }
+      .account-status .generation-quota[hidden] { display: none; }
       .account-status button { min-height: 38px; padding: .55rem .8rem; font-size: .76rem; }
       header { padding-top: 1.15rem; }
     }
@@ -1064,13 +1067,13 @@
     </div>
   </header>
 
-  <div class="account-status" id="account-status"><span id="account-status-text" hidden></span><button type="button" class="account-login" id="account-open">Sign in</button><button type="button" class="account-signup" id="account-signup">Sign up</button></div>
+  <div class="account-status" id="account-status"><span id="account-status-text" hidden></span><span id="generation-quota" class="generation-quota" hidden></span><button type="button" class="account-login" id="account-open">Sign in</button><button type="button" class="account-signup" id="account-signup">Sign up</button></div>
   <dialog class="account-dialog" id="account-dialog">
     <div class="account-dialog-head">
       <div><div class="account-dialog-eyebrow">Free account · 2 generations weekly</div><h2 id="account-title">Create your free account</h2></div>
       <button class="account-close" type="button" id="account-close" aria-label="Close">×</button>
     </div>
-    <p id="account-description">Verify your email to download carousels and receive two generations per week.</p>
+    <p id="account-description">Create an account to download carousels and receive two generations per week.</p>
     <form id="account-form">
       <div class="account-field"><label for="account-email">Email address</label><input id="account-email" type="email" autocomplete="email" placeholder="you@example.com" required maxlength="254"></div>
       <div class="account-field"><label for="account-password">Password</label><div class="account-password-control"><input id="account-password" type="password" autocomplete="new-password" placeholder="Create a password" required minlength="8" maxlength="128"><button class="account-password-toggle" id="account-password-toggle" type="button" aria-controls="account-password" aria-pressed="false">Show</button></div><div class="account-password-hint">Use at least 8 characters.</div></div>
@@ -1290,6 +1293,7 @@
     const renderGrid    = document.getElementById('render-grid');
     const accountDialog = document.getElementById('account-dialog');
     const accountStatusText = document.getElementById('account-status-text');
+    const generationQuota = document.getElementById('generation-quota');
     const accountOpen = document.getElementById('account-open');
     const accountSignup = document.getElementById('account-signup');
     const accountForm = document.getElementById('account-form');
@@ -1339,6 +1343,54 @@
     const firebaseReady = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId && window.firebase?.auth);
     if (firebaseReady && !window.firebase.apps.length) window.firebase.initializeApp(firebaseConfig);
     const firebaseAuth = firebaseReady ? window.firebase.auth() : null;
+    let quotaSnapshot = null;
+    let quotaRequestPending = false;
+
+    function renderGenerationQuota() {
+      if (!quotaSnapshot || !firebaseAuth?.currentUser) {
+        generationQuota.hidden = true;
+        return;
+      }
+      const { remaining, nextRenewalAt } = quotaSnapshot;
+      if (!nextRenewalAt) {
+        generationQuota.textContent = `${remaining} generations left · no renewal pending`;
+      } else {
+        const seconds = Math.max(0, Math.ceil((nextRenewalAt - Date.now()) / 1000));
+        if (!seconds) {
+          generationQuota.textContent = `${remaining} generations left · renewing now`;
+          refreshGenerationQuota();
+        } else {
+          const days = Math.floor(seconds / 86400);
+          const hours = Math.floor(seconds % 86400 / 3600);
+          const minutes = Math.floor(seconds % 3600 / 60);
+          const countdown = days ? `${days}d ${hours}h` : hours ? `${hours}h ${minutes}m` : `${minutes}m ${seconds % 60}s`;
+          generationQuota.textContent = `${remaining} generations left · next in ${countdown}`;
+        }
+      }
+      generationQuota.title = nextRenewalAt ? `Next generation renewal: ${new Date(nextRenewalAt).toLocaleString()}` : 'Your weekly limit renews seven days after each generation.';
+      generationQuota.hidden = false;
+    }
+
+    async function refreshGenerationQuota() {
+      if (quotaRequestPending) return;
+      if (!firebaseAuth?.currentUser) {
+        quotaSnapshot = null;
+        renderGenerationQuota();
+        return;
+      }
+      quotaRequestPending = true;
+      try {
+        const response = await fetch('/api/generation-quota', { headers: await getAuthHeaders() });
+        if (!response.ok) throw new Error('Quota unavailable');
+        quotaSnapshot = await response.json();
+        renderGenerationQuota();
+      } catch {
+        generationQuota.hidden = true;
+      } finally {
+        quotaRequestPending = false;
+      }
+    }
+    window.setInterval(renderGenerationQuota, 1000);
 
     function updateAccountStatus(session) {
       if (session?.user) {
@@ -1348,6 +1400,7 @@
         accountOpen.classList.remove('account-login');
         accountOpen.classList.add('account-signup');
         accountSignup.hidden = true;
+        refreshGenerationQuota();
       } else {
         accountStatusText.textContent = '';
         accountStatusText.hidden = true;
@@ -1355,6 +1408,8 @@
         accountOpen.classList.add('account-login');
         accountOpen.classList.remove('account-signup');
         accountSignup.hidden = Boolean(session?.user);
+        quotaSnapshot = null;
+        renderGenerationQuota();
       }
     }
     async function getAuthHeaders() {
@@ -1367,6 +1422,7 @@
       if (document.visibilityState !== 'visible' || !firebaseAuth?.currentUser) return;
       await firebaseAuth.currentUser.reload().catch(() => {});
       updateAccountStatus(firebaseAuth.currentUser ? { user: firebaseAuth.currentUser } : null);
+      refreshGenerationQuota();
     });
     function openAccountDialog({ download = false, signIn = false } = {}) {
       pendingDownload = download;
@@ -1793,6 +1849,7 @@
       });
 
       function attachGenerationStream(evtSource) {
+      let quotaUpdated = false;
 
       evtSource.onmessage = async (e) => {
         const payload = JSON.parse(e.data);
@@ -1801,12 +1858,20 @@
           setStatus('❌ Error: ' + payload.error);
           evtSource.close();
           btnGenerate.disabled = false;
+          window.setTimeout(refreshGenerationQuota, 500);
           return;
         }
 
-        if (payload.status) setStatus(payload.status, true);
+        if (payload.status) {
+          setStatus(payload.status, true);
+          if (!quotaUpdated) {
+            quotaUpdated = true;
+            refreshGenerationQuota();
+          }
+        }
 
         if (payload.done && payload.script) {
+          refreshGenerationQuota();
           evtSource.close();
           currentScript = payload.script;
           currentSources = Array.isArray(payload.sources) ? payload.sources : [];

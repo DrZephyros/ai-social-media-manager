@@ -252,6 +252,29 @@ app.post('/api/download-authorize', async (req, res) => {
     res.json({ ok: true, user: { id: auth.user.uid, email: auth.user.email } });
 });
 
+app.get('/api/generation-quota', async (req, res) => {
+    const auth = await requireAuthenticatedUser(req, res);
+    if (!auth) return;
+    if (!firestore) return res.status(503).json({ error: 'Generation quota is not available right now.' });
+    try {
+        const now = Date.now();
+        const snapshot = await firestore.collection('generation_quota').doc(auth.user.uid).get();
+        const recent = (snapshot.data()?.recentGenerations || [])
+            .filter(item => item?.createdAt?.toMillis?.() > now - 7 * 24 * 60 * 60 * 1000)
+            .sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis());
+        res.json({
+            limit: 2,
+            used: recent.length,
+            remaining: Math.max(0, 2 - recent.length),
+            nextRenewalAt: recent.length ? recent[0].createdAt.toMillis() + 7 * 24 * 60 * 60 * 1000 : null,
+            serverTime: now,
+        });
+    } catch (error) {
+        console.error('Generation quota lookup failed:', error.message);
+        res.status(503).json({ error: 'Could not load your generation quota.' });
+    }
+});
+
 app.post('/api/turnstile/verify', async (req, res) => {
     const secret = process.env.TURNSTILE_SECRET_KEY?.trim();
     if (!secret) return res.status(503).json({ error: 'Bot protection is not configured yet.' });
