@@ -32,6 +32,11 @@ function createSupabaseClient() {
 const ipWindows = new Map();
 const IP_WINDOW_MS = 60 * 60 * 1000;
 const IP_MAX_GENERATIONS = 5;
+const PREMIUM_EMAILS = new Set(['gowthamsanjay2028@gmail.com']);
+
+function isPremiumUser(user) {
+    return PREMIUM_EMAILS.has(String(user?.email || '').trim().toLowerCase());
+}
 
 function clientIp(req) {
     const forwarded = req.headers['x-forwarded-for'];
@@ -68,7 +73,7 @@ async function requireAuthenticatedUser(req, res) {
     try {
         const { data, error } = await supabase.auth.getUser(match[1]);
         if (error || !data.user) throw error || new Error('No user in session');
-        return { user: { uid: data.user.id, email: data.user.email || null }, token: match[1] };
+        return { user: { uid: data.user.id, email: data.user.email || null, premium: isPremiumUser(data.user) }, token: match[1] };
     } catch {
         res.status(401).json({ error: 'Your session has expired. Please sign in again.' });
         return null;
@@ -231,7 +236,7 @@ app.post('/api/generation-ticket', async (req, res) => {
     const { topic, genre } = req.body || {};
     if (typeof topic !== 'string' || !topic.trim() || topic.length > 500) return res.status(400).json({ error: 'Enter a topic up to 500 characters.' });
     if (typeof genre !== 'string' || !genre.trim() || genre.trim().length > 120) return res.status(400).json({ error: 'Select a niche before generating slides.' });
-    const payload = Buffer.from(JSON.stringify({ userId: auth.user.uid, topic: topic.trim(), genre: genre.trim(), expiresAt: Date.now() + 60_000 })).toString('base64url');
+    const payload = Buffer.from(JSON.stringify({ userId: auth.user.uid, premium: auth.user.premium, topic: topic.trim(), genre: genre.trim(), expiresAt: Date.now() + 60_000 })).toString('base64url');
     if (!generationTicketSecret) return res.status(503).json({ error: 'Generation signing secret is not configured.' });
     const signature = createHmac('sha256', generationTicketSecret).update(payload).digest('base64url');
     const ticket = `${payload}.${signature}`;
@@ -284,19 +289,22 @@ app.get('/api/generate-stream', async (req, res) => {
             return;
         }
 
-        try {
-            reservation = await reserveGeneration(userId);
-        } catch (quotaError) {
-            console.error('Generation quota reservation failed:', quotaError.message);
-            send({ error: 'Could not check your generation limit. Please try again.' });
-            return;
+        const premiumUser = ticket.premium === true;
+        if (!premiumUser) {
+            try {
+                reservation = await reserveGeneration(userId);
+            } catch (quotaError) {
+                console.error('Generation quota reservation failed:', quotaError.message);
+                send({ error: 'Could not check your generation limit. Please try again.' });
+                return;
+            }
+            if (!reservation?.allowed) {
+                send({ error: `You have used your 2 free generations for this 3-day period. Your limit resets ${new Date(reservation.resetsAt).toLocaleString('en', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' })} UTC.` });
+                return;
+            }
         }
-        if (!reservation?.allowed) {
-            send({ error: `You have used your 2 free generations for this 3-day period. Your limit resets ${new Date(reservation.resetsAt).toLocaleString('en', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' })} UTC.` });
-            return;
-        }
-        if (!allowIpGeneration(req)) {
-            await releaseGeneration(userId, reservation.reservationId).catch(() => {});
+        if (!premiumUser && !allowIpGeneration(req)) {
+            if (reservation?.reservationId) await releaseGeneration(userId, reservation.reservationId).catch(() => {});
             reservation = null;
             send({ error: 'Too many generations from this network. Please try again in an hour.' });
             return;
@@ -321,9 +329,7 @@ app.get('/api/generate-stream', async (req, res) => {
     } catch (err) {
         console.error('Carousel generation failed:', err);
         send({ error: err.message || 'Carousel generation failed. Please try again.' });
-        if (userId && reservation?.reservationId) {
-            await releaseGeneration(userId, reservation.reservationId).catch(() => {});
-        }
+        if (userId && reservation?.reservationId) await releaseGeneration(userId, reservation.reservationId).catch(() => {});
     } finally {
         clearInterval(keepAlive);
         res.end();
@@ -341,6 +347,9 @@ app.get('/api/generation-quota', async (req, res) => {
     try {
         const auth = await requireAuthenticatedUser(req, res);
         if (!auth) return;
+        if (isPremiumUser(auth.user)) {
+            return res.json({ premium: true, limit: null, used: 0, remaining: null, nextRenewalAt: null, serverTime: Date.now() });
+        }
         stage = 'Supabase configuration';
         const supabase = createSupabaseClient();
         if (!supabase) return res.status(503).json({ error: 'Generation quota is not available right now.' });
@@ -358,6 +367,7 @@ app.get('/api/generation-quota', async (req, res) => {
         const recent = data || [];
         const nextRenewalAt = recent.length ? new Date(recent[0].created_at).getTime() + quotaPeriodMs : null;
         res.json({
+            premium: false,
             limit: 2,
             used: recent.length,
             remaining: Math.max(0, 2 - recent.length),

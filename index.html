@@ -834,6 +834,8 @@
     .account-status .account-signup:hover { box-shadow: 0 7px 30px rgba(214,41,118,.48); }
     .generation-quota { display: inline-flex; max-width: 36vw; min-height: 42px; overflow: hidden; align-items: center; gap: .6rem; padding: .38rem .85rem .38rem .42rem; border: 1px solid transparent; border-radius: 14px; color: #fff; background: linear-gradient(115deg, rgba(24,19,34,.96), rgba(15,26,37,.96)) padding-box, linear-gradient(115deg, #feda75 0%, #fa7e1e 28%, #d62976 62%, #4f5bd5 100%) border-box; box-shadow: 0 5px 22px rgba(214,41,118,.16), inset 0 1px rgba(255,255,255,.08); font-size: .76rem; font-weight: 800; letter-spacing: -.015em; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
     .generation-quota::before { display: grid; width: 28px; height: 28px; flex: 0 0 auto; place-items: center; border-radius: 9px; color: #fff; background: var(--instagram-gradient); box-shadow: 0 2px 12px rgba(214,41,118,.3); content: '✦'; font-size: .9rem; }
+    .generation-quota.is-premium { border-color: transparent; background: linear-gradient(115deg, rgba(31,24,12,.96), rgba(25,18,34,.96)) padding-box, linear-gradient(115deg, #fff1a6, #f6bd45 36%, #d62976 72%, #4f5bd5) border-box; box-shadow: 0 5px 24px rgba(246,189,69,.2), inset 0 1px rgba(255,255,255,.1); }
+    .generation-quota.is-premium::before { color: #35250b; background: linear-gradient(135deg, #fff1a6, #f6bd45 60%, #f5d77e); box-shadow: 0 2px 12px rgba(246,189,69,.35); content: '♛'; }
     .account-status button.quota-refresh { display: grid; width: 42px; height: 42px; min-height: 42px; flex: 0 0 42px; place-items: center; margin: 0; padding: 0; border: 1px solid rgba(255,255,255,.14); border-radius: 50%; color: rgba(255,255,255,.82); background: rgba(255,255,255,.06); font: inherit; line-height: 1; cursor: pointer; transition: color .18s, background .18s, border-color .18s, transform .18s; }
     .account-status button.quota-refresh[hidden] { display: none; }
     .quota-refresh:hover:not(:disabled) { transform: rotate(35deg); border-color: rgba(250,126,170,.55); color: #fff; background: rgba(214,41,118,.15); }
@@ -1445,11 +1447,23 @@
       }
       if (!quotaSnapshot) {
         generationQuota.classList.remove('is-countdown');
+        generationQuota.classList.remove('is-premium');
         generationQuota.textContent = quotaRequestPending ? 'Loading quota…' : quotaErrorMessage ? `Quota issue: ${quotaErrorMessage}` : 'Quota unavailable';
         if (quotaErrorMessage) generationQuota.title = quotaErrorMessage;
         generationQuota.hidden = false;
         return;
       }
+      if (quotaSnapshot.premium === true) {
+        generationQuota.classList.remove('is-countdown');
+        generationQuota.classList.add('is-premium');
+        generationQuota.textContent = 'PREMIUM · Unlimited generations';
+        generationQuota.removeAttribute('title');
+        generationQuota.hidden = false;
+        quotaRefresh.hidden = true;
+        return;
+      }
+      generationQuota.classList.remove('is-premium');
+      quotaRefresh.hidden = false;
       const { remaining, nextRenewalAt } = quotaSnapshot;
       if (remaining > 0) {
         generationQuota.textContent = `${remaining} generation${remaining === 1 ? '' : 's'} remaining`;
