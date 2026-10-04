@@ -834,13 +834,13 @@
     .account-status .account-signup:hover { box-shadow: 0 7px 30px rgba(214,41,118,.48); }
     .generation-quota { display: inline-flex; max-width: 36vw; min-height: 42px; overflow: hidden; align-items: center; gap: .6rem; padding: .38rem .85rem .38rem .42rem; border: 1px solid transparent; border-radius: 14px; color: #fff; background: linear-gradient(115deg, rgba(24,19,34,.96), rgba(15,26,37,.96)) padding-box, linear-gradient(115deg, #feda75 0%, #fa7e1e 28%, #d62976 62%, #4f5bd5 100%) border-box; box-shadow: 0 5px 22px rgba(214,41,118,.16), inset 0 1px rgba(255,255,255,.08); font-size: .76rem; font-weight: 800; letter-spacing: -.015em; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
     .generation-quota::before { display: grid; width: 28px; height: 28px; flex: 0 0 auto; place-items: center; border-radius: 9px; color: #fff; background: var(--instagram-gradient); box-shadow: 0 2px 12px rgba(214,41,118,.3); content: '✦'; font-size: .9rem; }
-    .generation-quota.is-countdown { gap: .48rem; padding-right: .58rem; }
-    .quota-countdown-label { color: rgba(255,255,255,.72); font-size: .62rem; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; }
-    .quota-countdown { display: inline-flex; align-items: center; gap: .18rem; }
-    .quota-time-unit { display: grid; min-width: 2.25rem; justify-items: center; gap: .08rem; padding: .22rem .28rem .18rem; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; background: linear-gradient(155deg, rgba(255,255,255,.1), rgba(255,255,255,.035)); box-shadow: inset 0 1px rgba(255,255,255,.06); }
-    .quota-time-unit b { color: #fff; font-size: .88rem; line-height: 1; letter-spacing: .015em; }
-    .quota-time-unit small { color: rgba(255,255,255,.58); font-size: .44rem; font-weight: 800; line-height: 1; letter-spacing: .08em; }
-    .quota-countdown-separator { color: #fa7eaa; font-size: .84rem; font-weight: 900; }
+    .generation-quota.is-countdown { gap: .55rem; padding: .34rem .62rem .34rem .38rem; border-radius: 16px; box-shadow: 0 6px 24px rgba(214,41,118,.2), 0 0 18px rgba(79,91,213,.1), inset 0 1px rgba(255,255,255,.1); }
+    .quota-countdown-label { color: rgba(255,255,255,.76); font-size: .58rem; font-weight: 850; letter-spacing: .055em; text-transform: uppercase; }
+    .quota-countdown { display: inline-flex; align-items: center; gap: .22rem; }
+    .quota-time-unit { display: grid; min-width: 2.45rem; justify-items: center; gap: .1rem; padding: .27rem .32rem .22rem; border: 1px solid rgba(255,255,255,.12); border-radius: 9px; background: linear-gradient(155deg, rgba(255,255,255,.12), rgba(255,255,255,.045)); box-shadow: inset 0 1px rgba(255,255,255,.08), 0 2px 8px rgba(0,0,0,.15); }
+    .quota-time-unit b { color: #fff; font-size: .9rem; line-height: 1; letter-spacing: .015em; text-shadow: 0 0 12px rgba(250,126,170,.2); }
+    .quota-time-unit small { color: rgba(255,255,255,.62); font-size: .45rem; font-weight: 850; line-height: 1; letter-spacing: .09em; }
+    .quota-countdown-separator { color: #fa7eaa; font-size: .84rem; font-weight: 900; opacity: .85; }
     .app-toast { position: fixed; z-index: 1000; top: max(1.25rem, env(safe-area-inset-top)); left: 50%; display: flex; align-items: center; gap: .7rem; min-width: min(280px, calc(100vw - 2rem)); padding: .9rem 1.15rem; border: 1px solid rgba(0,229,255,.4); border-radius: 16px; color: var(--text); background: linear-gradient(130deg, rgba(15,32,42,.97), rgba(24,18,39,.97)); box-shadow: 0 14px 45px rgba(0,0,0,.45), 0 0 28px rgba(0,229,255,.16); font-size: .9rem; font-weight: 750; opacity: 0; pointer-events: none; transform: translate(-50%, -12px); transition: opacity .2s ease, transform .2s ease; }
     .app-toast[hidden] { display: none; }
     .app-toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
@@ -871,9 +871,10 @@
       .account-status .generation-quota { display: inline-flex; max-width: 64vw; min-height: 38px; overflow: hidden; gap: .38rem; padding: .3rem .55rem .3rem .32rem; font-size: .62rem; text-overflow: ellipsis; }
       .account-status .generation-quota::before { width: 24px; height: 24px; border-radius: 7px; font-size: .75rem; }
       .account-status .generation-quota.is-countdown { gap: .3rem; padding-right: .38rem; }
+      .account-status .generation-quota.is-countdown { padding: .28rem .38rem .28rem .3rem; }
       .account-status .quota-countdown-label { display: none; }
-      .account-status .quota-countdown { gap: .12rem; }
-      .account-status .quota-time-unit { min-width: 1.95rem; padding: .2rem .2rem .16rem; }
+      .account-status .quota-countdown { gap: .14rem; }
+      .account-status .quota-time-unit { min-width: 2rem; gap: .08rem; padding: .21rem .2rem .18rem; border-radius: 8px; }
       .account-status .quota-time-unit b { font-size: .78rem; }
       .account-status .quota-time-unit small { font-size: .4rem; }
       .account-status .generation-quota[hidden] { display: none; }
@@ -1443,13 +1444,14 @@
           generationQuota.textContent = 'Renewing now…';
           refreshGenerationQuota();
         } else {
-          const hours = Math.floor(seconds / 3600);
+          const days = Math.floor(seconds / 86400);
+          const hours = Math.floor(seconds % 86400 / 3600);
           const minutes = Math.floor(seconds % 3600 / 60);
           const remainingSeconds = seconds % 60;
           const pad = value => String(value).padStart(2, '0');
-          const label = `Next generation in ${hours} hours, ${minutes} minutes, and ${remainingSeconds} seconds`;
+          const label = `Next generation in ${days} days, ${hours} hours, ${minutes} minutes, and ${remainingSeconds} seconds`;
           generationQuota.classList.add('is-countdown');
-          generationQuota.innerHTML = `<span class="quota-countdown-label">Next in</span><span class="quota-countdown" role="timer" aria-label="${label}"><span class="quota-time-unit"><b>${pad(hours)}</b><small>HRS</small></span><i class="quota-countdown-separator" aria-hidden="true">:</i><span class="quota-time-unit"><b>${pad(minutes)}</b><small>MIN</small></span><i class="quota-countdown-separator" aria-hidden="true">:</i><span class="quota-time-unit"><b>${pad(remainingSeconds)}</b><small>SEC</small></span></span>`;
+          generationQuota.innerHTML = `<span class="quota-countdown-label">Next in</span><span class="quota-countdown" role="timer" aria-label="${label}"><span class="quota-time-unit"><b>${pad(days)}</b><small>DAYS</small></span><i class="quota-countdown-separator" aria-hidden="true">:</i><span class="quota-time-unit"><b>${pad(hours)}</b><small>HRS</small></span><i class="quota-countdown-separator" aria-hidden="true">:</i><span class="quota-time-unit"><b>${pad(minutes)}</b><small>MIN</small></span><i class="quota-countdown-separator" aria-hidden="true">:</i><span class="quota-time-unit"><b>${pad(remainingSeconds)}</b><small>SEC</small></span></span>`;
         }
       } else {
         generationQuota.textContent = '0 generations remaining';
