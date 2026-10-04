@@ -822,7 +822,8 @@
     .account-status .account-login { color: var(--text); border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.08); }
     .account-status .account-signup { color: #fff; border: 1px solid rgba(255,255,255,.2); background: var(--instagram-gradient); box-shadow: 0 5px 24px rgba(214,41,118,.3); }
     .account-status .account-signup:hover { box-shadow: 0 7px 30px rgba(214,41,118,.48); }
-    .generation-quota { max-width: 36vw; overflow: hidden; padding: .6rem .8rem; border: 1px solid rgba(0,229,255,.38); border-radius: 12px; color: #e7fdff; background: linear-gradient(120deg, rgba(0,117,137,.42), rgba(0,229,255,.16)); box-shadow: 0 4px 18px rgba(0,229,255,.1); font-size: .72rem; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
+    .generation-quota { display: inline-flex; max-width: 36vw; min-height: 42px; overflow: hidden; align-items: center; gap: .6rem; padding: .38rem .85rem .38rem .42rem; border: 1px solid transparent; border-radius: 14px; color: #fff; background: linear-gradient(115deg, rgba(24,19,34,.96), rgba(15,26,37,.96)) padding-box, linear-gradient(115deg, #feda75 0%, #fa7e1e 28%, #d62976 62%, #4f5bd5 100%) border-box; box-shadow: 0 5px 22px rgba(214,41,118,.16), inset 0 1px rgba(255,255,255,.08); font-size: .76rem; font-weight: 800; letter-spacing: -.015em; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
+    .generation-quota::before { display: grid; width: 28px; height: 28px; flex: 0 0 auto; place-items: center; border-radius: 9px; color: #fff; background: var(--instagram-gradient); box-shadow: 0 2px 12px rgba(214,41,118,.3); content: '✦'; font-size: .9rem; }
     .app-toast { position: fixed; z-index: 1000; top: max(1.25rem, env(safe-area-inset-top)); left: 50%; display: flex; align-items: center; gap: .7rem; min-width: min(280px, calc(100vw - 2rem)); padding: .9rem 1.15rem; border: 1px solid rgba(0,229,255,.4); border-radius: 16px; color: var(--text); background: linear-gradient(130deg, rgba(15,32,42,.97), rgba(24,18,39,.97)); box-shadow: 0 14px 45px rgba(0,0,0,.45), 0 0 28px rgba(0,229,255,.16); font-size: .9rem; font-weight: 750; opacity: 0; pointer-events: none; transform: translate(-50%, -12px); transition: opacity .2s ease, transform .2s ease; }
     .app-toast[hidden] { display: none; }
     .app-toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
@@ -850,7 +851,8 @@
     @media (max-width: 560px) {
       .account-status { top: .7rem; right: .7rem; gap: .4rem; }
       .account-status span { display: none; }
-      .account-status .generation-quota { display: block; max-width: 52vw; overflow: hidden; padding: .45rem .55rem; font-size: .62rem; text-overflow: ellipsis; }
+      .account-status .generation-quota { display: inline-flex; max-width: 52vw; min-height: 38px; overflow: hidden; gap: .38rem; padding: .3rem .55rem .3rem .32rem; font-size: .62rem; text-overflow: ellipsis; }
+      .account-status .generation-quota::before { width: 24px; height: 24px; border-radius: 7px; font-size: .75rem; }
       .account-status .generation-quota[hidden] { display: none; }
       .account-status button { min-height: 38px; padding: .55rem .8rem; font-size: .76rem; }
       header { padding-top: 1.15rem; }
