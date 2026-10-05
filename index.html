@@ -2119,7 +2119,7 @@
     }
 
     function getSlideBody(slide) {
-      return String(slide.body_text || '').trim();
+      return [slide.body_text, slide.hook].filter(Boolean).join(' ').trim();
     }
 
     function renderPhonePreview(slides, preserveIndex = false) {
@@ -2142,7 +2142,7 @@
           <div class="ig-slide-content">
             <div class="ig-slide-main">
               <div class="ig-slide-title editable-slide-text" contenteditable="true" role="textbox" aria-label="Slide ${i + 1} title" spellcheck="true" data-slide-index="${i}" data-slide-field="title">${formatTitle(slide.title)}</div>
-          ${i === 0 ? '' : `<div class="ig-slide-body"><span class="editable-slide-text" contenteditable="true" role="textbox" aria-label="Slide ${i + 1} body text" data-placeholder="Type slide text…" spellcheck="true" data-slide-index="${i}" data-slide-field="copy">${escapeHtml(getSlideBody(slide)).replace(/\n/g, '<br>')}</span>${!slide.isDiscussionSlide && i < slides.length - 1 ? `<span class="ig-slide-hook editable-slide-text" contenteditable="true" role="textbox" aria-label="Slide ${i + 1} closing transition" data-placeholder="Add a closing transition…" spellcheck="true" data-slide-index="${i}" data-slide-field="hook">${slide.hook ? ` ${escapeHtml(slide.hook).replace(/\n/g, '<br>')}` : ''}</span>` : slide.hook ? `<span class="ig-slide-hook editable-slide-text" contenteditable="true" role="textbox" aria-label="Slide ${i + 1} closing transition" spellcheck="true" data-slide-index="${i}" data-slide-field="hook"> ${escapeHtml(slide.hook).replace(/\n/g, '<br>')}</span>` : ''}</div>`}
+          ${i === 0 ? '' : `<div class="ig-slide-body"><span class="editable-slide-text" contenteditable="true" role="textbox" aria-label="Slide ${i + 1} body text" data-placeholder="Type slide text…" spellcheck="true" data-slide-index="${i}" data-slide-field="copy">${escapeHtml(getSlideBody(slide)).replace(/\n/g, '<br>')}</span></div>`}
             </div>
           </div>
         `;
@@ -2168,9 +2168,7 @@
       }
       if (field === 'copy') {
         slide.body_text = event.target.innerText.replace(/\r\n?/g, '\n');
-      }
-      if (field === 'hook') {
-        slide.hook = event.target.innerText.replace(/\r\n?/g, '\n');
+        slide.hook = '';
       }
       clearTimeout(renderGridUpdateTimer);
       renderGridUpdateTimer = setTimeout(() => buildRenderGrid(currentScript), 150);
@@ -2181,8 +2179,10 @@
       const slide = currentScript[Number(event.target.dataset.slideIndex)];
       const field = event.target.dataset.slideField;
       if (slide && field === 'title') slide.title = event.target.textContent.replace(/\s+/g, ' ').trim();
-      if (slide && field === 'copy') slide.body_text = event.target.innerText.replace(/\r\n?/g, '\n').trim();
-      if (slide && field === 'hook') slide.hook = event.target.innerText.replace(/\r\n?/g, '\n').trim();
+      if (slide && field === 'copy') {
+        slide.body_text = event.target.innerText.replace(/\r\n?/g, '\n').trim();
+        slide.hook = '';
+      }
       clearTimeout(renderGridUpdateTimer);
       renderPhonePreview(currentScript, true);
       buildRenderGrid(currentScript);
@@ -2275,7 +2275,7 @@
           <div class="slide-content">
             <div class="slide-main">
               <div class="slide-title">${formatTitle(slide.title)}</div>
-              ${i === 0 || !getSlideBody(slide) ? '' : `<div class="slide-body">${escapeHtml(getSlideBody(slide)).replace(/\n/g, '<br>')}${i === 0 || !slide.hook ? '' : ` <span class="slide-hook">${escapeHtml(slide.hook).replace(/\n/g, '<br>')}</span>`}</div>`}
+              ${i === 0 || !getSlideBody(slide) ? '' : `<div class="slide-body">${escapeHtml(getSlideBody(slide)).replace(/\n/g, '<br>')}</div>`}
             </div>
           </div>
         `;
@@ -2359,8 +2359,7 @@
           slide.title = field.textContent.replace(/\s+/g, ' ').trim();
         } else if (field.dataset.slideField === 'copy') {
           slide.body_text = field.innerText.trim();
-        } else if (field.dataset.slideField === 'hook') {
-          slide.hook = field.innerText.trim();
+          slide.hook = '';
         }
       });
       buildRenderGrid(currentScript);

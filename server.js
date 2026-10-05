@@ -312,12 +312,13 @@ app.get('/api/generate-stream', async (req, res) => {
 
         send({ status: '🔎 Searching free web sources for this story...' });
 
-        const research = await generateScript(topic, selectedGenre);
+        const reportModelRetry = (status) => send({ status });
+        const research = await generateScript(topic, selectedGenre, reportModelRetry);
         const script = research.slides;
         latestScript = script;
 
         send({ status: '✍️ Turning the verified facts into a swipe-by-swipe story...' });
-        const caption = await generateCaption(topic, script, selectedGenre);
+        const caption = await generateCaption(topic, script, selectedGenre, reportModelRetry);
 
         send({ status: '✅ Script and caption complete! Rendering your slides...' });
         send({
