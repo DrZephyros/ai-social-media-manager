@@ -788,6 +788,14 @@
       border-color: rgba(0,229,255,0.3);
       box-shadow: 0 0 0 3px rgba(0,229,255,0.06);
     }
+    .followup-panel { order: 3; width: min(860px, 100%); margin: 0 auto; display: flex; flex-direction: column; gap: .8rem; padding: 1.25rem; border: 1px solid rgba(0,229,255,.16); border-radius: 18px; background: rgba(255,255,255,.035); }
+    .followup-panel h2 { margin: 0; color: var(--text); font-size: 1rem; }
+    .followup-panel p { margin: 0; color: var(--muted); font-size: .85rem; line-height: 1.5; }
+    #followup-prompt { width: 100%; min-height: 92px; resize: vertical; padding: .9rem 1rem; border: 1px solid rgba(255,255,255,.13); border-radius: 12px; color: var(--text); background: rgba(0,0,0,.2); font: inherit; line-height: 1.5; }
+    #followup-prompt:focus { outline: none; border-color: rgba(0,229,255,.45); box-shadow: 0 0 0 3px rgba(0,229,255,.07); }
+    .followup-submit { align-self: flex-start; min-height: 44px; padding: .7rem 1rem; border: 0; border-radius: 11px; color: #071018; background: var(--cyan); font: inherit; font-weight: 800; cursor: pointer; }
+    .followup-submit:disabled { opacity: .55; cursor: wait; }
+    #followup-status { min-height: 1.2em; color: var(--muted); font-size: .82rem; }
 
     .research-sources {
       border: 1px solid rgba(0,229,255,0.16);
@@ -1291,6 +1299,14 @@
         ✅ Copied to clipboard!
       </div>
     </div>
+
+    <section class="followup-panel" aria-labelledby="followup-heading">
+      <h2 id="followup-heading">Want to change something?</h2>
+      <p>Ask for a text change, a new slide, a different tone, or any other edit. The story and slide copy stay together.</p>
+      <textarea id="followup-prompt" maxlength="2000" placeholder="For example: Add a simple example after slide 2, then make the ending more surprising."></textarea>
+      <button class="followup-submit" id="btn-followup">Apply follow-up edit</button>
+      <div id="followup-status" role="status" aria-live="polite"></div>
+    </section>
   </div>
   </section>
 
@@ -1334,6 +1350,9 @@
     const btnDownloadTop = document.getElementById('btn-download-top');
     const btnCopyTop = document.getElementById('btn-copy-top');
     const btnRegenerate = document.getElementById('btn-regenerate');
+    const followupPrompt = document.getElementById('followup-prompt');
+    const btnFollowup = document.getElementById('btn-followup');
+    const followupStatus = document.getElementById('followup-status');
     const btnSourcePreview = document.getElementById('btn-source-preview');
     const workspaceTabs = document.getElementById('workspace-tabs');
     const workspaceTabButtons = [...workspaceTabs.querySelectorAll('.workspace-tab')];
@@ -2330,6 +2349,73 @@
           document.execCommand('copy');
           showCopied();
         });
+    });
+
+    btnFollowup.addEventListener('click', async () => {
+      const instruction = followupPrompt.value.trim();
+      if (!instruction) {
+        followupStatus.textContent = 'Describe the change you want first.';
+        followupPrompt.focus();
+        return;
+      }
+      if (!currentScript.length) return;
+
+      syncPreviewEdits();
+      btnFollowup.disabled = true;
+      btnFollowup.textContent = 'Applying edit…';
+      followupStatus.textContent = 'Updating the story and caption…';
+      try {
+        const headers = await getAuthHeaders();
+        if (!headers.Authorization) {
+          openAccountDialog();
+          throw new Error('Sign in to apply a follow-up edit.');
+        }
+        const res = await fetch('/api/followup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...headers },
+          body: JSON.stringify({
+            topic: topicInput.value.trim(),
+            genre: getGenre(),
+            followUp: instruction,
+            slides: currentScript.map(({ slide_number, title, body_text, hook, bg_type, image_query, isDiscussionSlide }) => ({ slide_number, title, body_text, hook, bg_type, image_query, isDiscussionSlide })),
+            sources: currentSources,
+          }),
+        });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || `Update failed (${res.status}).`);
+
+        const previousSlides = currentScript;
+        currentScript = result.slides.map(slide => {
+          const prior = previousSlides.find(item => item.title === slide.title && item.image_query === slide.image_query);
+          return prior?.bg_image ? { ...slide, bg_image: prior.bg_image } : slide;
+        });
+        currentSources = Array.isArray(result.sources) ? result.sources : currentSources;
+        await Promise.all(currentScript.map(async slide => {
+          if (slide.bg_image || !slide.image_query) return;
+          try {
+            const imageResponse = await fetch(`/api/images?q=${encodeURIComponent(slide.image_query)}`);
+            const imageData = await imageResponse.json();
+            if (imageData.images?.length) slide.bg_image = imageData.images[0];
+          } catch (error) { console.warn('Could not refresh a slide background:', error.message); }
+        }));
+
+        renderPhonePreview(currentScript);
+        buildRenderGrid(currentScript);
+        captionBox.value = withCaptionHashtags(result.caption || '');
+        refreshHashtagChips(captionBox.value);
+        const firstLine = captionBox.value.split('\n').find(line => line.trim() && !line.trim().startsWith('#')) || '';
+        const preview = document.getElementById('ig-caption-preview');
+        if (preview) preview.innerHTML = `<strong>g0wtham.exe</strong> ${escapeHtml(firstLine)}`;
+        followupPrompt.value = '';
+        followupStatus.textContent = 'Edit applied. Review your updated slides and caption.';
+        refreshGenerationQuota();
+      } catch (error) {
+        followupStatus.textContent = error.message || 'Could not apply that edit.';
+        refreshGenerationQuota();
+      } finally {
+        btnFollowup.disabled = false;
+        btnFollowup.textContent = 'Apply follow-up edit';
+      }
     });
 
     btnRegenerate.addEventListener('click', () => {

@@ -3,7 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { generateTopic, generateScript, generateCaption } from './engine.js';
+import { generateTopic, generateScript, generateCaption, reviseCarousel } from './engine.js';
 import axios from 'axios';
 import FormData from 'form-data';
 import { createHash, createHmac, randomUUID, timingSafeEqual } from 'crypto';
@@ -334,6 +334,44 @@ app.get('/api/generate-stream', async (req, res) => {
     } finally {
         clearInterval(keepAlive);
         res.end();
+    }
+});
+
+app.post('/api/followup', async (req, res) => {
+    const auth = await requireAuthenticatedUser(req, res);
+    if (!auth) return;
+    const { topic, genre, slides, sources, followUp } = req.body || {};
+    if (typeof topic !== 'string' || !topic.trim() || topic.length > 500) return res.status(400).json({ error: 'The original topic is missing or too long.' });
+    if (typeof genre !== 'string' || !genre.trim() || genre.length > 120) return res.status(400).json({ error: 'The selected genre is missing.' });
+    if (typeof followUp !== 'string' || !followUp.trim() || followUp.length > 2000) return res.status(400).json({ error: 'Enter an edit request up to 2,000 characters.' });
+    if (!Array.isArray(slides) || slides.length < 4 || slides.length > 30
+        || slides.some(slide => !slide || typeof slide.title !== 'string' || typeof slide.body_text !== 'string'
+            || slide.title.length > 300 || slide.body_text.length > 5000)) {
+        return res.status(400).json({ error: 'The current carousel data is invalid. Generate a fresh carousel and try again.' });
+    }
+    if (!auth.user.premium && !allowIpGeneration(req)) return res.status(429).json({ error: 'Too many generations from this network. Please try again in an hour.' });
+
+    let reservation;
+    try {
+        if (!auth.user.premium) {
+            reservation = await reserveGeneration(auth.user.uid);
+            if (!reservation?.allowed) {
+                return res.status(429).json({ error: `You have used your 2 free generations for this 3-day period. Your limit resets ${new Date(reservation.resetsAt).toLocaleString('en', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' })} UTC.` });
+            }
+        }
+        const safeSources = (Array.isArray(sources) ? sources : []).slice(0, 8).map(source => ({
+            title: String(source?.title || '').slice(0, 180),
+            url: String(source?.url || '').slice(0, 1000),
+            claims: Array.isArray(source?.claims) ? source.claims.slice(0, 4).map(claim => String(claim).slice(0, 3000)) : [],
+        }));
+        const revisedSlides = await reviseCarousel(topic.trim(), genre.trim(), slides, safeSources, followUp.trim());
+        const caption = await generateCaption(topic.trim(), revisedSlides, genre.trim());
+        latestScript = revisedSlides;
+        res.json({ slides: revisedSlides, caption, sources: safeSources });
+    } catch (error) {
+        console.error('Carousel follow-up failed:', error);
+        if (reservation?.reservationId) await releaseGeneration(auth.user.uid, reservation.reservationId).catch(() => {});
+        res.status(500).json({ error: error.message || 'Could not apply that edit. Please try again.' });
     }
 });
 
