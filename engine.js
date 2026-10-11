@@ -349,6 +349,7 @@ function containsExcludedTerm(value, terms) {
 export async function generateTopic(genre = null) {
     if (genre !== null && genre !== undefined && genre !== 'Random') genre = requireGenre(genre);
     else genre = null;
+    const randomMode = genre === null;
     const blueprint = genre ? (TOPIC_BLUEPRINTS[genre] || TOPIC_BLUEPRINTS.Other) : {
         types: ['person, place, or event', 'scientific discovery or natural phenomenon', 'everyday behavior or practical question', 'technology, invention, or object', 'culture, art, or surprising documented fact', 'historical story or unresolved mystery'],
         references: [],
@@ -364,10 +365,10 @@ VIRAL TOPIC AND HOOK PRINCIPLES:
 - Think like a sharp editor who knows human attention. People stop for recognizable people and stories, problems they have felt, status and identity, love and conflict, fear and relief, money and power, survival, injustice, surprising reversals, and beliefs they want tested. Choose a topic that touches at least one of these instincts and make that connection unmistakable in the hook. A fact can be true and surprising but still be uninteresting if its subject and stakes mean nothing to the reader.
 - Optimize in this order: (1) instant relevance or recognition, (2) clear human/emotional/practical stakes, (3) a specific curiosity gap or belief-changing reveal, (4) a satisfying evidence-based payoff. Novelty alone is not a reason to care. The reader should immediately understand “why should I care?”
 - No prompt can guarantee virality. Aim for the signals behind strong social posts: instant comprehension, emotional or practical relevance, novelty in service of relevance, curiosity that sustains attention, and a payoff worth saving or sharing.
-- Choose a proven story shape that suits this niche: a surprising documented detail that matters to people; a common belief corrected by evidence; a real mystery with competing explanations; a consequential decision and its fallout; a rivalry or relationship under pressure; a hidden cause or mechanism; a meaningful contradiction; or a practical insight with a clear payoff. Do not force every story into mystery or controversy.
+- Choose a proven story shape that suits ${randomMode ? 'the subject' : 'this niche'}: a surprising documented detail that matters to people; a common belief corrected by evidence; a real mystery with competing explanations; a consequential decision and its fallout; a rivalry or relationship under pressure; a hidden cause or mechanism; a meaningful contradiction; or a practical insight with a clear payoff. Do not force every story into mystery or controversy.
 - Make the subject immediately understandable and concrete. Prefer a named person, place, object, behavior, event, decision, or everyday moment over an abstract trend.
 - Open a fair curiosity gap the carousel can actually close. The hook should make the audience want one specific answer; later slides must deliver it promptly.
-- Privately compare distinct candidates for one-second clarity, relevance to the chosen audience, novelty, emotional or practical stakes, evidence quality, and payoff. Choose the strongest combination; do not expose the scoring.
+- Privately compare distinct candidates for one-second clarity, relevance to ${randomMode ? 'a general audience' : 'the chosen audience'}, novelty, emotional or practical stakes, evidence quality, and payoff. Choose the strongest combination; do not expose the scoring.
 - Make the hook concise, memorable, and easy to repeat or send to someone. Use a specific contrast, consequence, puzzle, or reveal where it fits. Do not rely on a generic shock phrase or a question with no satisfying answer.
 - THREE-SECOND FRIEND TEST: Imagine telling the idea to a smart friend who is not interested in this niche. Would they understand the setup immediately, care what happens, and naturally ask “wait, why?” If not, reject it. Prefer familiar anchors plus a fresh implication, a recognizable personal problem plus an unexpected explanation, or an important choice with a human consequence. Do not mistake “I didn't know that” for “I want to know that.”
 - BELIEF-CHALLENGE TEST: When reliable evidence supports it, select a detail that corrects or complicates what people commonly assume. Do not invent a myth or claim “everyone believes” something. The hook should imply a meaningful answer, not just announce an unusual fact.
@@ -391,13 +392,13 @@ ${genre === 'History & Hidden Facts' ? `HISTORICAL ACCURACY CHECK:
 - If a surprising detail is uncertain, choose another documented detail. Curiosity must come from the evidence, not an unsupported claim.
 ` : ''}
 
-Privately develop several candidates, then reject any that fail the audience pull, three-second friend, or evidence checks. Select the strongest accurate subject-hook combination for this audience. Never borrow a familiar trend from another genre; derive the idea from this niche's subject matter. Then return exactly one record. The hook must name the subject, be under 15 words, use no first-person creator voice, and describe the subject rather than a method used to discover it.
+Privately develop several candidates, then reject any that fail the audience pull, three-second friend, or evidence checks. Select the strongest accurate subject-hook combination for ${randomMode ? 'a general audience' : 'this niche'}. ${randomMode ? 'Explore any subject area freely.' : 'Never borrow a familiar trend from another genre; derive the idea from this niche’s subject matter.'} Then return exactly one record. The hook must name the subject, be under 15 words, use no first-person creator voice, and describe the subject rather than a method used to discover it.
 
 Return only JSON: {"subject":"specific subject", "subject_type":"one allowed type", "angle":"specific accurate angle", "hook":"final hook"}.`;
 
     for (let attempt = 0; attempt < 3; attempt++) {
         const responseText = await generateGeminiContent(
-            attempt === 0 ? generatePrompt : `${generatePrompt}\n\nYour last draft failed validation. Start over with a different, more specific subject in the selected niche.`,
+            attempt === 0 ? generatePrompt : `${generatePrompt}\n\nYour last draft failed validation. Start over with a different, more specific subject${randomMode ? ' for a general audience' : ' in the selected niche'}.`,
             'Create one original topic record.',
             attempt === 0 ? 0.65 : 0.4,
             { thinkingLevel: 'low', timeoutMs: 20000, maxRetries: 1 },
@@ -425,19 +426,21 @@ Return only JSON: {"subject":"specific subject", "subject_type":"one allowed typ
             noJargon: !containsJargon(hook),
             noCreatorMeta: !CREATOR_META_LANGUAGE.test(combined),
             noExcludedSubject: !excluded,
-            allowedSubjectType: blueprint.types.includes(subjectType),
+            allowedSubjectType: randomMode ? Boolean(subjectType) : blueprint.types.includes(subjectType),
             hookRepresentsSubject: subject.length > 0 && hookRepresentsSubject(hook, subject),
             historicalSubject: genre !== 'History & Hidden Facts' || isClearlyHistoricalHook(`${subject} ${angle} ${hook}`),
         };
         const valid = Object.values(checks).every(Boolean);
         if (!valid) console.warn(`Topic validation failed for ${JSON.stringify(genre)}:`, Object.entries(checks).filter(([, passed]) => !passed).map(([name]) => name), { subject, subjectType, hook });
         if (valid) {
-            console.log(`Generated on-genre hook for ${JSON.stringify(genre)}:`, hook);
+            console.log(`Generated ${randomMode ? 'unrestricted' : 'on-genre'} hook${genre ? ` for ${JSON.stringify(genre)}` : ''}:`, hook);
             return hook;
         }
     }
 
-    throw new Error(`Could not create a topic that fits ${genre} after three attempts. Please try brainstorming again.`);
+    throw new Error(randomMode
+        ? 'Could not create a suitable topic after three attempts. Please try brainstorming again.'
+        : `Could not create a topic that fits ${genre} after three attempts. Please try brainstorming again.`);
 }
 
 function isClearlyHistoricalHook(hook) {
