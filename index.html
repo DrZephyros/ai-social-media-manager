@@ -1826,6 +1826,7 @@
     let selectedGenre = null;
     let isCustomGenre = false;
     const RECENT_RANDOM_TOPICS_KEY = 'carousel-recent-random-topics';
+    const RECENT_RANDOM_LANES_KEY = 'carousel-recent-random-lanes';
 
     function getRecentRandomTopics() {
       try {
@@ -1838,6 +1839,21 @@
       try {
         const topics = [topic, ...getRecentRandomTopics()].filter((item, index, all) => all.indexOf(item) === index).slice(0, 12);
         localStorage.setItem(RECENT_RANDOM_TOPICS_KEY, JSON.stringify(topics));
+      } catch {}
+    }
+
+    function getRecentRandomLanes() {
+      try {
+        const lanes = JSON.parse(localStorage.getItem(RECENT_RANDOM_LANES_KEY) || '[]');
+        return Array.isArray(lanes) ? lanes.filter(lane => Number.isInteger(lane) && lane >= 0 && lane < 10).slice(0, 8) : [];
+      } catch { return []; }
+    }
+
+    function rememberRandomLane(lane) {
+      if (!Number.isInteger(lane) || lane < 0 || lane >= 10) return;
+      try {
+        const lanes = [lane, ...getRecentRandomLanes()].filter((item, index, all) => all.indexOf(item) === index).slice(0, 8);
+        localStorage.setItem(RECENT_RANDOM_LANES_KEY, JSON.stringify(lanes));
       } catch {}
     }
 
@@ -1990,10 +2006,11 @@
         const avoidTopics = genre === 'Random'
           ? [...new Set([topicInput.value.trim(), ...getRecentRandomTopics()].filter(Boolean))].slice(0, 12)
           : [];
+        const avoidLanes = genre === 'Random' ? getRecentRandomLanes() : [];
         const res  = await fetch('/api/brainstorm', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...await getAuthHeaders() },
-          body: JSON.stringify({ genre, avoidTopics })
+          body: JSON.stringify({ genre, avoidTopics, avoidLanes })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || `Request failed (${res.status}).`);
@@ -2002,7 +2019,10 @@
         }
         if (data.topic) {
           topicInput.value = data.topic;
-          if (genre === 'Random') rememberRandomTopic(data.topic);
+          if (genre === 'Random') {
+            rememberRandomTopic(data.topic);
+            rememberRandomLane(data.lane);
+          }
           updateActionAvailability();
           setStatus(`✅ Topic ready for ${data.genre} — edit it or approve as-is.`);
         } else {
