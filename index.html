@@ -1825,6 +1825,21 @@
     const genreSelectedLabel = document.getElementById('genre-selected-label');
     let selectedGenre = null;
     let isCustomGenre = false;
+    const RECENT_RANDOM_TOPICS_KEY = 'carousel-recent-random-topics';
+
+    function getRecentRandomTopics() {
+      try {
+        const topics = JSON.parse(localStorage.getItem(RECENT_RANDOM_TOPICS_KEY) || '[]');
+        return Array.isArray(topics) ? topics.filter(topic => typeof topic === 'string' && topic.trim()).slice(0, 12) : [];
+      } catch { return []; }
+    }
+
+    function rememberRandomTopic(topic) {
+      try {
+        const topics = [topic, ...getRecentRandomTopics()].filter((item, index, all) => all.indexOf(item) === index).slice(0, 12);
+        localStorage.setItem(RECENT_RANDOM_TOPICS_KEY, JSON.stringify(topics));
+      } catch {}
+    }
 
     GENRES.forEach(g => {
       const option = document.createElement('button');
@@ -1972,10 +1987,13 @@
       }
       setStatus(genre === 'Random' ? 'Brainstorming a topic from any subject...' : `Brainstorming a viral ${genre} topic...`, true);
       try {
+        const avoidTopics = genre === 'Random'
+          ? [...new Set([topicInput.value.trim(), ...getRecentRandomTopics()].filter(Boolean))].slice(0, 12)
+          : [];
         const res  = await fetch('/api/brainstorm', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...await getAuthHeaders() },
-          body: JSON.stringify({ genre })
+          body: JSON.stringify({ genre, avoidTopics })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || `Request failed (${res.status}).`);
@@ -1984,6 +2002,7 @@
         }
         if (data.topic) {
           topicInput.value = data.topic;
+          if (genre === 'Random') rememberRandomTopic(data.topic);
           updateActionAvailability();
           setStatus(`✅ Topic ready for ${data.genre} — edit it or approve as-is.`);
         } else {

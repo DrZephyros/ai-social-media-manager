@@ -191,13 +191,16 @@ app.post('/api/brainstorm', async (req, res) => {
     try {
         if (!await requireAuthenticatedUser(req, res)) return;
         if (!allowIpGeneration(req)) return res.status(429).json({ error: 'Too many requests from this network. Please try again later.' });
-        const { genre } = req.body || {};
+        const { genre, avoidTopics } = req.body || {};
         if (typeof genre !== 'string' || !genre.trim() || genre.trim().length > 120) {
             return res.status(400).json({ error: 'Select a niche before brainstorming a topic.' });
         }
         console.info(`[brainstorm] received genre ${JSON.stringify(genre.trim())}`);
         const randomMode = genre.trim() === 'Random';
-        const topic = await generateTopic(randomMode ? null : genre.trim());
+        const safeAvoidTopics = randomMode && Array.isArray(avoidTopics)
+            ? avoidTopics.filter(topic => typeof topic === 'string' && topic.trim()).slice(0, 12).map(topic => topic.trim().slice(0, 180))
+            : [];
+        const topic = await generateTopic(randomMode ? null : genre.trim(), { avoidTopics: safeAvoidTopics });
         res.json({ topic, genre: genre.trim() });
     } catch (err) {
         console.error(err);
