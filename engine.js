@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
 // Brainstorming is deliberately independent from carousel writing so its model
 // can be tuned without changing the rest of the generation pipeline.
 const GEMINI_BRAINSTORM_MODEL = process.env.GEMINI_BRAINSTORM_MODEL || 'gemini-3.8-flash';
