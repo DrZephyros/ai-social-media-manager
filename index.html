@@ -137,22 +137,6 @@
     #genre-search-wrap {
       position: relative;
     }
-    #genre-controls { display: flex; align-items: stretch; gap: .55rem; }
-    #genre-controls #genre-search-wrap { flex: 1; min-width: 0; }
-    #genre-random {
-      flex: 0 0 auto;
-      padding: 0 .9rem;
-      border: 1px solid rgba(255,255,255,.15);
-      border-radius: 10px;
-      background: linear-gradient(115deg, rgba(250,126,30,.12), rgba(214,41,118,.15), rgba(79,91,213,.12));
-      color: var(--text);
-      font: 600 .82rem 'Inter', sans-serif;
-      cursor: pointer;
-      transition: border-color .2s, transform .15s, background .2s;
-    }
-    #genre-random:hover { border-color: rgba(255,255,255,.35); background: linear-gradient(115deg, rgba(250,126,30,.22), rgba(214,41,118,.24), rgba(79,91,213,.22)); transform: translateY(-1px); }
-    #genre-random:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
-    @media (max-width: 420px) { #genre-random { padding: 0 .65rem; font-size: .76rem; } }
     #genre-search-wrap svg {
       position: absolute;
       left: 12px;
@@ -1175,13 +1159,10 @@
   <!-- Genre Picker -->
   <div id="genre-picker">
     <h2>Choose your niche 🎯</h2>
-    <div id="genre-controls">
-      <div id="genre-search-wrap">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" id="genre-search" placeholder="Search or select a niche..." role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="genre-options" autocomplete="off">
-        <div id="genre-options" role="listbox" aria-label="Available niches"></div>
-      </div>
-      <button type="button" id="genre-random" aria-label="Choose a random genre" title="Choose a random genre">🎲 Random</button>
+    <div id="genre-search-wrap">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="genre-search" placeholder="Search or select a niche..." role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="genre-options" autocomplete="off">
+      <div id="genre-options" role="listbox" aria-label="Available niches"></div>
     </div>
     <div id="custom-genre-row">
       <input type="text" id="custom-genre-input" placeholder="Type your own genre...">
@@ -1832,13 +1813,13 @@
       { label: 'Parenting', icon: '👶' },
       { label: 'Food Science', icon: '🍕' },
       { label: 'Crypto & Web3', icon: '🔗' },
+      { label: 'Random', icon: '🎲' },
       { label: 'Other', icon: '✏️' },
     ];
 
     const genreOptions = document.getElementById('genre-options');
     const genreSearchWrap = document.getElementById('genre-search-wrap');
     const genreSearch = document.getElementById('genre-search');
-    const genreRandomButton = document.getElementById('genre-random');
     const customGenreRow = document.getElementById('custom-genre-row');
     const customGenreInput = document.getElementById('custom-genre-input');
     const genreSelectedLabel = document.getElementById('genre-selected-label');
@@ -1874,14 +1855,6 @@
         updateActionAvailability();
       });
       genreOptions.appendChild(option);
-    });
-
-    genreRandomButton.addEventListener('click', () => {
-      const currentGenre = getGenre();
-      const choices = GENRES.filter(genre => genre.label !== 'Other' && genre.label !== currentGenre);
-      const randomGenre = choices[Math.floor(Math.random() * choices.length)];
-      genreOptions.querySelector(`[data-label="${CSS.escape(randomGenre.label)}"]`)?.click();
-      genreSelectedLabel.textContent = `🎲 Random niche: ${randomGenre.label}`;
     });
 
     customGenreInput.addEventListener('input', () => {
@@ -1928,6 +1901,7 @@
     function updateGenreLabel() {
       genreSelectedLabel.textContent = isCustomGenre
         ? (customGenreInput.value.trim() ? `✅ Niche: ${customGenreInput.value.trim()}` : 'Enter your custom niche to continue.')
+        : selectedGenre === 'Random' ? '🎲 Any topic — no niche restrictions.'
         : selectedGenre ? `✅ Niche: ${selectedGenre}` : '';
     }
 
@@ -1996,7 +1970,7 @@
         updateActionAvailability();
         return;
       }
-      setStatus(`Brainstorming a viral ${genre} topic...`, true);
+      setStatus(genre === 'Random' ? 'Brainstorming a topic from any subject...' : `Brainstorming a viral ${genre} topic...`, true);
       try {
         const res  = await fetch('/api/brainstorm', {
           method: 'POST',

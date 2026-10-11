@@ -320,6 +320,10 @@ function requireGenre(genre) {
     return genre.trim();
 }
 
+function normalizeSelectedGenre(genre) {
+    return genre === 'Random' ? null : requireGenre(genre);
+}
+
 function hookRepresentsSubject(hook, subject) {
     const commonWords = new Set(['about', 'after', 'before', 'between', 'could', 'does', 'from', 'have', 'into', 'more', 'over', 'that', 'their', 'there', 'these', 'they', 'this', 'those', 'through', 'under', 'using', 'what', 'when', 'where', 'which', 'while', 'with', 'without', 'would', 'your', 'impact', 'effect', 'effects', 'role', 'history', 'hidden', 'secret', 'surprising', 'surprise']);
     const words = value => (value.toLocaleLowerCase().match(/[\p{L}\p{N}]+/gu) || []).filter(word => word.length >= 4 && !commonWords.has(word));
@@ -343,14 +347,18 @@ function containsExcludedTerm(value, terms) {
 }
 
 export async function generateTopic(genre = null) {
-    genre = requireGenre(genre);
-    const blueprint = TOPIC_BLUEPRINTS[genre] || TOPIC_BLUEPRINTS.Other;
-    const generatePrompt = `You are an editorial planner for a ${JSON.stringify(genre)} Instagram carousel.
+    if (genre !== null && genre !== undefined && genre !== 'Random') genre = requireGenre(genre);
+    else genre = null;
+    const blueprint = genre ? (TOPIC_BLUEPRINTS[genre] || TOPIC_BLUEPRINTS.Other) : {
+        types: ['person, place, or event', 'scientific discovery or natural phenomenon', 'everyday behavior or practical question', 'technology, invention, or object', 'culture, art, or surprising documented fact', 'historical story or unresolved mystery'],
+        references: [],
+        excluded: [],
+    };
+    const generatePrompt = `You are an editorial planner for an Instagram carousel${genre ? ` in the ${JSON.stringify(genre)} niche` : ' with no niche restrictions'}.
 
-Your sole job is to choose an original, specific subject that belongs directly to this niche. Keep the subject itself central; do not address the creator or describe your process.
+Your sole job is to choose an original, specific, broadly interesting subject${genre ? ' that belongs directly to this niche' : ' from any subject area; do not limit yourself to a predefined niche'}. Keep the subject itself central; do not address the creator or describe your process.
 
-NICHE DEFINITION:
-${getGenreGuidance(genre)}
+${genre ? `NICHE DEFINITION:\n${getGenreGuidance(genre)}` : 'SUBJECT RANGE:\nAnything suitable for a general audience: history, science, nature, culture, technology, everyday life, or another well-supported subject. Choose freely; there is no assigned niche.'}
 
 VIRAL TOPIC AND HOOK PRINCIPLES:
 - Think like a sharp editor who knows human attention. People stop for recognizable people and stories, problems they have felt, status and identity, love and conflict, fear and relief, money and power, survival, injustice, surprising reversals, and beliefs they want tested. Choose a topic that touches at least one of these instincts and make that connection unmistakable in the hook. A fact can be true and surprising but still be uninteresting if its subject and stakes mean nothing to the reader.
@@ -368,14 +376,12 @@ VIRAL TOPIC AND HOOK PRINCIPLES:
 - Never invent a named theory, technique, study, organization, discovery, date, statistic, causal result, or popular belief to make a hook sound more clickable. Do not present a forecast or disputed claim as fact. If a vivid detail is uncertain, choose a better-supported angle.
 - Keep curiosity honest: no fake urgency, exaggerated certainty, fear, shame, or promise beyond what the carousel can support. Write the hook in fewer than 15 words.
 
-GENRE-SPECIFIC VIRAL LENS:
-${GENRE_HOOK_LENSES[genre] || GENRE_HOOK_LENSES.Other}
+${genre ? `GENRE-SPECIFIC VIRAL LENS:\n${GENRE_HOOK_LENSES[genre] || GENRE_HOOK_LENSES.Other}` : 'Choose the angle with the clearest human relevance, curiosity, surprise, practical value, or evidence-backed payoff, regardless of subject area.'}
 
 ALLOWED SUBJECT TYPES:
 ${blueprint.types.map(type => `- ${type}`).join('\n')}
 
-REFERENCE DIRECTIONS: These establish the niche boundary. Create a different subject. Do not copy, paraphrase, combine, or extend any reference.
-${blueprint.references.map(reference => `- ${reference}`).join('\n')}
+${genre ? `REFERENCE DIRECTIONS: These establish the niche boundary. Create a different subject. Do not copy, paraphrase, combine, or extend any reference.\n${blueprint.references.map(reference => `- ${reference}`).join('\n')}` : 'There are no niche boundaries or reference topics. Choose freely and avoid the most obvious generic topic.'}
 
 ${genre === 'History & Hidden Facts' ? `HISTORICAL ACCURACY CHECK:
 - Choose a real, identifiable person, place, object, event, or discovery from the past.
@@ -650,7 +656,7 @@ const GENRE_WRITER_VOICES = {
 };
 
 export async function generateScript(topic, genre = null, onRetry = null) {
-    genre = requireGenre(genre);
+    genre = normalizeSelectedGenre(genre);
     if (typeof topic !== 'string' || !topic.trim()) throw new Error('A topic is required to write the carousel.');
     const sources = await searchTopicSources(topic, genre);
     const writerVoice = GENRE_WRITER_VOICES[genre] || GENRE_WRITER_VOICES.Other;
@@ -696,7 +702,7 @@ Return only JSON in this shape:
     return { slides, sources };
 }
 export async function reviseCarousel(topic, genre, slides, sources, followUp) {
-    genre = requireGenre(genre);
+    genre = normalizeSelectedGenre(genre);
     const systemInstruction = `You are revising an existing social-media carousel from the creator’s follow-up request.
 
 Apply the requested change to the supplied carousel. Preserve everything the creator did not ask to change. Keep the story continuous, suspenseful, accurate to the supplied sources, and easy for the general public to follow. Use simple language; explain a technical term briefly if it must remain. Put all slide copy, including any transition, in one body_text field. Never create a separate hook or transition field.
@@ -723,7 +729,7 @@ If asked to add a slide, place it where it best fits the story, keep the cover f
 }
 
 export async function generateCaption(topic, script, genre = null, onRetry = null) {
-    genre = requireGenre(genre);
+    genre = normalizeSelectedGenre(genre);
     const systemInstruction = `You are an excellent human Instagram editor. Write a caption that earns the stop and makes the reader want to open this specific carousel. It should sound like someone with a sharp eye telling a friend what is strange, tense, useful, or unexpectedly human about this story—not like a summary generator.
 SELECTED GENRE: ${genre ? JSON.stringify(genre) : 'General'}.
 GENRE-SPECIFIC BRIEF: ${getGenreGuidance(genre)}

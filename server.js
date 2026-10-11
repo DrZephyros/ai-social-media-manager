@@ -196,7 +196,8 @@ app.post('/api/brainstorm', async (req, res) => {
             return res.status(400).json({ error: 'Select a niche before brainstorming a topic.' });
         }
         console.info(`[brainstorm] received genre ${JSON.stringify(genre.trim())}`);
-        const topic = await generateTopic(genre);
+        const randomMode = genre.trim() === 'Random';
+        const topic = await generateTopic(randomMode ? null : genre.trim());
         res.json({ topic, genre: genre.trim() });
     } catch (err) {
         console.error(err);
