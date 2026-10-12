@@ -125,11 +125,8 @@
     .topic-mode-button { min-height: 46px; border: 1px solid transparent; border-radius: 10px; background: transparent; color: rgba(255,255,255,.68); font: inherit; font-size: .92rem; font-weight: 720; cursor: pointer; transition: background .2s, color .2s, border-color .2s; }
     .topic-mode-button:hover { color: #fff; background: rgba(255,255,255,.06); }
     .topic-mode-button.active { color: #fff; border-color: rgba(255,255,255,.12); background: linear-gradient(110deg, rgba(250,126,30,.15), rgba(214,41,118,.15), rgba(79,91,213,.15)); box-shadow: 0 3px 12px rgba(0,0,0,.18); }
-    #brainstorm-options { width: 100%; display: grid; gap: .8rem; padding: 1.25rem 1.35rem; border: 1px solid rgba(255,255,255,.12); border-radius: 15px; background: linear-gradient(145deg, rgba(20,25,35,.96), rgba(13,17,26,.96)); box-shadow: 0 12px 32px rgba(0,0,0,.2), inset 0 1px rgba(255,255,255,.035); }
+    #brainstorm-options { width: 100%; display: grid; gap: .55rem; padding: .15rem 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
     #brainstorm-options[hidden] { display: none !important; }
-    #brainstorm-niche-label { display: flex; align-items: center; gap: .65rem; color: rgba(255,255,255,.9); font-size: .95rem; font-weight: 720; }
-    #brainstorm-niche-label span { padding: .2rem .48rem; border: 1px solid rgba(0,229,255,.22); border-radius: 999px; background: rgba(0,229,255,.06); color: #8cecf5; font-size: .67rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
-    #brainstorm-niche-help { margin: -.35rem 0 0; color: rgba(255,255,255,.55); font-size: .8rem; line-height: 1.45; }
     #genre-picker {
       width: 100%;
       max-width: 560px;
@@ -158,16 +155,16 @@
     #genre-search {
       width: 100%;
       background: rgba(255,255,255,0.055);
-      border: 1px solid rgba(255,255,255,.14);
-      border-radius: 11px;
-      padding: 0.82rem 1rem 0.82rem 2.5rem;
+      border: 0;
+      border-radius: 12px;
+      padding: 0.92rem 1rem 0.92rem 2.5rem;
       color: var(--text);
       font-family: 'Inter', sans-serif;
       font-size: 0.9rem;
       outline: none;
       transition: border-color 0.2s;
     }
-    #genre-search:focus { border-color: rgba(0,229,255,.58); box-shadow: 0 0 0 3px rgba(0,229,255,.09); }
+    #genre-search:focus { box-shadow: inset 0 -2px rgba(0,229,255,.7), 0 0 0 3px rgba(0,229,255,.07); }
     #genre-options {
       display: none;
       position: absolute;
@@ -1193,12 +1190,10 @@
       <textarea id="topic-input" rows="3" maxlength="500" placeholder="For example: Why do programmers write ‘Hello, world!’ first?" aria-label="Carousel topic"></textarea>
     </div>
     <div id="brainstorm-options" hidden>
-      <label id="brainstorm-niche-label" for="genre-search">Choose a niche <span>Required</span></label>
-      <p id="brainstorm-niche-help">Choose a specific niche to continue. “Random” counts as no selection.</p>
       <div id="genre-picker">
         <div id="genre-search-wrap">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" id="genre-search" placeholder="Search and select a niche..." role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="genre-options" autocomplete="off">
+          <input type="text" id="genre-search" placeholder="Search or choose a niche..." role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="genre-options" autocomplete="off">
           <div id="genre-options" role="listbox" aria-label="Available niches"></div>
         </div>
         <div id="custom-genre-row">
@@ -1944,7 +1939,7 @@
     function updateGenreLabel() {
       genreSelectedLabel.textContent = isCustomGenre
         ? (customGenreInput.value.trim() ? `✅ Niche: ${customGenreInput.value.trim()}` : 'Enter your custom niche to continue.')
-        : selectedGenre === 'Random' ? 'Random counts as no niche. Choose a specific one to continue.'
+        : selectedGenre === 'Random' ? ''
         : selectedGenre ? `✅ Niche: ${selectedGenre}` : '';
     }
 
