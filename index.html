@@ -125,18 +125,16 @@
     .topic-mode-button { min-height: 46px; border: 1px solid transparent; border-radius: 10px; background: transparent; color: rgba(255,255,255,.68); font: inherit; font-size: .92rem; font-weight: 720; cursor: pointer; transition: background .2s, color .2s, border-color .2s; }
     .topic-mode-button:hover { color: #fff; background: rgba(255,255,255,.06); }
     .topic-mode-button.active { color: #fff; border-color: rgba(255,255,255,.12); background: linear-gradient(110deg, rgba(250,126,30,.15), rgba(214,41,118,.15), rgba(79,91,213,.15)); box-shadow: 0 3px 12px rgba(0,0,0,.18); }
-    .topic-mode-hint { width: min(760px, 100%); min-height: 1.1rem; margin: 0 auto 1rem; color: rgba(255,255,255,.58); font-size: .82rem; text-align: center; }
-    #optional-niche-details { width: 100%; }
-    #optional-niche-summary { display: inline-flex; align-items: center; gap: .45rem; min-height: 36px; padding: .42rem .72rem; border: 1px solid rgba(255,255,255,.1); border-radius: 9px; background: rgba(255,255,255,.025); color: rgba(255,255,255,.68); font-size: .79rem; font-weight: 650; cursor: pointer; list-style: none; user-select: none; transition: color .2s, border-color .2s, background .2s; }
-    #optional-niche-summary::-webkit-details-marker { display: none; }
-    #optional-niche-summary::before { content: '+'; display: inline-grid; place-items: center; width: 1.1rem; height: 1.1rem; border-radius: 50%; background: rgba(0,229,255,.1); color: var(--cyan); font-size: .95rem; line-height: 1; }
-    #optional-niche-details[open] #optional-niche-summary::before { content: '−'; }
-    #optional-niche-summary:hover { border-color: rgba(0,229,255,.32); background: rgba(0,229,255,.045); color: #fff; }
+    #brainstorm-options { width: 100%; display: grid; gap: .5rem; }
+    #brainstorm-options[hidden] { display: none !important; }
+    #brainstorm-niche-label { display: flex; align-items: center; gap: .55rem; color: rgba(255,255,255,.86); font-size: .9rem; font-weight: 700; }
+    #brainstorm-niche-label span { padding: .2rem .45rem; border: 1px solid rgba(255,255,255,.11); border-radius: 999px; color: rgba(255,255,255,.53); font-size: .68rem; font-weight: 600; }
     #genre-picker {
       width: 100%;
       max-width: 560px;
       margin-bottom: 1.5rem;
     }
+    #topic-panel #genre-picker { margin: 0; }
     #genre-picker h2 {
       font-size: 0.75rem;
       font-weight: 700;
@@ -145,7 +143,6 @@
       color: var(--muted);
       margin-bottom: 1rem;
     }
-    .genre-helper { margin: -.45rem 0 .85rem; color: var(--muted); font-size: .82rem; line-height: 1.5; }
     #genre-search-wrap {
       position: relative;
     }
@@ -227,9 +224,9 @@
       font-size: 0.78rem;
       color: var(--cyan);
       font-weight: 600;
-      margin-top: 0.5rem;
-      min-height: 1.1rem;
+      margin-top: 0.15rem;
     }
+    #genre-selected-label:empty { display: none; }
 
     /* ---- Control Panel ---- */
     #controls {
@@ -287,9 +284,9 @@
     .btn-regenerate.visible { display: block; }
 
     #topic-row { display: flex; flex-direction: column; gap: .5rem; }
+    #topic-row[hidden] { display: none !important; }
     #topic-label { display: flex; align-items: center; gap: .5rem; color: rgba(255,255,255,.92); font-size: .96rem; font-weight: 760; }
     #topic-label span { display: inline-grid; place-items: center; width: 1.45rem; height: 1.45rem; border-radius: .45rem; background: rgba(0,229,255,.1); color: var(--cyan); font-size: .82rem; }
-    #topic-help { margin-bottom: .25rem; color: rgba(255,255,255,.55); font-size: .8rem; line-height: 1.45; }
 
     #topic-input {
       min-height: 96px;
@@ -311,7 +308,6 @@
     #status:empty { display: none; }
     @media (max-width: 560px) {
       .topic-mode-button { min-height: 44px; font-size: .83rem; }
-      .topic-mode-hint { margin-bottom: .8rem; }
       #topic-input { min-height: 88px; }
     }
 
@@ -369,7 +365,7 @@
     .tab-panel-heading { margin-bottom: 0.35rem; font-size: 1.35rem; font-weight: 850; color: var(--text); }
     .tab-panel-subtitle { margin: 0 0 1.25rem; color: var(--muted); }
     .source-preview-button { display: block; width: min(520px, 100%); margin: 1.4rem auto 0; }
-    #topic-panel #genre-picker { width: 100%; margin: .8rem 0 0; }
+    #topic-panel #genre-picker { width: 100%; max-width: none; margin: 0; }
     #topic-panel #controls { max-width: 760px; margin: 0 auto; }
 
     /* ================================================================
@@ -1190,21 +1186,17 @@
     <button type="button" id="mode-use-topic" class="topic-mode-button active" aria-pressed="true">I have a topic</button>
     <button type="button" id="mode-brainstorm" class="topic-mode-button" aria-pressed="false">Help me brainstorm</button>
   </div>
-  <p id="topic-mode-hint" class="topic-mode-hint">Enter your idea below. Choosing a niche is optional.</p>
-
   <div id="controls">
     <div id="topic-row">
       <label id="topic-label" for="topic-input"><span aria-hidden="true">✦</span>Your topic or idea</label>
-      <p id="topic-help">A question or rough idea is enough. We’ll turn it into a clear, sourced story.</p>
       <textarea id="topic-input" rows="3" maxlength="500" placeholder="For example: Why do programmers write ‘Hello, world!’ first?" aria-label="Carousel topic"></textarea>
     </div>
-    <details id="optional-niche-details">
-      <summary id="optional-niche-summary">Add a niche or custom focus (optional)</summary>
+    <div id="brainstorm-options" hidden>
+      <label id="brainstorm-niche-label" for="genre-search">Choose a niche <span>Optional</span></label>
       <div id="genre-picker">
-        <p class="genre-helper">Choose a preset niche, or pick “Other” to type your own. This only guides the story; your topic stays in charge.</p>
         <div id="genre-search-wrap">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" id="genre-search" placeholder="Search or select a niche..." role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="genre-options" autocomplete="off">
+          <input type="text" id="genre-search" placeholder="Any topic — or search niches" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="genre-options" autocomplete="off">
           <div id="genre-options" role="listbox" aria-label="Available niches"></div>
         </div>
         <div id="custom-genre-row">
@@ -1212,7 +1204,7 @@
         </div>
         <div id="genre-selected-label"></div>
       </div>
-    </details>
+    </div>
     <button class="btn btn-brainstorm" id="btn-brainstorm" hidden>Brainstorm a Topic 🎯</button>
     <button class="btn btn-approve-topic" id="btn-approve-topic" disabled>Approve Topic ✓</button>
     <div id="topic-approved-note" role="status" hidden>Topic approved. Generate your carousel when you’re ready.</div>
@@ -1375,7 +1367,7 @@
     const topicApprovedNote = document.getElementById('topic-approved-note');
     const modeUseTopicButton = document.getElementById('mode-use-topic');
     const modeBrainstormButton = document.getElementById('mode-brainstorm');
-    const topicModeHint = document.getElementById('topic-mode-hint');
+    const brainstormOptions = document.getElementById('brainstorm-options');
     const topicRow      = document.getElementById('topic-row');
     const topicInput    = document.getElementById('topic-input');
     const btnGenerate   = document.getElementById('btn-generate');
@@ -1869,8 +1861,6 @@
     const customGenreRow = document.getElementById('custom-genre-row');
     const customGenreInput = document.getElementById('custom-genre-input');
     const genreSelectedLabel = document.getElementById('genre-selected-label');
-    const optionalNicheDetails = document.getElementById('optional-niche-details');
-    const optionalNicheSummary = document.getElementById('optional-niche-summary');
     let selectedGenre = null;
     let isCustomGenre = false;
     let topicStartMode = 'manual';
@@ -1986,14 +1976,7 @@
       genreSelectedLabel.textContent = isCustomGenre
         ? (customGenreInput.value.trim() ? `✅ Niche: ${customGenreInput.value.trim()}` : 'Enter your custom niche to continue.')
         : selectedGenre === 'Random' ? '🎲 Any topic — no niche restrictions.'
-        : selectedGenre ? `✅ Niche: ${selectedGenre}` : 'No niche selected — write for a general audience.';
-    }
-
-    function updateOptionalNicheSummary() {
-      const genre = getGenre();
-      optionalNicheSummary.textContent = genre
-        ? `Optional niche: ${genre}`
-        : topicStartMode === 'brainstorm' ? 'Choose a niche (optional)' : 'Add a niche or custom focus (optional)';
+        : selectedGenre ? `✅ Niche: ${selectedGenre}` : '';
     }
 
     function clearDraftTopic() {
@@ -2042,6 +2025,9 @@
 
     function updateActionAvailability() {
       const hasTopic = Boolean(topicInput.value.trim());
+      const brainstormingMode = topicStartMode === 'brainstorm';
+      topicRow.hidden = brainstormingMode && !hasTopic;
+      brainstormOptions.hidden = !brainstormingMode;
       btnBrainstorm.hidden = topicStartMode !== 'brainstorm';
       btnBrainstorm.disabled = isBrainstorming;
       btnApproveTopic.hidden = topicApproved;
@@ -2052,17 +2038,23 @@
     }
 
     function setTopicStartMode(mode) {
+      const modeChanged = topicStartMode !== mode;
+      if (modeChanged) clearDraftTopic();
+      if (modeChanged && mode === 'manual') {
+        selectedGenre = null;
+        isCustomGenre = false;
+        genreSearch.value = '';
+        customGenreInput.value = '';
+        customGenreRow.classList.remove('visible');
+        genreOptions.querySelectorAll('.genre-option').forEach(option => option.setAttribute('aria-selected', 'false'));
+        updateGenreLabel();
+      }
       topicStartMode = mode;
       const usingTopic = mode === 'manual';
       modeUseTopicButton.classList.toggle('active', usingTopic);
       modeUseTopicButton.setAttribute('aria-pressed', String(usingTopic));
       modeBrainstormButton.classList.toggle('active', !usingTopic);
       modeBrainstormButton.setAttribute('aria-pressed', String(!usingTopic));
-      topicModeHint.textContent = usingTopic
-        ? 'Enter your idea below. Choosing a niche is optional.'
-        : 'Get a suggestion first, then approve it before the carousel is written. Leave the niche blank for any subject.';
-      optionalNicheDetails.open = !usingTopic;
-      updateOptionalNicheSummary();
       updateActionAvailability();
     }
 
@@ -2079,7 +2071,6 @@
       clearDraftTopic();
       updateActionAvailability();
     });
-    updateOptionalNicheSummary();
     updateActionAvailability();
 
     /* ============================================================
