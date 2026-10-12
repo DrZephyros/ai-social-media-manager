@@ -121,13 +121,13 @@
     .generation-highlight.is-premium .generation-highlight-icon { color: #35250b; background: linear-gradient(135deg, #fff1a6, #f6bd45 60%, #f5d77e); box-shadow: 0 4px 18px rgba(246,189,69,.3); }
 
     /* ---- Genre Picker ---- */
-    .topic-mode-picker { width: min(760px, 100%); margin: 0 auto .55rem; display: grid; grid-template-columns: 1fr 1fr; gap: .45rem; padding: .28rem; border: 1px solid rgba(255,255,255,.09); border-radius: 13px; background: rgba(255,255,255,.025); }
+    .topic-mode-picker { width: min(760px, 100%); margin: 0 auto 1.05rem; display: grid; grid-template-columns: 1fr 1fr; gap: .45rem; padding: .32rem; border: 1px solid rgba(255,255,255,.1); border-radius: 14px; background: rgba(15,19,28,.72); box-shadow: 0 10px 30px rgba(0,0,0,.14); }
     .topic-mode-button { min-height: 46px; border: 1px solid transparent; border-radius: 10px; background: transparent; color: rgba(255,255,255,.68); font: inherit; font-size: .92rem; font-weight: 720; cursor: pointer; transition: background .2s, color .2s, border-color .2s; }
     .topic-mode-button:hover { color: #fff; background: rgba(255,255,255,.06); }
     .topic-mode-button.active { color: #fff; border-color: rgba(255,255,255,.12); background: linear-gradient(110deg, rgba(250,126,30,.15), rgba(214,41,118,.15), rgba(79,91,213,.15)); box-shadow: 0 3px 12px rgba(0,0,0,.18); }
-    #brainstorm-options { width: 100%; display: grid; gap: .5rem; }
+    #brainstorm-options { width: 100%; display: grid; gap: .8rem; padding: 1.25rem 1.35rem; border: 1px solid rgba(255,255,255,.12); border-radius: 15px; background: linear-gradient(145deg, rgba(20,25,35,.96), rgba(13,17,26,.96)); box-shadow: 0 12px 32px rgba(0,0,0,.2), inset 0 1px rgba(255,255,255,.035); }
     #brainstorm-options[hidden] { display: none !important; }
-    #brainstorm-niche-label { display: flex; align-items: center; gap: .55rem; color: rgba(255,255,255,.86); font-size: .9rem; font-weight: 700; }
+    #brainstorm-niche-label { display: flex; align-items: center; gap: .65rem; color: rgba(255,255,255,.9); font-size: .95rem; font-weight: 720; }
     #brainstorm-niche-label span { padding: .2rem .45rem; border: 1px solid rgba(255,255,255,.11); border-radius: 999px; color: rgba(255,255,255,.53); font-size: .68rem; font-weight: 600; }
     #genre-picker {
       width: 100%;
@@ -156,17 +156,17 @@
     }
     #genre-search {
       width: 100%;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 0.7rem 1rem 0.7rem 2.5rem;
+      background: rgba(255,255,255,0.055);
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 11px;
+      padding: 0.82rem 1rem 0.82rem 2.5rem;
       color: var(--text);
       font-family: 'Inter', sans-serif;
       font-size: 0.9rem;
       outline: none;
       transition: border-color 0.2s;
     }
-    #genre-search:focus { border-color: var(--cyan); }
+    #genre-search:focus { border-color: rgba(0,229,255,.58); box-shadow: 0 0 0 3px rgba(0,229,255,.09); }
     #genre-options {
       display: none;
       position: absolute;
@@ -238,7 +238,7 @@
       max-width: 560px;
       display: flex;
       flex-direction: column;
-      gap: .85rem;
+      gap: 1rem;
     }
 
     .btn {
