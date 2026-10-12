@@ -1989,15 +1989,16 @@
     function updateActionAvailability() {
       const hasTopic = Boolean(topicInput.value.trim());
       const brainstormingMode = topicStartMode === 'brainstorm';
+      const canGenerate = hasTopic && (!brainstormingMode || topicApproved);
       topicRow.hidden = brainstormingMode && !hasTopic;
       brainstormOptions.hidden = !brainstormingMode;
       btnBrainstorm.hidden = topicStartMode !== 'brainstorm';
       btnBrainstorm.disabled = isBrainstorming || !hasBrainstormNiche();
-      btnApproveTopic.hidden = !hasTopic || topicApproved;
+      btnApproveTopic.hidden = !brainstormingMode || !hasTopic || topicApproved;
       btnApproveTopic.disabled = !hasTopic;
-      topicApprovedNote.hidden = !topicApproved;
-      btnGenerate.hidden = !topicApproved;
-      btnGenerate.disabled = !topicApproved || !hasTopic;
+      topicApprovedNote.hidden = !brainstormingMode || !topicApproved;
+      btnGenerate.hidden = !canGenerate;
+      btnGenerate.disabled = !canGenerate;
     }
 
     function setTopicStartMode(mode) {
@@ -2082,8 +2083,9 @@
     btnGenerate.addEventListener('click', () => {
       const topic = topicInput.value.trim();
       const genre = getGenre();
-      if (!topicApproved || !topic) {
-        setStatus(!topic ? 'Enter a topic and approve it first.' : 'Approve this topic before generating the carousel.');
+      const needsApproval = topicStartMode === 'brainstorm';
+      if (!topic || (needsApproval && !topicApproved)) {
+        setStatus(!topic ? 'Enter a topic first.' : 'Approve this topic before generating the carousel.');
         updateActionAvailability();
         return;
       }
