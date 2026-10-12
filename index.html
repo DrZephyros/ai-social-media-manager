@@ -2030,7 +2030,7 @@
       brainstormOptions.hidden = !brainstormingMode;
       btnBrainstorm.hidden = topicStartMode !== 'brainstorm';
       btnBrainstorm.disabled = isBrainstorming;
-      btnApproveTopic.hidden = topicApproved;
+      btnApproveTopic.hidden = !hasTopic || topicApproved;
       btnApproveTopic.disabled = !hasTopic;
       topicApprovedNote.hidden = !topicApproved;
       btnGenerate.hidden = !topicApproved;
