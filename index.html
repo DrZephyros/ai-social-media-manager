@@ -128,7 +128,8 @@
     #brainstorm-options { width: 100%; display: grid; gap: .8rem; padding: 1.25rem 1.35rem; border: 1px solid rgba(255,255,255,.12); border-radius: 15px; background: linear-gradient(145deg, rgba(20,25,35,.96), rgba(13,17,26,.96)); box-shadow: 0 12px 32px rgba(0,0,0,.2), inset 0 1px rgba(255,255,255,.035); }
     #brainstorm-options[hidden] { display: none !important; }
     #brainstorm-niche-label { display: flex; align-items: center; gap: .65rem; color: rgba(255,255,255,.9); font-size: .95rem; font-weight: 720; }
-    #brainstorm-niche-label span { padding: .2rem .45rem; border: 1px solid rgba(255,255,255,.11); border-radius: 999px; color: rgba(255,255,255,.53); font-size: .68rem; font-weight: 600; }
+    #brainstorm-niche-label span { padding: .2rem .48rem; border: 1px solid rgba(0,229,255,.22); border-radius: 999px; background: rgba(0,229,255,.06); color: #8cecf5; font-size: .67rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+    #brainstorm-niche-help { margin: -.35rem 0 0; color: rgba(255,255,255,.55); font-size: .8rem; line-height: 1.45; }
     #genre-picker {
       width: 100%;
       max-width: 560px;
@@ -1192,11 +1193,12 @@
       <textarea id="topic-input" rows="3" maxlength="500" placeholder="For example: Why do programmers write ‘Hello, world!’ first?" aria-label="Carousel topic"></textarea>
     </div>
     <div id="brainstorm-options" hidden>
-      <label id="brainstorm-niche-label" for="genre-search">Choose a niche <span>Optional</span></label>
+      <label id="brainstorm-niche-label" for="genre-search">Choose a niche <span>Required</span></label>
+      <p id="brainstorm-niche-help">Choose a specific niche to continue. “Random” counts as no selection.</p>
       <div id="genre-picker">
         <div id="genre-search-wrap">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" id="genre-search" placeholder="Any topic — or search niches" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="genre-options" autocomplete="off">
+          <input type="text" id="genre-search" placeholder="Search and select a niche..." role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="genre-options" autocomplete="off">
           <div id="genre-options" role="listbox" aria-label="Available niches"></div>
         </div>
         <div id="custom-genre-row">
@@ -1866,37 +1868,6 @@
     let topicStartMode = 'manual';
     let topicApproved = false;
     let isBrainstorming = false;
-    const RECENT_RANDOM_TOPICS_KEY = 'carousel-recent-random-topics';
-    const RECENT_RANDOM_LANES_KEY = 'carousel-recent-random-lanes';
-
-    function getRecentRandomTopics() {
-      try {
-        const topics = JSON.parse(localStorage.getItem(RECENT_RANDOM_TOPICS_KEY) || '[]');
-        return Array.isArray(topics) ? topics.filter(topic => typeof topic === 'string' && topic.trim()).slice(0, 12) : [];
-      } catch { return []; }
-    }
-
-    function rememberRandomTopic(topic) {
-      try {
-        const topics = [topic, ...getRecentRandomTopics()].filter((item, index, all) => all.indexOf(item) === index).slice(0, 12);
-        localStorage.setItem(RECENT_RANDOM_TOPICS_KEY, JSON.stringify(topics));
-      } catch {}
-    }
-
-    function getRecentRandomLanes() {
-      try {
-        const lanes = JSON.parse(localStorage.getItem(RECENT_RANDOM_LANES_KEY) || '[]');
-        return Array.isArray(lanes) ? lanes.filter(lane => Number.isInteger(lane) && lane >= 0 && lane < 10).slice(0, 8) : [];
-      } catch { return []; }
-    }
-
-    function rememberRandomLane(lane) {
-      if (!Number.isInteger(lane) || lane < 0 || lane >= 10) return;
-      try {
-        const lanes = [lane, ...getRecentRandomLanes()].filter((item, index, all) => all.indexOf(item) === index).slice(0, 8);
-        localStorage.setItem(RECENT_RANDOM_LANES_KEY, JSON.stringify(lanes));
-      } catch {}
-    }
 
     GENRES.forEach(g => {
       const option = document.createElement('button');
@@ -1924,7 +1895,6 @@
         genreOptions.querySelectorAll('.genre-option').forEach(item => item.setAttribute('aria-selected', String(item === option)));
         closeGenreOptions();
         updateGenreLabel();
-        updateOptionalNicheSummary();
         updateActionAvailability();
       });
       genreOptions.appendChild(option);
@@ -1934,7 +1904,6 @@
       clearDraftTopic();
       selectedGenre = null;
       updateGenreLabel();
-      updateOptionalNicheSummary();
       updateActionAvailability();
     });
 
@@ -1975,8 +1944,13 @@
     function updateGenreLabel() {
       genreSelectedLabel.textContent = isCustomGenre
         ? (customGenreInput.value.trim() ? `✅ Niche: ${customGenreInput.value.trim()}` : 'Enter your custom niche to continue.')
-        : selectedGenre === 'Random' ? '🎲 Any topic — no niche restrictions.'
+        : selectedGenre === 'Random' ? 'Random counts as no niche. Choose a specific one to continue.'
         : selectedGenre ? `✅ Niche: ${selectedGenre}` : '';
+    }
+
+    function hasBrainstormNiche() {
+      const genre = getGenre();
+      return Boolean(genre && genre.trim() && genre.trim().toLowerCase() !== 'random');
     }
 
     function clearDraftTopic() {
@@ -2029,7 +2003,7 @@
       topicRow.hidden = brainstormingMode && !hasTopic;
       brainstormOptions.hidden = !brainstormingMode;
       btnBrainstorm.hidden = topicStartMode !== 'brainstorm';
-      btnBrainstorm.disabled = isBrainstorming;
+      btnBrainstorm.disabled = isBrainstorming || !hasBrainstormNiche();
       btnApproveTopic.hidden = !hasTopic || topicApproved;
       btnApproveTopic.disabled = !hasTopic;
       topicApprovedNote.hidden = !topicApproved;
@@ -2077,19 +2051,20 @@
        Step 1: Brainstorm
     ============================================================ */
     btnBrainstorm.addEventListener('click', async () => {
+      if (!hasBrainstormNiche()) {
+        updateGenreLabel();
+        genreSearch.focus();
+        return;
+      }
       isBrainstorming = true;
-      const genre = getGenre() || 'Random';
+      const genre = getGenre();
       updateActionAvailability();
-      setStatus(genre === 'Random' ? 'Brainstorming a topic from any subject...' : `Brainstorming a viral ${genre} topic...`, true);
+      setStatus(`Brainstorming a ${genre} topic...`, true);
       try {
-        const avoidTopics = genre === 'Random'
-          ? [...new Set([topicInput.value.trim(), ...getRecentRandomTopics()].filter(Boolean))].slice(0, 12)
-          : [];
-        const avoidLanes = genre === 'Random' ? getRecentRandomLanes() : [];
         const res  = await fetch('/api/brainstorm', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...await getAuthHeaders() },
-          body: JSON.stringify({ genre, avoidTopics, avoidLanes })
+          body: JSON.stringify({ genre })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || `Request failed (${res.status}).`);
@@ -2099,10 +2074,6 @@
         if (data.topic) {
           topicInput.value = data.topic;
           topicApproved = false;
-          if (genre === 'Random') {
-            rememberRandomTopic(data.topic);
-            rememberRandomLane(data.lane);
-          }
           updateActionAvailability();
           setStatus(`✅ Topic ready for ${data.genre} — edit it or approve as-is.`);
         } else {
