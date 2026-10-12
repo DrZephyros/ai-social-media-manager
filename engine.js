@@ -324,7 +324,8 @@ function requireGenre(genre) {
 }
 
 function normalizeSelectedGenre(genre) {
-    return genre === 'Random' ? null : requireGenre(genre);
+    if (genre === null || genre === undefined || (typeof genre === 'string' && !genre.trim()) || genre === 'Random') return null;
+    return requireGenre(genre);
 }
 
 function hookRepresentsSubject(hook, subject) {

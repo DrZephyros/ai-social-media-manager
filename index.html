@@ -126,6 +126,10 @@
     .topic-mode-button:hover { color: #fff; background: rgba(255,255,255,.06); }
     .topic-mode-button.active { color: #fff; border-color: rgba(255,255,255,.13); background: linear-gradient(110deg, rgba(250,126,30,.18), rgba(214,41,118,.18), rgba(79,91,213,.18)); box-shadow: 0 4px 16px rgba(214,41,118,.1); }
     .topic-mode-hint { width: min(860px, 100%); min-height: 1.25rem; margin: 0 auto 1.4rem; color: var(--muted); font-size: .88rem; text-align: center; }
+    #optional-niche-details { width: min(860px, 100%); margin: 0 auto 1.25rem; }
+    #optional-niche-summary { width: fit-content; color: rgba(255,255,255,.68); font-size: .82rem; cursor: pointer; user-select: none; }
+    #optional-niche-summary:hover { color: var(--cyan); }
+    #optional-niche-details[open] #optional-niche-summary { margin-bottom: .85rem; }
     #genre-picker {
       width: 100%;
       max-width: 560px;
@@ -1172,6 +1176,8 @@
   <p id="topic-mode-hint" class="topic-mode-hint">Enter your idea below. Choosing a niche is optional.</p>
 
   <!-- Optional niche guidance -->
+  <details id="optional-niche-details">
+    <summary id="optional-niche-summary">Add an optional niche</summary>
   <div id="genre-picker">
     <h2>Optional niche 🎯</h2>
     <p class="genre-helper">Choose a niche to guide the brainstorm or writing style, or leave it blank for a general story.</p>
@@ -1185,6 +1191,7 @@
     </div>
     <div id="genre-selected-label"></div>
   </div>
+  </details>
 
   <div id="controls">
     <div id="topic-row">
@@ -1846,6 +1853,8 @@
     const customGenreRow = document.getElementById('custom-genre-row');
     const customGenreInput = document.getElementById('custom-genre-input');
     const genreSelectedLabel = document.getElementById('genre-selected-label');
+    const optionalNicheDetails = document.getElementById('optional-niche-details');
+    const optionalNicheSummary = document.getElementById('optional-niche-summary');
     let selectedGenre = null;
     let isCustomGenre = false;
     let topicStartMode = 'manual';
@@ -1909,6 +1918,7 @@
         genreOptions.querySelectorAll('.genre-option').forEach(item => item.setAttribute('aria-selected', String(item === option)));
         closeGenreOptions();
         updateGenreLabel();
+        updateOptionalNicheSummary();
         updateActionAvailability();
       });
       genreOptions.appendChild(option);
@@ -1918,6 +1928,7 @@
       clearDraftTopic();
       selectedGenre = null;
       updateGenreLabel();
+      updateOptionalNicheSummary();
       updateActionAvailability();
     });
 
@@ -1960,6 +1971,13 @@
         ? (customGenreInput.value.trim() ? `✅ Niche: ${customGenreInput.value.trim()}` : 'Enter your custom niche to continue.')
         : selectedGenre === 'Random' ? '🎲 Any topic — no niche restrictions.'
         : selectedGenre ? `✅ Niche: ${selectedGenre}` : 'No niche selected — write for a general audience.';
+    }
+
+    function updateOptionalNicheSummary() {
+      const genre = getGenre();
+      optionalNicheSummary.textContent = genre
+        ? `Optional niche: ${genre}`
+        : topicStartMode === 'brainstorm' ? 'Choose a niche (optional)' : 'Add an optional niche';
     }
 
     function clearDraftTopic() {
@@ -2027,6 +2045,8 @@
       topicModeHint.textContent = usingTopic
         ? 'Enter your idea below. Choosing a niche is optional.'
         : 'Get a suggestion first, then approve it before the carousel is written. Leave the niche blank for any subject.';
+      optionalNicheDetails.open = !usingTopic;
+      updateOptionalNicheSummary();
       updateActionAvailability();
     }
 
@@ -2043,6 +2063,7 @@
       clearDraftTopic();
       updateActionAvailability();
     });
+    updateOptionalNicheSummary();
     updateActionAvailability();
 
     /* ============================================================
