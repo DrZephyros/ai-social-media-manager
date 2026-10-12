@@ -261,8 +261,9 @@ app.post('/api/generation-ticket', async (req, res) => {
     if (!auth) return;
     const { topic, genre } = req.body || {};
     if (typeof topic !== 'string' || !topic.trim() || topic.length > 500) return res.status(400).json({ error: 'Enter a topic up to 500 characters.' });
-    if (typeof genre !== 'string' || !genre.trim() || genre.trim().length > 120) return res.status(400).json({ error: 'Select a niche before generating slides.' });
-    const payload = Buffer.from(JSON.stringify({ userId: auth.user.uid, premium: auth.user.premium, topic: topic.trim(), genre: genre.trim(), expiresAt: Date.now() + 60_000 })).toString('base64url');
+    if (genre !== null && genre !== undefined && (typeof genre !== 'string' || !genre.trim() || genre.trim().length > 120)) return res.status(400).json({ error: 'Niche must be 120 characters or fewer.' });
+    const safeGenre = typeof genre === 'string' && genre.trim() ? genre.trim() : null;
+    const payload = Buffer.from(JSON.stringify({ userId: auth.user.uid, premium: auth.user.premium, topic: topic.trim(), genre: safeGenre, expiresAt: Date.now() + 60_000 })).toString('base64url');
     if (!generationTicketSecret) return res.status(503).json({ error: 'Generation signing secret is not configured.' });
     const signature = createHmac('sha256', generationTicketSecret).update(payload).digest('base64url');
     const ticket = `${payload}.${signature}`;
@@ -279,7 +280,7 @@ function readGenerationTicket(value) {
     if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) return null;
     try {
         const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
-        if (!data.userId || !data.topic || !data.genre || data.expiresAt < Date.now()) return null;
+        if (!data.userId || !data.topic || (data.genre !== null && typeof data.genre !== 'string') || data.expiresAt < Date.now()) return null;
         return data;
     } catch { return null; }
 }
@@ -368,7 +369,8 @@ app.post('/api/followup', async (req, res) => {
     if (!auth) return;
     const { topic, genre, slides, sources, followUp } = req.body || {};
     if (typeof topic !== 'string' || !topic.trim() || topic.length > 500) return res.status(400).json({ error: 'The original topic is missing or too long.' });
-    if (typeof genre !== 'string' || !genre.trim() || genre.length > 120) return res.status(400).json({ error: 'The selected genre is missing.' });
+    if (genre !== null && genre !== undefined && (typeof genre !== 'string' || !genre.trim() || genre.length > 120)) return res.status(400).json({ error: 'Niche must be 120 characters or fewer.' });
+    const safeGenre = typeof genre === 'string' && genre.trim() ? genre.trim() : null;
     if (typeof followUp !== 'string' || !followUp.trim() || followUp.length > 2000) return res.status(400).json({ error: 'Enter an edit request up to 2,000 characters.' });
     if (!Array.isArray(slides) || slides.length < 4 || slides.length > 30
         || slides.some(slide => !slide || typeof slide.title !== 'string' || typeof slide.body_text !== 'string'
@@ -390,8 +392,8 @@ app.post('/api/followup', async (req, res) => {
             url: String(source?.url || '').slice(0, 1000),
             claims: Array.isArray(source?.claims) ? source.claims.slice(0, 4).map(claim => String(claim).slice(0, 3000)) : [],
         }));
-        const revisedSlides = await reviseCarousel(topic.trim(), genre.trim(), slides, safeSources, followUp.trim());
-        const caption = await generateCaption(topic.trim(), revisedSlides, genre.trim());
+        const revisedSlides = await reviseCarousel(topic.trim(), safeGenre, slides, safeSources, followUp.trim());
+        const caption = await generateCaption(topic.trim(), revisedSlides, safeGenre);
         latestScript = revisedSlides;
         res.json({ slides: revisedSlides, caption, sources: safeSources });
     } catch (error) {
