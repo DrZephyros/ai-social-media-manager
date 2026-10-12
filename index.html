@@ -251,17 +251,15 @@
     }
     .btn:active { transform: scale(0.98); }
     .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-    .btn-brainstorm {
+    .btn-brainstorm, .btn-approve-topic {
       border: 1px solid transparent;
       background: linear-gradient(rgba(14,16,25,.96), rgba(14,16,25,.96)) padding-box, var(--instagram-gradient) border-box;
       color: #ffc3df;
       box-shadow: 0 4px 16px rgba(214,41,118,.09);
     }
     .btn-generate { background: var(--instagram-gradient); color: #fff; box-shadow: 0 7px 24px rgba(214,41,118,.24); }
-    .btn-approve-topic { border: 1px solid rgba(0,229,255,.42); background: rgba(0,229,255,.08); color: #aaf7ff; }
-    .btn-approve-topic:hover:not(:disabled) { background: rgba(0,229,255,.15); transform: translateY(-1px); }
     #topic-approved-note { padding: .75rem 1rem; border: 1px solid rgba(0,229,255,.22); border-radius: 10px; background: rgba(0,229,255,.055); color: #aaf7ff; font-size: .88rem; text-align: center; }
-    .btn-brainstorm:hover:not(:disabled) {
+    .btn-brainstorm:hover:not(:disabled), .btn-approve-topic:hover:not(:disabled) {
       background: linear-gradient(rgba(214,41,118,.13), rgba(150,47,191,.13)) padding-box, var(--instagram-gradient) border-box;
       color: #fff;
       transform: translateY(-1px);
@@ -280,32 +278,30 @@
     .btn-regenerate:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 10px 30px rgba(214,41,118,.34); }
     .btn-regenerate.visible { display: block; }
 
-    #topic-row { display: flex; flex-direction: column; gap: .5rem; }
+    #topic-row { display: flex; flex-direction: column; gap: 0; }
     #topic-row[hidden] { display: none !important; }
-    #topic-label { display: flex; align-items: center; gap: .5rem; color: rgba(255,255,255,.92); font-size: .96rem; font-weight: 760; }
-    #topic-label span { display: inline-grid; place-items: center; width: 1.45rem; height: 1.45rem; border-radius: .45rem; background: rgba(0,229,255,.1); color: var(--cyan); font-size: .82rem; }
 
     #topic-input {
-      min-height: 96px;
+      min-height: 56px;
       resize: vertical;
-      background: linear-gradient(145deg, rgba(23,29,40,.82), rgba(16,21,30,.88));
-      border: 1px solid rgba(255,255,255,.13);
-      border-radius: 14px;
-      padding: .95rem 1rem;
+      background: rgba(255,255,255,.055);
+      border: 0;
+      border-radius: 12px;
+      padding: .92rem 1rem;
       color: var(--text);
       font-family: 'Inter', sans-serif;
       font-size: .95rem;
-      line-height: 1.55;
+      line-height: 1.4;
       width: 100%;
       outline: none;
-      transition: border-color .2s, box-shadow .2s, background .2s;
+      transition: box-shadow .2s, background .2s;
     }
     #topic-input::placeholder { color: rgba(255,255,255,.38); }
-    #topic-input:focus { border-color: rgba(0,229,255,.62); background: linear-gradient(145deg, rgba(23,34,44,.94), rgba(16,24,34,.96)); box-shadow: 0 0 0 3px rgba(0,229,255,.1); }
+    #topic-input:focus { background: rgba(255,255,255,.075); box-shadow: inset 0 -2px rgba(0,229,255,.7), 0 0 0 3px rgba(0,229,255,.07); }
     #status:empty { display: none; }
     @media (max-width: 560px) {
       .topic-mode-button { min-height: 44px; font-size: .83rem; }
-      #topic-input { min-height: 88px; }
+      #topic-input { min-height: 56px; }
     }
 
     /* ---- Status Bar ---- */
@@ -1185,8 +1181,7 @@
   </div>
   <div id="controls">
     <div id="topic-row">
-      <label id="topic-label" for="topic-input"><span aria-hidden="true">✦</span>Your topic or idea</label>
-      <textarea id="topic-input" rows="3" maxlength="500" placeholder="For example: Why do programmers write ‘Hello, world!’ first?" aria-label="Carousel topic"></textarea>
+      <textarea id="topic-input" rows="1" maxlength="500" placeholder="Enter your topic or idea..." aria-label="Carousel topic"></textarea>
     </div>
     <div id="brainstorm-options" hidden>
       <div id="genre-picker">
