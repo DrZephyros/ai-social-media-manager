@@ -14,8 +14,14 @@ The app uses Supabase Auth for email and password accounts. New accounts are mar
 
 Run the SQL in [`supabase/migrations/20261004000000_generation_quota.sql`](supabase/migrations/20261004000000_generation_quota.sql) once in the Supabase Dashboard's **SQL Editor**. It creates the quota table and the atomic reservation functions used to enforce two generations per rolling seven-day period.
 
+## Cloudflare Workers AI
+
+The website now uses Cloudflare Workers AI with `@cf/meta/llama-3.3-70b-instruct-fp8-fast` for topic brainstorming and carousel writing. Create an API token from **Workers AI → Use REST API** with Workers AI Read and Edit permissions. Configure `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` in Vercel's server environment and local `.env`; never put the token in browser code or commit it. Cloudflare's free allocation is 10,000 Neurons per day and resets at 00:00 UTC; usage beyond that requires a paid Workers plan.
+
+The R2 S3 Access Key ID and Secret Access Key are storage credentials and cannot authenticate Workers AI inference. Use the Workers AI API token, not the R2 credentials.
+
 ## Local development
 
-Copy `.env.example` to `.env` and fill in the app's existing AI provider keys plus `SUPABASE_URL` and `SUPABASE_SECRET_KEY`. Keep `.env` private. Do not put the Supabase secret key in `index.html`, a `NEXT_PUBLIC_` variable, or source control.
+Copy `.env.example` to `.env` and fill in Cloudflare Workers AI credentials plus `SUPABASE_URL` and `SUPABASE_SECRET_KEY`. Keep `.env` private. Do not put secrets in `index.html`, a `NEXT_PUBLIC_` variable, or source control.
 
 Existing Firebase accounts are not migrated automatically. Since there are currently no users to preserve, people can create fresh accounts after the Supabase configuration is deployed.

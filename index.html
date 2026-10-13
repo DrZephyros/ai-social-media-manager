@@ -1142,7 +1142,7 @@
 
   <header>
     <h1>AI Insta-Manager</h1>
-    <p>Generate viral Instagram carousels in seconds · Powered by Gemini</p>
+    <p>Generate viral Instagram carousels in seconds · Powered by Cloudflare Workers AI</p>
     <div class="generation-highlight" id="generation-highlight" aria-label="Two free generations every three days">
       <span class="generation-highlight-icon" id="generation-highlight-icon" aria-hidden="true">✦</span>
       <span class="generation-highlight-copy"><strong id="generation-highlight-title">2 FREE GENERATIONS</strong><small id="generation-highlight-subtitle">Every 3 days</small></span>
@@ -2088,8 +2088,8 @@
       const randomMode = genre === 'Random';
       brainstormLoadingText.textContent = 'Finding a fresh topic...';
       const progressTimers = [
-        setTimeout(() => { brainstormLoadingText.textContent = randomMode ? 'Still working—checking a backup idea too...' : 'Still working—Gemini will retry automatically if needed...'; }, 8000),
-        setTimeout(() => { brainstormLoadingText.textContent = randomMode ? 'Gemini is taking longer. A fresh backup topic will appear if it cannot respond.' : 'This is taking longer than usual; the app is retrying automatically.'; }, 20000),
+        setTimeout(() => { brainstormLoadingText.textContent = randomMode ? 'Still working—checking a backup idea too...' : 'Still working—Cloudflare Workers AI will retry automatically if needed...'; }, 8000),
+        setTimeout(() => { brainstormLoadingText.textContent = randomMode ? 'Cloudflare Workers AI is taking longer. A fresh backup topic will appear if it cannot respond.' : 'This is taking longer than usual; the app is retrying automatically.'; }, 20000),
       ];
       updateActionAvailability();
       setStatus('');
@@ -2118,7 +2118,7 @@
           }
           updateActionAvailability();
           setStatus(data.fallback
-            ? '✅ Gemini couldn’t finish this time, so here’s a fresh backup topic. Edit it or approve as-is.'
+            ? '✅ Cloudflare Workers AI couldn’t finish this time, so here’s a fresh backup topic. Edit it or approve as-is.'
             : randomMode
               ? '✅ Topic ready from any subject — edit it or approve as-is.'
             : `✅ Topic ready for ${data.genre} — edit it or approve as-is.`);

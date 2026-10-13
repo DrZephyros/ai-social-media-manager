@@ -5,9 +5,10 @@ import re
 from PIL import Image, ImageDraw, ImageFont
 import urllib.parse
 
-# Gemini API key configured by the app environment.
-client = None
-GEMINI_MODEL = "gemini-3.5-flash-lite"
+# Cloudflare Workers AI credentials are configured by the app environment.
+account_id = None
+api_token = None
+AI_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
 
 GENRES = [
     "Economics", "Tech & AI", "Mental Health", "Physical Fitness",
@@ -44,48 +45,49 @@ TOPIC_BRIEFS = {
     "Other": ("Use the custom genre as the boundary; select one concrete subject useful to its audience.", ["A specific question a curious beginner asks", "A practical process people often misunderstand"]),
 }
 
-def setup_client(api_key):
-    global client
-    client = api_key
+def setup_client(cloudflare_account_id, cloudflare_api_token):
+    global account_id, api_token
+    account_id = cloudflare_account_id
+    api_token = cloudflare_api_token
 
-def gemini_generate(system_instruction, user_content, temperature=0.7):
-    if not client:
-        raise Exception("Gemini API key not configured.")
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
+def ai_generate(system_instruction, user_content, temperature=0.7):
+    if not account_id or not api_token:
+        raise Exception("Cloudflare Workers AI credentials are not configured.")
+    url = f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/{AI_MODEL}"
     response = requests.post(
         url,
-        headers={"x-goog-api-key": client, "Content-Type": "application/json"},
+        headers={"Authorization": f"Bearer {api_token}", "Content-Type": "application/json"},
         json={
-            "systemInstruction": {"parts": [{"text": system_instruction}]},
-            "contents": [{"role": "user", "parts": [{"text": user_content}]}],
-            "generationConfig": {
-                "responseMimeType": "application/json",
-                "temperature": temperature,
-                "thinkingConfig": {"thinkingLevel": "high"},
-            },
+            "messages": [
+                {"role": "system", "content": system_instruction},
+                {"role": "user", "content": user_content},
+            ],
+            "max_tokens": 4096,
+            "temperature": temperature,
+            "response_format": {"type": "json_object"},
         },
         timeout=45,
     )
     if not response.ok:
         try:
-            detail = response.json().get("error", {}).get("message", "")
+            payload = response.json()
+            detail = (payload.get("errors") or [{}])[0].get("message", "")
         except ValueError:
             detail = ""
         if response.status_code in (400, 403):
-            raise Exception(f"Gemini rejected the request or API key: {detail or response.status_code}")
+            raise Exception(f"Cloudflare Workers AI rejected the request or API token: {detail or response.status_code}")
         if response.status_code == 429:
-            raise Exception("Gemini usage is temporarily rate-limited. Please wait and try again.")
-        raise Exception(f"Gemini request failed: {detail or response.status_code}")
+            raise Exception(f"Cloudflare Workers AI usage limit reached: {detail or response.status_code}")
+        raise Exception(f"Cloudflare Workers AI request failed: {detail or response.status_code}")
     try:
-        parts = response.json()["candidates"][0]["content"]["parts"]
-        return "".join(part.get("text", "") for part in parts).strip()
-    except (KeyError, IndexError, TypeError) as exc:
-        raise Exception("Gemini returned no text. Check the prompt and API safety settings.") from exc
+        return response.json()["result"]["response"].strip()
+    except (KeyError, TypeError, AttributeError) as exc:
+        raise Exception("Cloudflare Workers AI returned no text.") from exc
 
 def generate_topic(genre):
     """Generate a topic that is directly about the selected genre."""
-    if not client:
-        raise Exception("Gemini API key not configured.")
+    if not account_id or not api_token:
+        raise Exception("Cloudflare Workers AI credentials are not configured.")
     if not isinstance(genre, str) or not genre.strip():
         raise ValueError("Choose a niche before brainstorming a topic.")
 
@@ -105,7 +107,7 @@ Return only JSON: {{"topic":"one final hook"}}"""
     
     for attempt in range(3):
         try:
-            result = json.loads(gemini_generate("You are an Instagram carousel idea editor. Follow the user's selected niche exactly.", prompt + ("\nStart over with a different concrete subject if your previous answer drifted from the niche." if attempt else ""), 0.7))
+            result = json.loads(ai_generate("You are an Instagram carousel idea editor. Follow the user's selected niche exactly.", prompt + ("\nStart over with a different concrete subject if your previous answer drifted from the niche." if attempt else ""), 0.7))
             topic = result.get("topic", "").strip()
         except (json.JSONDecodeError, AttributeError):
             continue
@@ -119,9 +121,9 @@ def is_history_topic(topic):
     return bool(re.search(anchors, topic, re.IGNORECASE))
 
 def generate_script(topic, genre):
-    """Calls Gemini to generate a 5-slide script within the selected genre."""
-    if not client:
-        raise Exception("Gemini API key not configured.")
+    """Calls Cloudflare Workers AI to generate a 5-slide script within the selected genre."""
+    if not account_id or not api_token:
+        raise Exception("Cloudflare Workers AI credentials are not configured.")
     if genre == "History & Hidden Facts" and not is_history_topic(topic):
         raise ValueError("Choose a genuine historical subject before generating a history carousel.")
         
@@ -148,7 +150,7 @@ def generate_script(topic, genre):
     Output JSON only: {{"slides":[{{"slide_number":1,"title":"...","body_text":"...","image_prompt":"..."}}]}}. Each slide must have exactly these keys. image_prompt describes a cinematic, dark, highly aesthetic background without text.
     '''
     
-    response_text = gemini_generate(system_instruction, json.dumps({"genre": genre, "topic": topic}), 0.7)
+    response_text = ai_generate(system_instruction, json.dumps({"genre": genre, "topic": topic}), 0.7)
     try:
         data = json.loads(response_text)
         slides = data["slides"]

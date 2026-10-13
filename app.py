@@ -15,20 +15,21 @@ if "draft_topic" not in st.session_state:
     st.session_state.draft_topic = None
 
 # Load credentials from the environment; never store API keys in source code.
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-if not GEMINI_API_KEY:
-    st.error("GEMINI_API_KEY is not configured. Add it to the app environment to continue.")
+CLOUDFLARE_ACCOUNT_ID = os.getenv("CLOUDFLARE_ACCOUNT_ID")
+CLOUDFLARE_API_TOKEN = os.getenv("CLOUDFLARE_API_TOKEN")
+if not CLOUDFLARE_ACCOUNT_ID or not CLOUDFLARE_API_TOKEN:
+    st.error("Cloudflare Workers AI is not configured. Add CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN to the app environment.")
     st.stop()
-engine.setup_client(GEMINI_API_KEY)
+engine.setup_client(CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN)
 
 # --- SIDEBAR ---
 with st.sidebar:
     st.header("⚙️ Settings")
-    st.success("Gemini API Key Active!")
+    st.success("Cloudflare Workers AI Active!")
     
     st.markdown("---")
     st.markdown("### Powered By")
-    st.markdown("- **Brain:** Gemini Flash")
+    st.markdown("- **Brain:** Llama 3.3 70B via Cloudflare Workers AI")
     st.markdown("- **Art:** Pollinations AI")
 
 # --- MAIN UI ---
@@ -39,7 +40,7 @@ selected_genre = st.selectbox("Choose your niche", engine.GENRES, index=engine.G
 # STEP 1: Brainstorm Topic
 st.markdown("### Step 1: Idea Generation")
 if st.button("Brainstorm Viral Topic 🎯"):
-    with st.spinner("Gemini is brainstorming..."):
+    with st.spinner("Finding a fresh topic..."):
         st.session_state.draft_topic = engine.generate_topic(selected_genre)
         
 # STEP 2: Approve & Edit
