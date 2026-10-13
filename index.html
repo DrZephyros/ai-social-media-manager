@@ -100,7 +100,7 @@
       100% { transform: translate(0,0) scale(1); }
     }
     @media (prefers-reduced-motion: reduce) {
-      .blob, .geometry-motion { animation: none !important; }
+      .blob, .geometry-motion, .instagram-dot-spinner { animation: none !important; }
       .geometry-motion { translate: 0 0; }
     }
 
@@ -127,6 +127,17 @@
     .topic-mode-button.active { color: #fff; border-color: rgba(255,255,255,.12); background: linear-gradient(110deg, rgba(250,126,30,.15), rgba(214,41,118,.15), rgba(79,91,213,.15)); box-shadow: 0 3px 12px rgba(0,0,0,.18); }
     #brainstorm-options { width: 100%; display: grid; gap: .55rem; padding: .15rem 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
     #brainstorm-options[hidden] { display: none !important; }
+    #brainstorm-loading { display: flex; align-items: center; justify-content: center; gap: .8rem; min-height: 58px; padding: .8rem 1rem; border: 1px solid transparent; border-radius: 12px; background: linear-gradient(rgba(14,16,25,.96), rgba(14,16,25,.96)) padding-box, var(--instagram-gradient) border-box; color: rgba(255,255,255,.82); font-size: .9rem; font-weight: 650; }
+    #brainstorm-loading[hidden] { display: none !important; }
+    .instagram-dot-spinner { position: relative; width: 22px; height: 22px; flex: 0 0 22px; animation: instagram-dot-spin .9s linear infinite; }
+    .instagram-dot-spinner i { position: absolute; width: 6px; height: 6px; border-radius: 50%; }
+    .instagram-dot-spinner i:nth-child(1) { top: 0; left: 8px; background: #ff9a3c; }
+    .instagram-dot-spinner i:nth-child(2) { top: 8px; right: 0; background: #f3338b; }
+    .instagram-dot-spinner i:nth-child(3) { bottom: 0; left: 8px; background: #9b45d5; }
+    .instagram-dot-spinner i:nth-child(4) { top: 8px; left: 0; background: #f3338b; }
+    @keyframes instagram-dot-spin { to { transform: rotate(360deg); } }
+    #controls[data-mode="brainstorm"] #topic-input-wrap { padding: 1px; border: 1px solid transparent; border-radius: 13px; background: var(--instagram-gradient); box-shadow: 0 5px 18px rgba(214,41,118,.12); }
+    #controls[data-mode="brainstorm"] #topic-input { min-height: 56px; border-radius: 11px; background: #121722; }
     #genre-picker {
       width: 100%;
       max-width: 560px;
@@ -1182,12 +1193,6 @@
     <button type="button" id="mode-brainstorm" class="topic-mode-button" aria-pressed="false">Help me brainstorm</button>
   </div>
   <div id="controls">
-    <div id="topic-row">
-      <div id="topic-input-wrap">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" aria-hidden="true"><path d="m12 3 1.9 5.8L20 11l-6.1 2.2L12 19l-1.9-5.8L4 11l6.1-2.2L12 3Z"/><path d="m19 14 .9 2.6L22 17.5l-2.1.8L19 21l-.9-2.7-2.1-.8 2.1-.9L19 14Z"/></svg>
-        <input type="text" id="topic-input" maxlength="500" placeholder="Enter your topic or idea..." aria-label="Carousel topic">
-      </div>
-    </div>
     <div id="brainstorm-options" hidden>
       <div id="genre-picker">
         <div id="genre-search-wrap">
@@ -1202,6 +1207,16 @@
       </div>
     </div>
     <button class="btn btn-brainstorm" id="btn-brainstorm" hidden>Brainstorm a Topic 🎯</button>
+    <div id="brainstorm-loading" role="status" aria-live="polite" hidden>
+      <span class="instagram-dot-spinner" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <span>Finding a fresh topic...</span>
+    </div>
+    <div id="topic-row">
+      <div id="topic-input-wrap">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" aria-hidden="true"><path d="m12 3 1.9 5.8L20 11l-6.1 2.2L12 19l-1.9-5.8L4 11l6.1-2.2L12 3Z"/><path d="m19 14 .9 2.6L22 17.5l-2.1.8L19 21l-.9-2.7-2.1-.8 2.1-.9L19 14Z"/></svg>
+        <input type="text" id="topic-input" maxlength="500" placeholder="Enter your topic or idea..." aria-label="Carousel topic">
+      </div>
+    </div>
     <button class="btn btn-approve-topic" id="btn-approve-topic" disabled>Approve Topic ✓</button>
     <div id="topic-approved-note" role="status" hidden>Topic approved. Generate your carousel when you’re ready.</div>
     <button class="btn btn-generate" id="btn-generate" hidden disabled>Generate Carousel 🚀</button>
@@ -1364,6 +1379,7 @@
     const modeUseTopicButton = document.getElementById('mode-use-topic');
     const modeBrainstormButton = document.getElementById('mode-brainstorm');
     const brainstormOptions = document.getElementById('brainstorm-options');
+    const brainstormLoading = document.getElementById('brainstorm-loading');
     const topicRow      = document.getElementById('topic-row');
     const topicInput    = document.getElementById('topic-input');
     const btnGenerate   = document.getElementById('btn-generate');
@@ -2026,14 +2042,16 @@
       const hasTopic = Boolean(topicInput.value.trim());
       const brainstormingMode = topicStartMode === 'brainstorm';
       const canGenerate = hasTopic && (!brainstormingMode || topicApproved);
-      topicRow.hidden = brainstormingMode && !hasTopic;
+      controls.dataset.mode = brainstormingMode ? 'brainstorm' : 'manual';
+      topicRow.hidden = brainstormingMode && (isBrainstorming || !hasTopic);
       brainstormOptions.hidden = !brainstormingMode;
+      brainstormLoading.hidden = !brainstormingMode || !isBrainstorming;
       btnBrainstorm.hidden = topicStartMode !== 'brainstorm';
       btnBrainstorm.disabled = isBrainstorming || !hasBrainstormNiche();
-      btnApproveTopic.hidden = !brainstormingMode || !hasTopic || topicApproved;
+      btnApproveTopic.hidden = isBrainstorming || !brainstormingMode || !hasTopic || topicApproved;
       btnApproveTopic.disabled = !hasTopic;
-      topicApprovedNote.hidden = !brainstormingMode || !topicApproved;
-      btnGenerate.hidden = brainstormingMode && (!hasTopic || !topicApproved);
+      topicApprovedNote.hidden = isBrainstorming || !brainstormingMode || !topicApproved;
+      btnGenerate.hidden = brainstormingMode && (isBrainstorming || !hasTopic || !topicApproved);
       btnGenerate.disabled = !canGenerate;
     }
 
@@ -2083,10 +2101,11 @@
         return;
       }
       isBrainstorming = true;
+      topicApproved = false;
       const genre = getGenre();
       const randomMode = genre === 'Random';
       updateActionAvailability();
-      setStatus(randomMode ? 'Brainstorming across any subject...' : `Brainstorming a ${genre} topic...`, true);
+      setStatus('');
       try {
         const avoidTopics = randomMode
           ? [...new Set([topicInput.value.trim(), ...getRecentRandomTopics()].filter(Boolean))].slice(0, 12)
