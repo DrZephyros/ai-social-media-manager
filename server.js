@@ -192,7 +192,7 @@ const recentRandomLanes = [];
 
 app.post('/api/brainstorm', async (req, res) => {
     try {
-        if (!await requireAuthenticatedUser(req, res)) return;
+        if (supabaseConfigured && !await requireAuthenticatedUser(req, res)) return;
         if (!allowIpGeneration(req)) return res.status(429).json({ error: 'Too many requests from this network. Please try again later.' });
         const { genre, avoidTopics, avoidLanes } = req.body || {};
         if (typeof genre !== 'string' || !genre.trim() || genre.trim().length > 120) {

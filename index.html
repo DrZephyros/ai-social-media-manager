@@ -2102,7 +2102,7 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...await getAuthHeaders() },
           body: JSON.stringify({ genre, avoidTopics, avoidLanes }),
-          signal: AbortSignal.timeout(55000)
+          signal: AbortSignal.timeout(90000)
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || `Request failed (${res.status}).`);
