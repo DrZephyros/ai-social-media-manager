@@ -1985,7 +1985,7 @@
     function updateGenreLabel() {
       genreSelectedLabel.textContent = isCustomGenre
         ? (customGenreInput.value.trim() ? `✅ Niche: ${customGenreInput.value.trim()}` : 'Enter your custom niche to continue.')
-        : selectedGenre === 'Random' ? '🎲 No niche restriction.'
+        : selectedGenre === 'Random' ? ''
         : selectedGenre ? `✅ Niche: ${selectedGenre}` : '';
     }
 
