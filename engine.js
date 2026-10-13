@@ -970,6 +970,74 @@ const GENRE_WRITER_VOICES = {
     'Other': 'Follow one recognizable problem, choice, or question to a surprising, useful, well-supported answer.'
 };
 
+async function repairStoryContinuity(slides, sources, genre, onRetry) {
+    const discussionSlide = slides.at(-1)?.isDiscussionSlide ? slides.at(-1) : null;
+    const storySlides = discussionSlide ? slides.slice(0, -1) : slides;
+    const continuitySchema = {
+        type: 'object',
+        properties: {
+            slides: {
+                type: 'array',
+                minItems: storySlides.length,
+                maxItems: storySlides.length,
+                items: {
+                    type: 'object',
+                    properties: {
+                        slide_number: { type: 'integer' },
+                        title: { type: 'string' },
+                        body_text: { type: 'string' },
+                        bg_type: { type: 'string' },
+                        image_query: { type: 'string' },
+                    },
+                    required: ['slide_number', 'title', 'body_text', 'bg_type', 'image_query'],
+                },
+            },
+            transitionChecks: {
+                type: 'array',
+                minItems: Math.max(0, storySlides.length - 1),
+                maxItems: Math.max(0, storySlides.length - 1),
+                items: {
+                    type: 'object',
+                    properties: {
+                        from_slide: { type: 'integer' },
+                        tease: { type: 'string' },
+                        answer_in_next_slide: { type: 'string' },
+                        resolved: { type: 'boolean' },
+                    },
+                    required: ['from_slide', 'tease', 'answer_in_next_slide', 'resolved'],
+                },
+            },
+        },
+        required: ['slides', 'transitionChecks'],
+    };
+    const instruction = `You are the final story editor for an Instagram carousel. Repair continuity across the supplied narrative slides while preserving their facts, subject, genre, order, and slide count.
+
+Slide 2 must begin delivering on the cover's promise. For EVERY following adjacent pair, make the first sentence of slide N directly answer or resolve the concrete tease at the end of slide N-1. The answer must come before any new detail. Then let slide N introduce the next specific, source-supported development. A shared topic word is not an answer; explain the connection or consequence clearly.
+
+Do not end narrative slides with rhetorical questions. End each non-final narrative slide with a short, concrete statement that creates curiosity about a detail the next slide immediately explains. Do not leave broad questions about how, why, or what unanswered. The final narrative slide must pay off the central promise and close the story without opening another unresolved question. The discussion slide is not part of this story sequence.
+
+Check every transition in order before returning: identify the exact tease, identify the exact answer in the next slide's opening, and rewrite either or both slides if that answer is missing. If the sources do not support a promised answer, remove or narrow the tease instead of inventing facts. Keep the writing natural and concise, preserve useful details, and do not add generic cliffhangers. Return the same number of narrative slides in the same order, plus one transitionChecks entry for every adjacent pair. Each entry must state the concrete tease, quote or faithfully summarize the sentence that answers it in the next slide, and set resolved to true only when that answer is explicit. Return JSON only: {"slides":[{"slide_number":1,"title":"...","body_text":"...","bg_type":"...","image_query":"..."}],"transitionChecks":[{"from_slide":1,"tease":"cover promise or final sentence of slide 1","answer_in_next_slide":"...","resolved":true}]}`;
+    const revised = await generateStructuredJson(instruction, JSON.stringify({ genre, slides: storySlides, researchSources: sources }), 0.2, {
+        thinkingLevel: 'low',
+        timeoutMs: 60000,
+        onRetry,
+        responseSchema: continuitySchema,
+    });
+    if (!revised || !Array.isArray(revised.slides) || revised.slides.length !== storySlides.length
+        || revised.slides.some(slide => !slide || typeof slide.title !== 'string'
+            || typeof slide.body_text !== 'string' || typeof slide.bg_type !== 'string'
+            || typeof slide.image_query !== 'string')
+        || !Array.isArray(revised.transitionChecks) || revised.transitionChecks.length !== storySlides.length - 1
+        || revised.transitionChecks.some((check, index) => check?.resolved !== true || check.from_slide !== index + 1
+            || typeof check.tease !== 'string' || !check.tease.trim()
+            || typeof check.answer_in_next_slide !== 'string' || !check.answer_in_next_slide.trim())
+        || revised.slides.slice(1).some(slide => /\?\s*["'”’)]*$/u.test(slide.body_text.trim()))) {
+        throw new Error('The story editor could not verify every slide transition. Please try generating the carousel again.');
+    }
+    revised.slides.forEach((slide, index) => { slide.slide_number = index + 1; });
+    return discussionSlide ? [...revised.slides, discussionSlide] : revised.slides;
+}
+
 export async function generateScript(topic, genre = null, onRetry = null) {
     genre = normalizeSelectedGenre(genre);
     if (typeof topic !== 'string' || !topic.trim()) throw new Error('A topic is required to write the carousel.');
@@ -1023,7 +1091,8 @@ Return only JSON in this shape:
         hook: '',
         isDiscussionSlide: true,
     });
-    return { slides, sources };
+    const continuousSlides = await repairStoryContinuity(slides, sources, genre, onRetry);
+    return { slides: continuousSlides, sources };
 }
 export async function reviseCarousel(topic, genre, slides, sources, followUp) {
     genre = normalizeSelectedGenre(genre);
