@@ -255,7 +255,7 @@
     }
     .btn:active { transform: scale(0.98); }
     .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-    .btn-brainstorm, .btn-approve-topic {
+    .btn-brainstorm {
       border: 1px solid rgba(255,255,255,.13);
       background: rgba(255,255,255,.035);
       color: #ffc3df;
@@ -264,8 +264,7 @@
     #controls .btn-generate { border: 1px solid rgba(255,255,255,.13); background: rgba(255,255,255,.035); color: #ffc3df; box-shadow: none; }
     #controls .btn-generate:hover:not(:disabled) { border-color: rgba(255,255,255,.24); background: rgba(255,255,255,.07); color: #fff; transform: translateY(-1px); box-shadow: 0 8px 25px rgba(0,0,0,.18); }
     .btn-generate { background: var(--instagram-gradient); color: #fff; box-shadow: 0 7px 24px rgba(214,41,118,.24); }
-    #topic-approved-note { padding: .75rem 1rem; border: 1px solid rgba(0,229,255,.22); border-radius: 10px; background: rgba(0,229,255,.055); color: #aaf7ff; font-size: .88rem; text-align: center; }
-    .btn-brainstorm:hover:not(:disabled), .btn-approve-topic:hover:not(:disabled) {
+    .btn-brainstorm:hover:not(:disabled) {
       border-color: rgba(214,41,118,.38);
       background: rgba(214,41,118,.09);
       color: #fff;
@@ -1210,8 +1209,6 @@
         <input type="text" id="topic-input" maxlength="500" placeholder="Enter your topic or idea..." aria-label="Carousel topic">
       </div>
     </div>
-    <button class="btn btn-approve-topic" id="btn-approve-topic" disabled>Approve Topic ✓</button>
-    <div id="topic-approved-note" role="status" hidden>Topic approved. Generate your carousel when you’re ready.</div>
     <button class="btn btn-generate" id="btn-generate" hidden disabled>Generate Carousel 🚀</button>
 
     <button class="btn btn-regenerate" id="btn-regenerate">🔄 Regenerate Slides</button>
@@ -1367,8 +1364,6 @@
        DOM refs
     ============================================================ */
     const btnBrainstorm = document.getElementById('btn-brainstorm');
-    const btnApproveTopic = document.getElementById('btn-approve-topic');
-    const topicApprovedNote = document.getElementById('topic-approved-note');
     const modeUseTopicButton = document.getElementById('mode-use-topic');
     const modeBrainstormButton = document.getElementById('mode-brainstorm');
     const brainstormOptions = document.getElementById('brainstorm-options');
@@ -1869,7 +1864,6 @@
     let selectedGenre = null;
     let isCustomGenre = false;
     let topicStartMode = 'manual';
-    let topicApproved = false;
     let isBrainstorming = false;
     const RECENT_RANDOM_TOPICS_KEY = 'carousel-recent-random-topics';
     const RECENT_RANDOM_LANES_KEY = 'carousel-recent-random-lanes';
@@ -1979,8 +1973,6 @@
     }
 
     function clearDraftTopic() {
-      topicApproved = false;
-      topicApprovedNote.hidden = true;
       outputSection.classList.remove('visible');
       controls.classList.remove('has-generated');
       postGenerateActions.classList.remove('visible');
@@ -2025,17 +2017,14 @@
     function updateActionAvailability() {
       const hasTopic = Boolean(topicInput.value.trim());
       const brainstormingMode = topicStartMode === 'brainstorm';
-      const canGenerate = hasTopic && (!brainstormingMode || topicApproved);
+      const canGenerate = hasTopic && !isBrainstorming;
       controls.dataset.mode = brainstormingMode ? 'brainstorm' : 'manual';
       topicRow.hidden = brainstormingMode && (isBrainstorming || !hasTopic);
       brainstormOptions.hidden = !brainstormingMode;
       brainstormLoading.hidden = !brainstormingMode || !isBrainstorming;
       btnBrainstorm.hidden = topicStartMode !== 'brainstorm';
       btnBrainstorm.disabled = isBrainstorming || !hasBrainstormNiche();
-      btnApproveTopic.hidden = isBrainstorming || !brainstormingMode || !hasTopic || topicApproved;
-      btnApproveTopic.disabled = !hasTopic;
-      topicApprovedNote.hidden = isBrainstorming || !brainstormingMode || !topicApproved;
-      btnGenerate.hidden = brainstormingMode && (isBrainstorming || !hasTopic || !topicApproved);
+      btnGenerate.hidden = brainstormingMode && (isBrainstorming || !hasTopic);
       btnGenerate.disabled = !canGenerate;
     }
 
@@ -2061,13 +2050,6 @@
 
     modeUseTopicButton.addEventListener('click', () => setTopicStartMode('manual'));
     modeBrainstormButton.addEventListener('click', () => setTopicStartMode('brainstorm'));
-    btnApproveTopic.addEventListener('click', () => {
-      if (!topicInput.value.trim()) return;
-      topicApproved = true;
-      updateActionAvailability();
-      setStatus('Topic approved. Generate the carousel when you’re ready.');
-    });
-
     topicInput.addEventListener('input', () => {
       clearDraftTopic();
       updateActionAvailability();
@@ -2083,7 +2065,6 @@
         return;
       }
       isBrainstorming = true;
-      topicApproved = false;
       const genre = getGenre();
       const randomMode = genre === 'Random';
       brainstormLoadingText.textContent = 'Finding a fresh topic...';
@@ -2111,7 +2092,6 @@
         }
         if (data.topic) {
           topicInput.value = data.topic;
-          topicApproved = false;
           if (randomMode) {
             rememberRandomTopic(data.topic);
             rememberRandomLane(data.lane);
@@ -2139,9 +2119,8 @@
     btnGenerate.addEventListener('click', () => {
       const topic = topicInput.value.trim();
       const genre = getGenre();
-      const needsApproval = topicStartMode === 'brainstorm';
-      if (!topic || (needsApproval && !topicApproved)) {
-        setStatus(!topic ? 'Enter a topic first.' : 'Approve this topic before generating the carousel.');
+      if (!topic) {
+        setStatus('Enter a topic first.');
         updateActionAvailability();
         return;
       }
