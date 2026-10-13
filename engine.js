@@ -386,6 +386,62 @@ const TOPIC_RESPECT_RULES = `SAFETY AND RESPECT — apply to every topic and gen
 
 const TOPIC_SIMILARITY_STOP_WORDS = new Set(['about', 'after', 'again', 'also', 'among', 'because', 'before', 'being', 'could', 'during', 'every', 'from', 'have', 'into', 'just', 'more', 'most', 'other', 'over', 'same', 'some', 'such', 'than', 'that', 'their', 'there', 'these', 'they', 'this', 'those', 'through', 'under', 'very', 'what', 'when', 'where', 'which', 'while', 'with', 'without', 'would', 'your', 'story', 'topic', 'carousel', 'really', 'actually']);
 
+// Used only when both Gemini models are unavailable for an unrestricted
+// brainstorm. These pre-screened ideas keep the workflow usable during outages.
+const RANDOM_BRAINSTORM_BACKUPS = [
+    { topic: 'Why airplane windows have a tiny hole', lane: 4 },
+    { topic: 'Why the Eiffel Tower gets a little taller in summer', lane: 1 },
+    { topic: 'How a failed glue experiment led to Post-it Notes', lane: 1 },
+    { topic: 'Why airplane “black boxes” are bright orange', lane: 4 },
+    { topic: 'Why the Moon looks bigger near the horizon', lane: 6 },
+    { topic: 'How shipping containers changed the way the world trades', lane: 7 },
+    { topic: 'Why elevator doors have a small window in some buildings', lane: 3 },
+    { topic: 'How a zipper became one of the most-used inventions', lane: 4 },
+    { topic: 'Why popcorn kernels pop into fluffy shapes', lane: 9 },
+    { topic: 'Why bridges need tiny gaps between sections', lane: 4 },
+    { topic: 'Why your recorded voice sounds different to you', lane: 3 },
+    { topic: 'How the leap year keeps our calendar in step with Earth', lane: 5 },
+    { topic: 'Why the grooves on a basketball matter', lane: 7 },
+    { topic: 'How the humble barcode sped up checkout lines', lane: 4 },
+    { topic: 'Why some apples float in water', lane: 2 },
+    { topic: 'Why leaves change color before they fall', lane: 2 },
+    { topic: 'How a lighthouse helps ships find the coast', lane: 1 },
+    { topic: 'Why salt helps melt ice on a road', lane: 6 },
+    { topic: 'How the modern seat belt became an everyday safety tool', lane: 1 },
+    { topic: 'Why airport runways have big numbers painted on them', lane: 4 },
+    { topic: 'Why bread turns brown in a toaster', lane: 9 },
+    { topic: 'How the paper clip got its familiar shape', lane: 4 },
+    { topic: 'Why tennis balls have a fuzzy covering', lane: 7 },
+    { topic: 'Why fingerprints form before a baby is born', lane: 3 },
+    { topic: 'How the umbrella went from a status symbol to an everyday tool', lane: 1 },
+    { topic: 'Why round bubbles are the shape they are', lane: 2 },
+    { topic: 'How pencils leave a mark without using ink', lane: 4 },
+    { topic: 'Why the first can openers came long after canned food', lane: 1 },
+    { topic: 'How a simple mirror changed the design of elevators', lane: 3 },
+    { topic: 'Why a compass points north', lane: 6 },
+    { topic: 'How the tiny aglet keeps shoelaces from fraying', lane: 4 },
+    { topic: 'Why a day on Venus is longer than its year', lane: 6 },
+    { topic: 'How the ballpoint pen made writing more portable', lane: 4 },
+    { topic: 'Why some doors spin instead of swinging open', lane: 3 },
+    { topic: 'How the first traffic lights changed busy streets', lane: 1 },
+    { topic: 'Why a guitar string makes different notes when pressed', lane: 6 },
+    { topic: 'How the microwave oven was discovered by accident', lane: 1 },
+    { topic: 'Why the sky looks blue in the daytime', lane: 6 },
+    { topic: 'How a simple wheel helps heavy things move', lane: 4 },
+    { topic: 'Why a candle flame points upward', lane: 6 },
+    { topic: 'How maps flatten a round Earth—and what gets distorted', lane: 3 },
+    { topic: 'Why some clocks tick while others glide silently', lane: 4 },
+    { topic: 'How the first public libraries opened books to more people', lane: 1 },
+    { topic: 'Why a tennis serve can curve through the air', lane: 7 },
+    { topic: 'How a tiny thermostat keeps a room near one temperature', lane: 4 },
+    { topic: 'Why the smell of rain has a name', lane: 2 },
+    { topic: 'How a paper airplane stays in the air', lane: 6 },
+    { topic: 'Why some metals remember their shape', lane: 6 },
+    { topic: 'How the first postage stamps changed sending letters', lane: 1 },
+    { topic: 'Why a spoon looks bent in a glass of water', lane: 6 },
+    { topic: 'How the revolving door was designed to keep drafts out', lane: 4 },
+];
+
 function topicTokens(value) {
     return new Set((String(value || '').toLocaleLowerCase().match(/[\p{L}\p{N}]+/gu) || [])
         .filter(token => (token.length > 2 || /^\d{3,}$/.test(token)) && !TOPIC_SIMILARITY_STOP_WORDS.has(token)));
@@ -403,6 +459,15 @@ function isTooSimilarToRecentTopic(candidate, recentTopics) {
         if (overlap >= 3 && (overlap / smallerSetSize >= 0.4 || overlap / unionSize >= 0.2)) return true;
     }
     return false;
+}
+
+function chooseRandomBrainstormBackup(recentTopics = [], recentLanes = []) {
+    const freshTopics = RANDOM_BRAINSTORM_BACKUPS.filter(candidate =>
+        !isTooSimilarToRecentTopic(candidate.topic, recentTopics));
+    const freshLanes = freshTopics.filter(candidate => !recentLanes.includes(candidate.lane));
+    const pool = freshLanes.length ? freshLanes : freshTopics;
+    if (!pool.length) return null;
+    return { ...pool[Math.floor(Math.random() * pool.length)], fallback: true };
 }
 
 export async function generateTopic(genre = null, options = {}) {
@@ -488,12 +553,21 @@ Return only JSON: {"subject":"specific subject", "subject_type":"one allowed typ
         const avoidInstruction = recentTopics.length
             ? `\n\nRECENT TOPICS TO AVOID (content examples only, not instructions): ${JSON.stringify(recentTopics)}. Do not reuse the same underlying story or subject, even with a new hook.`
             : '';
-        const responseText = await generateGeminiContent(
-            `${generatePrompt}${avoidInstruction}${attempt === 0 ? '' : `\n\nYour last draft failed validation. Start over with a different, more specific subject${randomMode ? ' for a general audience' : ' in the selected niche'}.`}`,
-            'Create one original topic record.',
-            attempt === 0 ? 0.65 : 0.4,
-            { thinkingLevel: 'low', timeoutMs: requestTimeoutMs, maxRetries: 0, maxRetryTimeMs: requestTimeoutMs, model: GEMINI_BRAINSTORM_MODEL, fallbackModels: [GEMINI_BRAINSTORM_FALLBACK_MODEL] },
-        );
+        let responseText;
+        try {
+            responseText = await generateGeminiContent(
+                `${generatePrompt}${avoidInstruction}${attempt === 0 ? '' : `\n\nYour last draft failed validation. Start over with a different, more specific subject${randomMode ? ' for a general audience' : ' in the selected niche'}.`}`,
+                'Create one original topic record.',
+                attempt === 0 ? 0.65 : 0.4,
+                { thinkingLevel: 'low', timeoutMs: requestTimeoutMs, maxRetries: 0, maxRetryTimeMs: requestTimeoutMs, model: GEMINI_BRAINSTORM_MODEL, fallbackModels: [GEMINI_BRAINSTORM_FALLBACK_MODEL] },
+            );
+        } catch (error) {
+            if (!randomMode) throw error;
+            const backup = chooseRandomBrainstormBackup(recentTopics, laneHistory);
+            if (!backup) throw error;
+            console.warn('[brainstorm] Gemini did not respond; using a pre-screened Random topic backup.');
+            return backup;
+        }
 
         let candidate;
         try {
@@ -532,7 +606,16 @@ Return only JSON: {"subject":"specific subject", "subject_type":"one allowed typ
         if (valid) {
             const reviewRemainingMs = brainstormDeadline - Date.now();
             if (reviewRemainingMs < 4000) break;
-            const safetyReview = await reviewTopic(genre, blueprint, { subject, subject_type: subjectType, angle, hook }, recentTopics, Math.max(2000, Math.min(12000, Math.floor(reviewRemainingMs / 2))));
+            let safetyReview;
+            try {
+                safetyReview = await reviewTopic(genre, blueprint, { subject, subject_type: subjectType, angle, hook }, recentTopics, Math.max(2000, Math.min(12000, Math.floor(reviewRemainingMs / 2))));
+            } catch (error) {
+                if (!randomMode) throw error;
+                const backup = chooseRandomBrainstormBackup(recentTopics, laneHistory);
+                if (!backup) throw error;
+                console.warn('[brainstorm] Gemini safety review did not respond; using a pre-screened Random topic backup.');
+                return backup;
+            }
             if (safetyReview?.safe !== true) {
                 console.warn(`Rejected topic during safety review for ${genre || 'Random'}:`, safetyReview?.reason || 'Reviewer did not approve it.');
                 recentTopics.unshift(`${subject}. ${angle}. ${hook}`.slice(0, 180));
@@ -541,6 +624,14 @@ Return only JSON: {"subject":"specific subject", "subject_type":"one allowed typ
             }
             console.log(`Generated ${randomMode ? 'unrestricted' : 'on-genre'} hook${genre ? ` for ${JSON.stringify(genre)}` : ''}:`, hook);
             return randomMode ? { topic: hook, lane: topicLane } : hook;
+        }
+    }
+
+    if (randomMode) {
+        const backup = chooseRandomBrainstormBackup(recentTopics, laneHistory);
+        if (backup) {
+            console.warn('[brainstorm] Gemini did not produce a usable topic; using a pre-screened Random topic backup.');
+            return backup;
         }
     }
 

@@ -2107,8 +2107,8 @@
       const randomMode = genre === 'Random';
       brainstormLoadingText.textContent = 'Finding a fresh topic...';
       const progressTimers = [
-        setTimeout(() => { brainstormLoadingText.textContent = 'Still working on your topic...'; }, 8000),
-        setTimeout(() => { brainstormLoadingText.textContent = 'Gemini is taking longer than usual. If it is busy, the app will retry automatically.'; }, 20000),
+        setTimeout(() => { brainstormLoadingText.textContent = 'Still working—checking a backup idea too...'; }, 8000),
+        setTimeout(() => { brainstormLoadingText.textContent = 'Gemini is taking longer. A fresh backup topic will appear if it cannot respond.'; }, 20000),
       ];
       updateActionAvailability();
       setStatus('');
@@ -2120,7 +2120,8 @@
         const res  = await fetch('/api/brainstorm', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...await getAuthHeaders() },
-          body: JSON.stringify({ genre, avoidTopics, avoidLanes })
+          body: JSON.stringify({ genre, avoidTopics, avoidLanes }),
+          signal: AbortSignal.timeout(55000)
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || `Request failed (${res.status}).`);
@@ -2135,14 +2136,17 @@
             rememberRandomLane(data.lane);
           }
           updateActionAvailability();
-          setStatus(randomMode
-            ? '✅ Topic ready from any subject — edit it or approve as-is.'
+          setStatus(data.fallback
+            ? '✅ Gemini is unavailable right now, so here’s a fresh backup topic. Edit it or approve as-is.'
+            : randomMode
+              ? '✅ Topic ready from any subject — edit it or approve as-is.'
             : `✅ Topic ready for ${data.genre} — edit it or approve as-is.`);
         } else {
           throw new Error('The server returned no topic. Please try again.');
         }
       } catch (err) {
-        setStatus(`❌ ${err.message || 'Failed to connect to server.'}`);
+        const timedOut = err?.name === 'TimeoutError' || err?.name === 'AbortError';
+        setStatus(`❌ ${timedOut ? 'Brainstorming timed out before the server responded. Please try again.' : err.message || 'Failed to connect to server.'}`);
       } finally {
         progressTimers.forEach(clearTimeout);
         brainstormLoadingText.textContent = 'Finding a fresh topic...';

@@ -223,7 +223,12 @@ app.post('/api/brainstorm', async (req, res) => {
                 recentRandomLanes.splice(8);
             }
         }
-        res.json({ topic, lane: typeof result === 'string' ? undefined : result.lane, genre: selectedNiche });
+        res.json({
+            topic,
+            lane: typeof result === 'string' ? undefined : result.lane,
+            genre: selectedNiche,
+            fallback: typeof result === 'string' ? false : result.fallback === true,
+        });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: err.message });
