@@ -1209,7 +1209,7 @@
     <button class="btn btn-brainstorm" id="btn-brainstorm" hidden>Brainstorm a Topic 🎯</button>
     <div id="brainstorm-loading" role="status" aria-live="polite" hidden>
       <span class="instagram-dot-spinner" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-      <span>Finding a fresh topic...</span>
+      <span id="brainstorm-loading-text">Finding a fresh topic...</span>
     </div>
     <div id="topic-row">
       <div id="topic-input-wrap">
@@ -1380,6 +1380,7 @@
     const modeBrainstormButton = document.getElementById('mode-brainstorm');
     const brainstormOptions = document.getElementById('brainstorm-options');
     const brainstormLoading = document.getElementById('brainstorm-loading');
+    const brainstormLoadingText = document.getElementById('brainstorm-loading-text');
     const topicRow      = document.getElementById('topic-row');
     const topicInput    = document.getElementById('topic-input');
     const btnGenerate   = document.getElementById('btn-generate');
@@ -2104,6 +2105,11 @@
       topicApproved = false;
       const genre = getGenre();
       const randomMode = genre === 'Random';
+      brainstormLoadingText.textContent = 'Finding a fresh topic...';
+      const progressTimers = [
+        setTimeout(() => { brainstormLoadingText.textContent = 'Still working on your topic...'; }, 8000),
+        setTimeout(() => { brainstormLoadingText.textContent = 'Gemini is taking longer than usual. If it is busy, the app will retry automatically.'; }, 20000),
+      ];
       updateActionAvailability();
       setStatus('');
       try {
@@ -2138,6 +2144,8 @@
       } catch (err) {
         setStatus(`❌ ${err.message || 'Failed to connect to server.'}`);
       } finally {
+        progressTimers.forEach(clearTimeout);
+        brainstormLoadingText.textContent = 'Finding a fresh topic...';
         isBrainstorming = false;
         updateActionAvailability();
       }
