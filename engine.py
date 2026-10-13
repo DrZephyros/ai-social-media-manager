@@ -7,7 +7,7 @@ import urllib.parse
 
 # Gemini API key configured by the app environment.
 client = None
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite")
+GEMINI_MODEL = "gemini-3.5-flash-lite"
 
 GENRES = [
     "Economics", "Tech & AI", "Mental Health", "Physical Fitness",
