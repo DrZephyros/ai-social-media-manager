@@ -23,6 +23,37 @@ const CAROUSEL_RESPONSE_SCHEMA = {
     },
     required: ['slides'],
 };
+const SCRIPT_RESPONSE_SCHEMA = {
+    type: 'object',
+    properties: {
+        slides: {
+            type: 'array',
+            minItems: 4,
+            items: {
+                type: 'object',
+                properties: {
+                    slide_number: { type: 'integer' },
+                    title: { type: 'string' },
+                    body_text: { type: 'string' },
+                    bg_type: { type: 'string' },
+                    image_query: { type: 'string' },
+                },
+                required: ['slide_number', 'title', 'body_text', 'bg_type', 'image_query'],
+            },
+        },
+        discussionSlide: {
+            type: 'object',
+            properties: {
+                title: { type: 'string' },
+                body_text: { type: 'string' },
+                bg_type: { type: 'string' },
+                image_query: { type: 'string' },
+            },
+            required: ['title', 'body_text', 'bg_type', 'image_query'],
+        },
+    },
+    required: ['slides', 'discussionSlide'],
+};
 
 async function searchTopicSources(topic, genre) {
     const apiKey = process.env.TAVILY_API_KEY?.trim();
@@ -891,8 +922,15 @@ Return only JSON in this shape:
         thinkingLevel: 'medium',
         timeoutMs: 90000,
         onRetry,
+        responseSchema: SCRIPT_RESPONSE_SCHEMA,
     });
-    const data = JSON.parse(responseText);
+    let data;
+    try {
+        data = JSON.parse(responseText);
+    } catch (error) {
+        console.error('Workers AI returned invalid carousel JSON:', error.message);
+        throw new Error(`Workers AI returned invalid carousel JSON (${error.message}). Please try again.`);
+    }
     if (!Array.isArray(data.slides) || data.slides.length < 4) throw new Error('The scriptwriter returned too few story slides. Please regenerate.');
     const slides = data.slides;
     slides.forEach((slide, index) => {
