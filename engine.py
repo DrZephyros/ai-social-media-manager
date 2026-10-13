@@ -80,9 +80,22 @@ def ai_generate(system_instruction, user_content, temperature=0.7):
             raise Exception(f"Cloudflare Workers AI usage limit reached: {detail or response.status_code}")
         raise Exception(f"Cloudflare Workers AI request failed: {detail or response.status_code}")
     try:
-        return response.json()["result"]["response"].strip()
-    except (KeyError, TypeError, AttributeError) as exc:
-        raise Exception("Cloudflare Workers AI returned no text.") from exc
+        payload = response.json()
+        if payload.get("success") is False or payload.get("errors"):
+            detail = "; ".join(item.get("message", "") for item in payload.get("errors", []) if item.get("message"))
+            raise Exception(f"Cloudflare Workers AI reported a failed response: {detail or 'unspecified provider error'}")
+        output = payload.get("result", {}).get("response")
+        if output is None:
+            output = payload.get("choices", [{}])[0].get("message", {}).get("content")
+        if output is None:
+            output = payload.get("response", payload.get("result"))
+        if isinstance(output, str) and output.strip():
+            return output.strip()
+        if isinstance(output, (dict, list)):
+            return json.dumps(output)
+        raise Exception("Cloudflare Workers AI returned no usable text.")
+    except (KeyError, TypeError, AttributeError, IndexError) as exc:
+        raise Exception("Cloudflare Workers AI returned no usable text.") from exc
 
 def generate_topic(genre):
     """Generate a topic that is directly about the selected genre."""

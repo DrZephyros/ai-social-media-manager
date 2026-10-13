@@ -186,9 +186,30 @@ async function generateAIContentRequest(systemInstruction, userContent, temperat
             throw new Error(`Cloudflare Workers AI request failed: ${detail}`);
         }
 
-        const text = payload?.result?.response || payload?.choices?.[0]?.message?.content;
-        if (typeof text !== 'string' || !text.trim()) throw new Error('Cloudflare Workers AI returned no text.');
-        return text.trim();
+        if (payload?.success === false || payload?.errors?.length) {
+            const detail = payload.errors?.map(error => error.message).filter(Boolean).join('; ');
+            throw new Error(`Cloudflare Workers AI reported a failed response: ${detail || 'unspecified provider error'}`);
+        }
+
+        const output = payload?.result?.response
+            ?? payload?.result?.output
+            ?? payload?.choices?.[0]?.message?.content
+            ?? payload?.response
+            ?? payload?.result;
+        if (typeof output === 'string' && output.trim()) return output.trim();
+        if (Array.isArray(output)) {
+            const joined = output.map(part => typeof part === 'string' ? part : part?.text || '').join('').trim();
+            if (joined) return joined;
+        }
+        // JSON-mode models may return their structured object directly instead
+        // of wrapping it in a text string. Preserve that JSON for existing parsers.
+        if (output && typeof output === 'object') return JSON.stringify(output);
+
+        const topLevelFields = Object.keys(payload || {}).slice(0, 12).join(', ') || 'none';
+        const resultFields = payload?.result && typeof payload.result === 'object'
+            ? Object.keys(payload.result).slice(0, 12).join(', ') || 'none'
+            : 'none';
+        throw new Error(`Cloudflare Workers AI returned no usable text (response fields: ${topLevelFields}; result fields: ${resultFields}).`);
     }
 }
 
