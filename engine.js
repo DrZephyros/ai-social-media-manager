@@ -547,7 +547,11 @@ Return only JSON: {"subject":"specific subject", "subject_type":"one allowed typ
                 { thinkingLevel: 'none', timeoutMs: requestTimeoutMs, maxRetries: 1, maxRetryTimeMs: Math.max(requestTimeoutMs, Math.min(65000, remainingMs - 10000)), model: AI_MODEL },
             );
         } catch (error) {
-            if (!randomMode) throw error;
+            // Only substitute the curated list for a transient provider outage.
+            // Missing credentials, rejected tokens, invalid requests, and quota
+            // errors must reach the UI so configuration problems are visible.
+            const transientProviderFailure = /timeout|timed out|aborted|temporarily unavailable|temporarily overloaded|high demand|connection failed|fetch failed|network request failed/i.test(error.message || '');
+            if (!randomMode || !transientProviderFailure) throw error;
             const backup = chooseRandomBrainstormBackup(recentTopics, laneHistory);
             if (!backup) throw error;
             console.warn('[brainstorm] Cloudflare Workers AI did not respond; using a pre-screened Random topic backup.');
