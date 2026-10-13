@@ -228,13 +228,6 @@
       outline: none;
     }
     #custom-genre-input:focus { border-color: var(--cyan); }
-    #genre-selected-label {
-      font-size: 0.78rem;
-      color: var(--cyan);
-      font-weight: 600;
-      margin-top: 0.15rem;
-    }
-    #genre-selected-label:empty { display: none; }
 
     /* ---- Control Panel ---- */
     #controls {
@@ -1204,7 +1197,6 @@
         <div id="custom-genre-row">
           <input type="text" id="custom-genre-input" placeholder="Type your own niche...">
         </div>
-        <div id="genre-selected-label"></div>
       </div>
     </div>
     <button class="btn btn-brainstorm" id="btn-brainstorm" hidden>Brainstorm a Topic 🎯</button>
@@ -1874,7 +1866,6 @@
     const genreSearch = document.getElementById('genre-search');
     const customGenreRow = document.getElementById('custom-genre-row');
     const customGenreInput = document.getElementById('custom-genre-input');
-    const genreSelectedLabel = document.getElementById('genre-selected-label');
     let selectedGenre = null;
     let isCustomGenre = false;
     let topicStartMode = 'manual';
@@ -1937,7 +1928,6 @@
         }
         genreOptions.querySelectorAll('.genre-option').forEach(item => item.setAttribute('aria-selected', String(item === option)));
         closeGenreOptions();
-        updateGenreLabel();
         updateActionAvailability();
       });
       genreOptions.appendChild(option);
@@ -1946,7 +1936,6 @@
     customGenreInput.addEventListener('input', () => {
       clearDraftTopic();
       selectedGenre = null;
-      updateGenreLabel();
       updateActionAvailability();
     });
 
@@ -1982,13 +1971,6 @@
       genreOptions.classList.remove('open');
       genreSearch.setAttribute('aria-expanded', 'false');
       genreOptions.querySelectorAll('.genre-option').forEach(option => option.classList.remove('hidden'));
-    }
-
-    function updateGenreLabel() {
-      genreSelectedLabel.textContent = isCustomGenre
-        ? (customGenreInput.value.trim() ? `✅ Niche: ${customGenreInput.value.trim()}` : 'Enter your custom niche to continue.')
-        : selectedGenre === 'Random' ? ''
-        : selectedGenre ? `✅ Niche: ${selectedGenre}` : '';
     }
 
     function hasBrainstormNiche() {
@@ -2067,7 +2049,6 @@
         customGenreInput.value = '';
         customGenreRow.classList.remove('visible');
         genreOptions.querySelectorAll('.genre-option').forEach(option => option.setAttribute('aria-selected', 'false'));
-        updateGenreLabel();
       }
       topicStartMode = mode;
       const usingTopic = mode === 'manual';
@@ -2098,8 +2079,7 @@
     ============================================================ */
     btnBrainstorm.addEventListener('click', async () => {
       if (!hasBrainstormNiche()) {
-        updateGenreLabel();
-        genreSearch.focus();
+        (isCustomGenre ? customGenreInput : genreSearch).focus();
         return;
       }
       isBrainstorming = true;
@@ -2108,8 +2088,8 @@
       const randomMode = genre === 'Random';
       brainstormLoadingText.textContent = 'Finding a fresh topic...';
       const progressTimers = [
-        setTimeout(() => { brainstormLoadingText.textContent = 'Still working—checking a backup idea too...'; }, 8000),
-        setTimeout(() => { brainstormLoadingText.textContent = 'Gemini is taking longer. A fresh backup topic will appear if it cannot respond.'; }, 20000),
+        setTimeout(() => { brainstormLoadingText.textContent = randomMode ? 'Still working—checking a backup idea too...' : 'Still working—Gemini will retry automatically if needed...'; }, 8000),
+        setTimeout(() => { brainstormLoadingText.textContent = randomMode ? 'Gemini is taking longer. A fresh backup topic will appear if it cannot respond.' : 'This is taking longer than usual; the app is retrying automatically.'; }, 20000),
       ];
       updateActionAvailability();
       setStatus('');
@@ -2138,7 +2118,7 @@
           }
           updateActionAvailability();
           setStatus(data.fallback
-            ? '✅ Gemini is unavailable right now, so here’s a fresh backup topic. Edit it or approve as-is.'
+            ? '✅ Gemini couldn’t finish this time, so here’s a fresh backup topic. Edit it or approve as-is.'
             : randomMode
               ? '✅ Topic ready from any subject — edit it or approve as-is.'
             : `✅ Topic ready for ${data.genre} — edit it or approve as-is.`);

@@ -231,7 +231,12 @@ app.post('/api/brainstorm', async (req, res) => {
         });
     } catch (err) {
         console.error(err);
-        res.status(500).json({ error: err.message });
+        const timedOut = /timeout|timed out|aborted/i.test(err.message || '');
+        res.status(timedOut ? 503 : 500).json({
+            error: timedOut
+                ? 'Gemini took too long to respond after an automatic retry. Please try brainstorming again shortly.'
+                : err.message,
+        });
     }
 });
 
