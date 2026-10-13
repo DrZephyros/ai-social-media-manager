@@ -2118,16 +2118,13 @@
           }
           updateActionAvailability();
           setStatus(data.fallback
-            ? '✅ Cloudflare Workers AI couldn’t finish this time, so here’s a fresh backup topic. Edit it or approve as-is.'
-            : randomMode
-              ? '✅ Topic ready from any subject — edit it or approve as-is.'
-            : `✅ Topic ready for ${data.genre} — edit it or approve as-is.`);
+            ? `Backup topic loaded · Cloudflare Workers AI error: ${data.fallbackReason || 'AI response unavailable.'}`
+            : 'Topic Generated');
         } else {
           throw new Error('The server returned no topic. Please try again.');
         }
       } catch (err) {
-        const timedOut = err?.name === 'TimeoutError' || err?.name === 'AbortError';
-        setStatus(`❌ ${timedOut ? 'Brainstorming timed out before the server responded. Please try again.' : err.message || 'Failed to connect to server.'}`);
+        setStatus(`❌ ${err.message || 'Brainstorming failed for an unknown reason.'}`);
       } finally {
         progressTimers.forEach(clearTimeout);
         brainstormLoadingText.textContent = 'Finding a fresh topic...';

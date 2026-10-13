@@ -576,7 +576,7 @@ Return only JSON: {"subject":"specific subject", "subject_type":"one allowed typ
             const backup = chooseRandomBrainstormBackup(recentTopics, laneHistory);
             if (!backup) throw error;
             console.warn('[brainstorm] Cloudflare Workers AI did not respond; using a pre-screened Random topic backup.');
-            return backup;
+            return { ...backup, fallbackReason: error.message };
         }
 
         let candidate;
@@ -640,7 +640,7 @@ Return only JSON: {"subject":"specific subject", "subject_type":"one allowed typ
         const backup = chooseRandomBrainstormBackup(recentTopics, laneHistory);
         if (backup) {
             console.warn('[brainstorm] Cloudflare Workers AI did not produce a usable topic; using a pre-screened Random topic backup.');
-            return backup;
+            return { ...backup, fallbackReason: 'The AI response did not pass topic validation after three attempts.' };
         }
     }
 

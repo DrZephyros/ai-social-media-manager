@@ -228,15 +228,12 @@ app.post('/api/brainstorm', async (req, res) => {
             lane: typeof result === 'string' ? undefined : result.lane,
             genre: selectedNiche,
             fallback: typeof result === 'string' ? false : result.fallback === true,
+            fallbackReason: typeof result === 'string' ? undefined : result.fallbackReason,
         });
     } catch (err) {
         console.error(err);
         const timedOut = /timeout|timed out|aborted/i.test(err.message || '');
-        res.status(timedOut ? 503 : 500).json({
-            error: timedOut
-                ? 'Cloudflare Workers AI took too long to respond after an automatic retry. Please try brainstorming again shortly.'
-                : err.message,
-        });
+        res.status(timedOut ? 503 : 500).json({ error: err.message || 'Brainstorming failed for an unknown reason.' });
     }
 });
 
