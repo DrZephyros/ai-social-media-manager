@@ -186,22 +186,44 @@ app.post('/api/auth/signout', async (req, res) => {
 
 // Store the latest generated script for the publish endpoint
 let latestScript = null;
+// Keep recent unconstrained brainstorms out of subsequent Random results.
+const recentRandomTopics = [];
+const recentRandomLanes = [];
+
 app.post('/api/brainstorm', async (req, res) => {
     try {
         if (!await requireAuthenticatedUser(req, res)) return;
         if (!allowIpGeneration(req)) return res.status(429).json({ error: 'Too many requests from this network. Please try again later.' });
-        const { genre } = req.body || {};
+        const { genre, avoidTopics, avoidLanes } = req.body || {};
         if (typeof genre !== 'string' || !genre.trim() || genre.trim().length > 120) {
-            return res.status(400).json({ error: 'Choose a specific niche before brainstorming. Random counts as no niche.' });
+            return res.status(400).json({ error: 'Choose a niche or select Random before brainstorming a topic.' });
         }
         const selectedNiche = genre.trim();
-        if (selectedNiche.toLowerCase() === 'random') {
-            return res.status(400).json({ error: 'Choose a specific niche before brainstorming. Random counts as no niche.' });
-        }
+        const randomMode = selectedNiche.toLowerCase() === 'random';
+        const safeAvoidTopics = randomMode && Array.isArray(avoidTopics)
+            ? avoidTopics.filter(topic => typeof topic === 'string' && topic.trim()).slice(0, 12).map(topic => topic.trim().slice(0, 180))
+            : [];
+        const safeAvoidLanes = randomMode && Array.isArray(avoidLanes)
+            ? avoidLanes.filter(lane => Number.isInteger(lane) && lane >= 0 && lane < 10).slice(0, 8)
+            : [];
+        const combinedAvoidTopics = randomMode
+            ? [...new Set([...recentRandomTopics, ...safeAvoidTopics])].slice(0, 12)
+            : [];
+        const combinedAvoidLanes = randomMode
+            ? [...new Set([...recentRandomLanes, ...safeAvoidLanes])].slice(0, 8)
+            : [];
         console.info(`[brainstorm] received genre ${JSON.stringify(selectedNiche)}`);
-        const result = await generateTopic(selectedNiche);
+        const result = await generateTopic(randomMode ? null : selectedNiche, { avoidTopics: combinedAvoidTopics, avoidLanes: combinedAvoidLanes });
         const topic = typeof result === 'string' ? result : result.topic;
-        res.json({ topic, genre: selectedNiche });
+        if (randomMode && topic) {
+            recentRandomTopics.unshift(topic.slice(0, 180));
+            recentRandomTopics.splice(12);
+            if (Number.isInteger(result?.lane)) {
+                recentRandomLanes.unshift(result.lane);
+                recentRandomLanes.splice(8);
+            }
+        }
+        res.json({ topic, lane: typeof result === 'string' ? undefined : result.lane, genre: selectedNiche });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: err.message });

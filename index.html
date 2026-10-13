@@ -1826,6 +1826,7 @@
        Genre Picker
     ============================================================ */
     const GENRES = [
+      { label: 'Random', icon: '🎲' },
       { label: 'Economics', icon: '💰' },
       { label: 'Tech & AI', icon: '🤖' },
       { label: 'Mental Health', icon: '🧠' },
@@ -1861,6 +1862,37 @@
     let topicStartMode = 'manual';
     let topicApproved = false;
     let isBrainstorming = false;
+    const RECENT_RANDOM_TOPICS_KEY = 'carousel-recent-random-topics';
+    const RECENT_RANDOM_LANES_KEY = 'carousel-recent-random-lanes';
+
+    function getRecentRandomTopics() {
+      try {
+        const topics = JSON.parse(localStorage.getItem(RECENT_RANDOM_TOPICS_KEY) || '[]');
+        return Array.isArray(topics) ? topics.filter(topic => typeof topic === 'string' && topic.trim()).slice(0, 12) : [];
+      } catch { return []; }
+    }
+
+    function rememberRandomTopic(topic) {
+      try {
+        const topics = [topic, ...getRecentRandomTopics()].filter((item, index, all) => all.indexOf(item) === index).slice(0, 12);
+        localStorage.setItem(RECENT_RANDOM_TOPICS_KEY, JSON.stringify(topics));
+      } catch {}
+    }
+
+    function getRecentRandomLanes() {
+      try {
+        const lanes = JSON.parse(localStorage.getItem(RECENT_RANDOM_LANES_KEY) || '[]');
+        return Array.isArray(lanes) ? lanes.filter(lane => Number.isInteger(lane) && lane >= 0 && lane < 10).slice(0, 8) : [];
+      } catch { return []; }
+    }
+
+    function rememberRandomLane(lane) {
+      if (!Number.isInteger(lane) || lane < 0 || lane >= 10) return;
+      try {
+        const lanes = [lane, ...getRecentRandomLanes()].filter((item, index, all) => all.indexOf(item) === index).slice(0, 8);
+        localStorage.setItem(RECENT_RANDOM_LANES_KEY, JSON.stringify(lanes));
+      } catch {}
+    }
 
     GENRES.forEach(g => {
       const option = document.createElement('button');
@@ -1937,13 +1969,13 @@
     function updateGenreLabel() {
       genreSelectedLabel.textContent = isCustomGenre
         ? (customGenreInput.value.trim() ? `✅ Niche: ${customGenreInput.value.trim()}` : 'Enter your custom niche to continue.')
-        : selectedGenre === 'Random' ? ''
+        : selectedGenre === 'Random' ? '🎲 No niche restriction.'
         : selectedGenre ? `✅ Niche: ${selectedGenre}` : '';
     }
 
     function hasBrainstormNiche() {
       const genre = getGenre();
-      return Boolean(genre && genre.trim() && genre.trim().toLowerCase() !== 'random');
+      return Boolean(genre && genre.trim());
     }
 
     function clearDraftTopic() {
@@ -2052,13 +2084,18 @@
       }
       isBrainstorming = true;
       const genre = getGenre();
+      const randomMode = genre === 'Random';
       updateActionAvailability();
-      setStatus(`Brainstorming a ${genre} topic...`, true);
+      setStatus(randomMode ? 'Brainstorming across any subject...' : `Brainstorming a ${genre} topic...`, true);
       try {
+        const avoidTopics = randomMode
+          ? [...new Set([topicInput.value.trim(), ...getRecentRandomTopics()].filter(Boolean))].slice(0, 12)
+          : [];
+        const avoidLanes = randomMode ? getRecentRandomLanes() : [];
         const res  = await fetch('/api/brainstorm', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...await getAuthHeaders() },
-          body: JSON.stringify({ genre })
+          body: JSON.stringify({ genre, avoidTopics, avoidLanes })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || `Request failed (${res.status}).`);
@@ -2068,8 +2105,14 @@
         if (data.topic) {
           topicInput.value = data.topic;
           topicApproved = false;
+          if (randomMode) {
+            rememberRandomTopic(data.topic);
+            rememberRandomLane(data.lane);
+          }
           updateActionAvailability();
-          setStatus(`✅ Topic ready for ${data.genre} — edit it or approve as-is.`);
+          setStatus(randomMode
+            ? '✅ Topic ready from any subject — edit it or approve as-is.'
+            : `✅ Topic ready for ${data.genre} — edit it or approve as-is.`);
         } else {
           throw new Error('The server returned no topic. Please try again.');
         }
