@@ -3,8 +3,8 @@ dotenv.config();
 
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
 // Keep topic brainstorming on a separate, faster model from carousel writing.
-const GEMINI_BRAINSTORM_MODEL = process.env.GEMINI_BRAINSTORM_MODEL || 'gemini-3.6-flash';
-const GEMINI_BRAINSTORM_FALLBACK_MODEL = 'gemini-3.5-flash-lite';
+const GEMINI_BRAINSTORM_MODEL = process.env.GEMINI_BRAINSTORM_MODEL || 'gemini-3.5-flash-lite';
+const GEMINI_BRAINSTORM_FALLBACK_MODEL = 'gemini-3.6-flash';
 const CAROUSEL_RESPONSE_SCHEMA = {
     type: 'object',
     properties: {
@@ -155,8 +155,7 @@ async function generateGeminiContentRequest(systemInstruction, userContent, temp
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) {
             const detail = payload?.error?.message || `Gemini returned HTTP ${response.status}.`;
-            // A backup key can recover from a rejected/revoked primary key. Do not
-            // switch keys for 429 quota errors; quotas are project-scoped.
+            // A backup key can recover from a rejected/revoked primary key.
             if ([401, 403].includes(response.status) && apiKeyIndex + 1 < apiKeys.length) {
                 apiKeyIndex++;
                 retry = -1;
@@ -166,6 +165,12 @@ async function generateGeminiContentRequest(systemInstruction, userContent, temp
             const payloadText = JSON.stringify(payload);
             const retryableStatus = [408, 425, 429, 500, 502, 503, 504].includes(response.status);
             const isDailyQuota = /per.?day|daily quota/i.test(payloadText);
+            if (response.status === 429 && apiKeyIndex + 1 < apiKeys.length) {
+                apiKeyIndex++;
+                retry = -1;
+                console.warn(`Gemini key ${apiKeyIndex + 1} is rate-limited or out of quota; trying the next configured key.`);
+                continue;
+            }
             const highDemand = /currently experiencing high demand|high demand|temporarily unavailable|temporarily overloaded|server is overloaded|at capacity|try again later/i.test(detail);
             const retryableFailure = retryableStatus || highDemand;
             if (retryableFailure && !isDailyQuota && retry < maxRetries && Date.now() - retryStartedAt < maxRetryTimeMs) {
@@ -212,7 +217,7 @@ async function generateGeminiContent(systemInstruction, userContent, temperature
     try {
         return await generateGeminiContentRequest(systemInstruction, userContent, temperature, requestOptions);
     } catch (error) {
-        const retryableMessage = /timeout|timed out|aborted|temporarily unavailable|temporarily overloaded|rate-limited|at capacity|high demand/i.test(error.message);
+        const retryableMessage = /timeout|timed out|aborted|temporarily unavailable|temporarily overloaded|rate-limited|at capacity|high demand|quota/i.test(error.message);
         const fallbackModel = fallbackModels.find(model => model && model !== (requestOptions.model || GEMINI_MODEL));
         if (!retryableMessage || !fallbackModel) throw error;
 
