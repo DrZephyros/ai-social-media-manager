@@ -273,7 +273,6 @@
     }
     .btn-generate:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 10px 30px rgba(214,41,118,.38); }
 
-    #controls.has-generated #btn-brainstorm,
     #controls.has-generated #btn-generate { display: none; }
 
     #post-generate-actions { display: none; flex-direction: column; gap: 0.75rem; }
@@ -820,6 +819,7 @@
     #followup-prompt:focus { outline: none; border-color: rgba(0,229,255,.45); box-shadow: 0 0 0 3px rgba(0,229,255,.07); }
     .followup-submit { align-self: flex-start; min-height: 44px; padding: .7rem 1rem; border: 0; border-radius: 11px; color: #071018; background: var(--cyan); font: inherit; font-weight: 800; cursor: pointer; }
     .followup-submit:disabled { opacity: .55; cursor: wait; }
+    .followup-submit .spinner { border-color: rgba(7,16,24,.28); border-top-color: #071018; }
     #followup-status { min-height: 1.2em; color: var(--muted); font-size: .82rem; }
 
     .research-sources {
@@ -2482,8 +2482,9 @@
 
       syncPreviewEdits();
       btnFollowup.disabled = true;
-      btnFollowup.textContent = 'Applying edit…';
-      followupStatus.textContent = 'Updating the story and caption…';
+      btnFollowup.setAttribute('aria-busy', 'true');
+      btnFollowup.innerHTML = '<span class="spinner" aria-hidden="true"></span>Applying edit…';
+      followupStatus.innerHTML = '<span class="spinner" aria-hidden="true"></span>Updating the story and caption…';
       try {
         const headers = await getAuthHeaders();
         if (!headers.Authorization) {
@@ -2505,8 +2506,9 @@
         if (!res.ok) throw new Error(result.error || `Update failed (${res.status}).`);
 
         const previousSlides = currentScript;
-        currentScript = result.slides.map(slide => {
-          const prior = previousSlides.find(item => item.title === slide.title && item.image_query === slide.image_query);
+        currentScript = result.slides.map((slide, index) => {
+          const prior = previousSlides.find(item => item.image_query && item.image_query === slide.image_query)
+            || (previousSlides.length === result.slides.length ? previousSlides[index] : null);
           return prior?.bg_image ? { ...slide, bg_image: prior.bg_image } : slide;
         });
         currentSources = Array.isArray(result.sources) ? result.sources : currentSources;
@@ -2534,6 +2536,7 @@
         refreshGenerationQuota();
       } finally {
         btnFollowup.disabled = false;
+        btnFollowup.removeAttribute('aria-busy');
         btnFollowup.textContent = 'Apply follow-up edit';
       }
     });
