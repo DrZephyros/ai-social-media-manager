@@ -1976,6 +1976,7 @@
       outputSection.classList.remove('visible');
       controls.classList.remove('has-generated');
       postGenerateActions.classList.remove('visible');
+      btnRegenerate.classList.remove('visible');
       setStatus('');
     }
 
@@ -2064,6 +2065,7 @@
         (isCustomGenre ? customGenreInput : genreSearch).focus();
         return;
       }
+      clearDraftTopic();
       isBrainstorming = true;
       const genre = getGenre();
       const randomMode = genre === 'Random';
