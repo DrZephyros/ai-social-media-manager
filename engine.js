@@ -12,7 +12,7 @@ const CAROUSEL_RESPONSE_SCHEMA = {
                 type: 'object',
                 properties: {
                     slide_number: { type: 'integer' },
-                    title: { type: 'string' },
+                    title: { type: 'string', minLength: 1, maxLength: 80 },
                     body_text: { type: 'string' },
                     bg_type: { type: 'string' },
                     image_query: { type: 'string' },
@@ -28,12 +28,13 @@ const SCRIPT_RESPONSE_SCHEMA = {
     properties: {
         slides: {
             type: 'array',
-            minItems: 4,
+            minItems: 5,
+            maxItems: 7,
             items: {
                 type: 'object',
                 properties: {
                     slide_number: { type: 'integer' },
-                    title: { type: 'string' },
+                    title: { type: 'string', minLength: 1, maxLength: 80 },
                     body_text: { type: 'string', maxLength: 260 },
                     bg_type: { type: 'string' },
                     image_query: { type: 'string' },
@@ -883,17 +884,15 @@ async function repairSuspenseHooks(slides, sources) {
 function needsCopyBalance(slides) {
     if (!Array.isArray(slides) || slides.length < 5 || slides.length > 7) return true;
     return slides.some((slide, index) => {
-        if (hasVagueTechMetaphor(slide) || hasClumsyTransition(slide)) return true;
+        if (!slide || typeof slide.title !== 'string' || typeof slide.body_text !== 'string'
+            || !slide.title.trim() || /[\u3400-\u9fff]/u.test(`${slide.title} ${slide.body_text}`)
+            || hasVagueTechMetaphor(slide) || hasClumsyTransition(slide)) return true;
         if (index === 0) return wordCount(slide.title) < 4 || wordCount(slide.title) > 8 || wordCount(slide.body_text) > 0 || hasVagueCoverHook(slide.title);
         const bodyWords = wordCount(slide.body_text);
         const isFinalStoryBeat = index === slides.length - 1;
-        const hookWords = wordCount(slide.hook);
-        return wordCount(slide.title) > 5
-            || (isFinalStoryBeat
-                ? bodyWords < 28 || bodyWords > 36 || hookWords > 0
-                : bodyWords < 24 || bodyWords > 32 || hookWords < 4 || hookWords > 6
-                    || bodyWords + hookWords < 30 || bodyWords + hookWords > 36
-                    || !hookConnectsToNext(slide.hook, slides[index + 1]) || hookRepeatsNextTitle(slide.hook, slides[index + 1]));
+        const sentenceCount = (slide.body_text.match(/[.!?](?:["'’”)]*)?(?:\s|$)/gu) || []).length;
+        return wordCount(slide.title) > 4 || sentenceCount !== 2
+            || (isFinalStoryBeat ? bodyWords < 28 || bodyWords > 36 : bodyWords < 30 || bodyWords > 36);
     });
 }
 
@@ -904,16 +903,16 @@ ${TOPIC_RESPECT_RULES}
 
 STORY FLOW — apply to every genre:
 - Treat the cover's premise as a claim to verify, not a fact to repeat. If sources contradict it, make the real story clear and resolve the misconception honestly.
-- Every story slide has exactly two short sentences, 30–36 words total including the tease. The first answers the previous slide's tease and advances this beat; the second adds one useful detail and ends with a 4–6 word hook stored in the hook field. Keep the hook natural and connected to the sentence, never a sudden unrelated question. In the UI and exported image it appears inline in the same paragraph and style.
-- A hook should leave one concrete, source-supported detail unresolved. The next slide's opening sentence must answer that exact tease before moving forward. Check each pair in sequence; shared topic words alone do not count as payoff.
+- Every story slide has a short, specific title and exactly two short sentences in body_text. Keep each non-final body_text to 30–36 words total. Sentence 1 answers the previous slide's tease and advances this beat; sentence 2 adds one useful detail and ends with a natural forward tease woven into the sentence. Do not use a separate hook field or append a third sentence.
+- The tease should leave one concrete, source-supported detail unresolved. The next slide's opening sentence must answer that exact tease before moving forward. Check each pair in sequence; shared topic words alone do not count as payoff.
 - Make suspense fit the genre and stakes. Avoid stock cliffhanger formulas, repeated transition words, generic mystery, fake danger, empty promises, and rhetorical questions. Do not copy these example phrases or invent details to manufacture tension.
 - The final story slide must answer the central question or clearly explain what evidence cannot establish. Do not end by introducing an unresolved mystery after promising a definite answer.
 
 LAYOUT:
 - Edit only the 5–7 narrative slides supplied; do not add a discussion card or change the slide count.
 - Slide 1 is a title-only cover: 4–8 words, with empty body_text. Keep the title clear, specific, compelling, and accurate to the evidence.
-- Each story title is at most 4 words. Keep body_text plus hook to 30–36 words total on non-final story slides; body_text is 24–32 words and the hook is 4–6 words. The final story slide has no hook and stays within 28–36 words total across two short sentences.
-- Keep every field and slide number. Do not invent or strengthen a date, action, cause, motive, quote, or degree of certainty. Return only JSON in this shape: {"slides":[{"slide_number":1,"title":"...","body_text":"...","hook":"...","bg_type":"...","image_query":"..."}]}`;
+- Each story title is 1–4 words and must not be blank. Keep each non-final body_text to 30–36 words in exactly two short sentences; weave the tease naturally into sentence 2. The final story slide has no tease and stays within 28–36 words across two short sentences.
+- Keep every field and slide number. Use clear English only, with no stray characters or unrelated foreign-script text. Do not invent or strengthen a date, action, cause, motive, quote, or degree of certainty. Return only JSON in this shape: {"slides":[{"slide_number":1,"title":"...","body_text":"...","bg_type":"...","image_query":"..."}]}`;
     const response = await generateAIContent(instruction, JSON.stringify({ slides, researchSources: sources }), 0.3, {
         thinkingLevel: 'low',
         timeoutMs: 45000,
@@ -929,13 +928,12 @@ LAYOUT:
                         type: 'object',
                         properties: {
                             slide_number: { type: 'integer' },
-                            title: { type: 'string' },
-                            body_text: { type: 'string' },
-                            hook: { type: 'string' },
+                            title: { type: 'string', minLength: 1, maxLength: 80 },
+                            body_text: { type: 'string', maxLength: 260 },
                             bg_type: { type: 'string' },
                             image_query: { type: 'string' },
                         },
-                        required: ['slide_number', 'title', 'body_text', 'hook', 'bg_type', 'image_query'],
+                        required: ['slide_number', 'title', 'body_text', 'bg_type', 'image_query'],
                     },
                 },
             },
@@ -943,16 +941,19 @@ LAYOUT:
         },
     });
     try {
-        const revised = JSON.parse(response);
+        const revised = parseModelJson(response);
         if (!Array.isArray(revised.slides) || revised.slides.length < 5 || revised.slides.length > 7
             || revised.slides.some(slide => !slide || typeof slide !== 'object'
                 || typeof slide.title !== 'string' || typeof slide.body_text !== 'string'
-                || typeof slide.hook !== 'string' || typeof slide.bg_type !== 'string'
-                || typeof slide.image_query !== 'string')) {
+                || typeof slide.bg_type !== 'string' || typeof slide.image_query !== 'string')) {
             console.warn('Script editor returned malformed slides; keeping the original Cloudflare Workers AI draft.');
             return slides;
         }
         revised.slides.forEach((slide, index) => { slide.slide_number = index + 1; });
+        if (needsCopyBalance(revised.slides)) {
+            console.warn('Script editor output still misses the title or compact-copy requirements; keeping the original draft.');
+            return slides;
+        }
         return revised.slides;
     } catch (error) {
         console.warn(`Could not apply script editor output; keeping the original Cloudflare Workers AI draft: ${error.message}`);
@@ -1013,7 +1014,7 @@ Return only JSON in this shape:
         onRetry,
         responseSchema: SCRIPT_RESPONSE_SCHEMA,
     });
-    if (!data || !Array.isArray(data.slides) || data.slides.length < 4 || data.slides.length > 12
+    if (!data || !Array.isArray(data.slides) || data.slides.length < 5 || data.slides.length > 7
         || data.slides.some(slide => !slide || typeof slide !== 'object'
             || typeof slide.title !== 'string' || typeof slide.body_text !== 'string'
             || typeof slide.bg_type !== 'string' || typeof slide.image_query !== 'string')) {
@@ -1026,7 +1027,17 @@ Return only JSON in this shape:
         slide.hook = '';
     });
     slides[0].body_text = '';
-    const discussionSlide = data.discussionSlide;
+    if (needsCopyBalance(slides)) {
+        const refinedSlides = await balanceSlideCopy(slides, sources);
+        if (needsCopyBalance(refinedSlides)) {
+            throw new Error('The draft did not include slide titles or meet the compact two-sentence copy format. Please regenerate the carousel.');
+        }
+        return finishScript(refinedSlides, data.discussionSlide, sources);
+    }
+    return finishScript(slides, data.discussionSlide, sources);
+}
+
+function finishScript(slides, discussionSlide, sources) {
     if (!discussionSlide || typeof discussionSlide.title !== 'string'
         || typeof discussionSlide.body_text !== 'string' || !discussionSlide.body_text.trim()
         || typeof discussionSlide.bg_type !== 'string' || typeof discussionSlide.image_query !== 'string') {
