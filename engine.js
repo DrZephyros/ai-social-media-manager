@@ -496,9 +496,10 @@ const TOPIC_RESPECT_RULES = `SAFETY AND RESPECT — apply to every topic and gen
 
 const CAROUSEL_NARRATIVE_RULES = `Use this same story framework for every genre. Genre may change the subject vocabulary and emotional register, but never the level of suspense, continuity, or narrative quality.
 - Write one connected narration split across slides, not separate mini-articles. Keep every slide in the same story and move forward from the knowledge already established.
-- Give each story slide enough substance to feel like a complete, readable paragraph: target 35–45 words total in 2–3 short sentences. Include the key point, a helpful piece of context or evidence, and—on non-final slides—a brief forward nudge. Avoid both one-sentence fragments and dense blocks. The final story slide should also stay within 35–45 words, using its space for a satisfying payoff rather than a tease.
+- Every story slide must have two complete explanatory sentences followed by a distinct, short teaser on non-final slides. Sentence 1 answers the previous slide's tease and advances this beat; sentence 2 adds a concrete detail, context, or consequence. Then add a brief teaser that leads naturally into the next slide. Aim for 40–50 words total, including the teaser, so the copy has visible weight without becoming dense. Never compress a story slide into one sentence plus a question. The final story slide also gets two complete sentences, 35–45 words total, and uses them for the payoff instead of a teaser.
+- Keep the voice lively, warm, and curious across every genre: use vivid, specific verbs and let the reader feel why each discovery is surprising or consequential. Sound like an engaging guide, not a textbook or a detached summary. Let enthusiasm come from the facts; avoid hype, exclamation overload, and invented drama.
 - Every non-final story slide must end with a brief, natural, specific tease that opens a question or consequence the next slide will resolve. A completed fact or broad takeaway is not a suspenseful ending. Keep the tease grounded in evidence and gentle, never sensational.
-- The next slide must answer that exact tease in its opening sentence, then add new information and plant the next tease. Read each pair aloud as one continuous passage; reject premise recaps, repeated setup, and generic discovery announcements.
+- The next slide must answer that exact tease in its first explanatory sentence, then add new information in its second and plant the next tease. Read each pair aloud as one continuous passage; reject premise recaps, repeated setup, sudden question-only endings, and generic discovery announcements.
 - Give each slide a distinct story beat. Do not repeat the same mechanism, fact, or takeaway in new words. Vary sentence openings and use natural connective phrasing so the narrator sounds like one person continuing the thought.
 - The final story slide resolves the opening puzzle and has no teaser. The discussion card may ask a specific opinion question about an explained detail; the caption must not repeat that question.
 - Before returning, verify every tease is answered by the immediately following slide, every non-final story slide has a forward pull, and the final story slide pays off the opening. Rewrite any reset, backtrack, missing payoff, or bland ending.`;
@@ -890,20 +891,20 @@ function needsCopyBalance(slides) {
         return wordCount(slide.title) > 5
             || (isFinalStoryBeat
                 ? bodyWords < 35 || bodyWords > 45 || hookWords > 0
-                : bodyWords < 30 || bodyWords > 40 || hookWords < 5 || hookWords > 8
-                    || bodyWords + hookWords < 35 || bodyWords + hookWords > 45
+                : bodyWords < 32 || bodyWords > 42 || hookWords < 5 || hookWords > 8
+                    || bodyWords + hookWords < 40 || bodyWords + hookWords > 50
                     || !hookConnectsToNext(slide.hook, slides[index + 1]) || hookRepeatsNextTitle(slide.hook, slides[index + 1]));
     });
 }
 
 async function balanceSlideCopy(slides, sources) {
-    const instruction = `You are an experienced short-form story editor. Improve this carousel while preserving its subject, selected genre, source-supported facts, and narrative slide order. Write with a natural spoken voice; keep context needed to understand each beat and remove repetition or filler.
+    const instruction = `You are an experienced short-form story editor. Improve this carousel while preserving its subject, selected genre, source-supported facts, and narrative slide order. Write with a lively, warm, curious spoken voice; use vivid, specific verbs and keep the context needed to understand each beat. Remove repetition or filler without flattening the narration.
 
 ${TOPIC_RESPECT_RULES}
 
 STORY FLOW — apply to every genre:
 - Treat the cover's premise as a claim to verify, not a fact to repeat. If sources contradict it, make the real story clear and resolve the misconception honestly.
-- Every slide must advance the same story. Each non-final story beat ends with a short 5–8 word closing hook stored in the hook field. It must read as a natural continuation of that slide's body, not a slogan or interruption. In the UI and exported image it appears inline in the same paragraph and style.
+- Every story slide has two complete explanatory sentences. Each non-final slide then ends with a distinct 5–8 word closing hook stored in the hook field. The first sentence answers the previous slide's tease and advances this beat; the second adds concrete detail, context, or consequence. The hook must read as a natural continuation, not a sudden question, slogan, or interruption. In the UI and exported image it appears inline in the same paragraph and style.
 - A hook should leave one concrete, source-supported detail unresolved. The next slide's opening sentence must answer that exact tease before moving forward. Check each pair in sequence; shared topic words alone do not count as payoff.
 - Make suspense fit the genre and stakes. Avoid stock cliffhanger formulas, repeated transition words, generic mystery, fake danger, empty promises, and rhetorical questions. Do not copy these example phrases or invent details to manufacture tension.
 - The final story slide must answer the central question or clearly explain what evidence cannot establish. Do not end by introducing an unresolved mystery after promising a definite answer.
@@ -911,7 +912,7 @@ STORY FLOW — apply to every genre:
 LAYOUT:
 - Edit only the 5–7 narrative slides supplied; do not add a discussion card or change the slide count.
 - Slide 1 is a title-only cover: 4–8 words, with empty body_text. Keep the title clear, specific, compelling, and accurate to the evidence.
-- Each story title is at most 4 words. Keep body_text plus hook to 35–45 words total; the body is 30–40 words and the non-final hook is 5–8 words. The final story slide has no hook and stays within 35–45 words total.
+- Each story title is at most 4 words. Keep body_text plus hook to 40–50 words total on non-final story slides; body_text is 32–42 words and the hook is 5–8 words. The final story slide has no hook and stays within 35–45 words total across two complete sentences.
 - Keep every field and slide number. Do not invent or strengthen a date, action, cause, motive, quote, or degree of certainty. Return only JSON in this shape: {"slides":[{"slide_number":1,"title":"...","body_text":"...","hook":"...","bg_type":"...","image_query":"..."}]}`;
     const response = await generateAIContent(instruction, JSON.stringify({ slides, researchSources: sources }), 0.3, {
         thinkingLevel: 'low',
@@ -1000,7 +1001,7 @@ ${CAROUSEL_NARRATIVE_RULES}
 
 Use everyday words and short, natural sentences. Address an intelligent reader with no specialist background. Explain necessary terms in plain language. Avoid textbook phrasing, fact dumps, repeated setup, and transitions like “this is important because” unless the next sentence makes the consequence concrete. Keep the narration fluid: vary sentence openings, use natural connective phrasing, and let each slide pick up the thought where the last one left it. Do not make every slide independently self-contained; continuity matters more than repeating context the reader already has. Put all visible narration, including the final tease, in body_text; do not create a separate hook field. Keep claims within the evidence, qualify uncertainty, and never invent scenes, motives, dialogue, causes, or outcomes. Treat the topic as a claim to check, not an established fact. Correct unsupported premises gently.
 
-Write only as many slides as the story needs, usually 5–7 narrative slides plus one discussion slide. Slide 1 is a short, self-explanatory cover of 4–8 words with no body copy. If the subject name is unfamiliar, pair it with a plain-language descriptor on the cover or explain it in the first story slide's opening sentence. Give each following story slide one clear title and one readable paragraph of 35–45 words total in 2–3 short sentences, including its tease. Include enough context and evidence to make the slide feel substantial, but do not repeat ideas or pack in lists. Do not pad the deck. Keep the discussion slide's specific opinion question concise and tied to an explained detail. Avoid report-like headings, generic cliffhangers, forced transitions, inflated claims, and engagement bait. Keep the chosen genre's voice while making the story accessible to a general reader.
+Write only as many slides as the story needs, usually 5–7 narrative slides plus one discussion slide. Slide 1 is a short, self-explanatory cover of 4–8 words with no body copy. If the subject name is unfamiliar, pair it with a plain-language descriptor on the cover or explain it in the first story slide's opening sentence. Give each following story slide one clear title, then exactly two complete explanatory sentences and a short teaser on every non-final story slide. Aim for 40–50 words total, including the teaser; the final story slide should have two complete sentences and 35–45 words, with a clear payoff and no teaser. Do not satisfy the length target with one long sentence or a bare question. Include enough context and evidence to make the slide substantial, but do not repeat ideas or pack in lists. Do not pad the deck. Keep the discussion slide's specific opinion question concise and tied to an explained detail. Avoid report-like headings, generic cliffhangers, forced transitions, inflated claims, and engagement bait. Keep the chosen genre lively, warm, and accessible to a general reader.
 
 Before returning, silently review the story beat by beat, remove repeated information, apply the shared continuity and suspense checks above, and confirm the discussion question is specific to the story. Ensure the narration reads aloud smoothly, every sentence is clear on first read, and every claim is supported. Tighten anything dull, repetitive, disjointed, or overconfident.
 
