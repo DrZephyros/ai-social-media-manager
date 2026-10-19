@@ -956,8 +956,10 @@ Return only JSON in this shape. This is a structure example: replace every brack
     slides.forEach((slide, index) => {
         slide.slide_number = index + 1;
         const hook = typeof slide.hook === 'string' ? slide.hook.trim() : '';
-        const questionHook = /^(?:(?:but|so|and|yet|meanwhile)\s+)?(?:what|how|why|when|where|who|which|can|could|would|will|is|are|do|does|did)\b/i.test(hook);
-        const punctuatedHook = hook && !/[.!?]["')\]]?$/.test(hook) ? `${hook}${questionHook ? '?' : '.'}` : hook;
+        const questionHook = /^(?:(?:but|so|and|yet|meanwhile),?\s+)?(?:what|how|why|when|where|who|which|can|could|would|will|is|are|do|does|did)\b/i.test(hook);
+        const closingQuotes = hook.match(/["')\]]+$/)?.[0] || '';
+        const hookText = hook.slice(0, hook.length - closingQuotes.length).replace(/[.!?]+$/, '').trimEnd();
+        const punctuatedHook = hook ? `${hookText}${questionHook || /\?+["')\]]*$/.test(hook) ? '?' : '.'}${closingQuotes}` : '';
         slide.body_text = [slide.body_text, punctuatedHook].filter(value => typeof value === 'string' && value.trim()).join(' ').trim();
         slide.hook = '';
     });
