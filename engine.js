@@ -36,10 +36,11 @@ const SCRIPT_RESPONSE_SCHEMA = {
                     slide_number: { type: 'integer' },
                     title: { type: 'string' },
                     body_text: { type: 'string' },
+                    hook: { type: 'string' },
                     bg_type: { type: 'string' },
                     image_query: { type: 'string' },
                 },
-                required: ['slide_number', 'title', 'body_text', 'bg_type', 'image_query'],
+                required: ['slide_number', 'title', 'body_text', 'hook', 'bg_type', 'image_query'],
             },
         },
         discussionSlide: {
@@ -497,16 +498,15 @@ const TOPIC_RESPECT_RULES = `SAFETY AND RESPECT — apply to every topic and gen
 
 const CAROUSEL_NARRATIVE_RULES = `Use this same story framework for every genre. Genre may change the subject vocabulary and emotional register, but never the level of suspense, continuity, or narrative quality.
 - Write one connected narration split across slides, not separate mini-articles. Keep every slide in the same story and move forward from the knowledge already established.
-- FORMAT IS MANDATORY: Return 5–7 objects in the slides array, including the cover. The discussion card is a separate discussionSlide object and is not counted in that array. Every slides[] object must have its own non-empty title and body_text; never omit a title, leave it blank, or put the title inside body_text.
-- The first slides[] object is the cover: title is 4–8 words and body_text is empty. Every following story object has a distinct 1–4 word title.
-- Each non-final story body_text is exactly two short sentences and 30–36 words total. Sentence 1 answers the previous slide's tease and advances this beat. Sentence 2 adds one useful, concrete detail, then ends with a short, natural teaser that points to the next slide. Keep the teaser part of sentence 2; do not append a third sentence, an isolated question, or another paragraph.
-- The final story body_text is exactly two short sentences and 28–36 words total. Use them to resolve the opening puzzle with a clear payoff; do not add a teaser.
-- Write one connected narration split across slides, not separate mini-articles. Keep every slide in the same story and move forward from the knowledge already established.
-- Keep the voice lively, warm, and curious across every genre: use vivid, specific verbs and let the reader feel why each discovery is surprising or consequential. Sound like an engaging guide, not a textbook or a detached summary. Let enthusiasm come from the facts; avoid hype, exclamation overload, and invented drama.
-- Every non-final story slide must end with a brief, natural, specific tease that opens a question or consequence the next slide will resolve. A completed fact or broad takeaway is not a suspenseful ending. Keep the tease grounded in evidence and gentle, never sensational.
-- The next slide must answer that exact tease in its first sentence, then add one new detail in its second and end with the next natural tease. Read each pair aloud as one continuous passage; reject premise recaps, repeated setup, sudden question-only endings, and generic discovery announcements.
+- FORMAT IS MANDATORY: Return 5–7 objects in the slides array, including the cover. The discussion card is a separate discussionSlide object and is not counted in that array. Every slides[] object must include title, body_text, and hook fields. Titles are never blank; empty body_text or hook values are allowed only where the rules below specify them.
+- The first slides[] object is the cover: title is 4–8 words, body_text is empty, and hook is empty. Every following story object has a distinct 1–4 word title.
+- Every story slide has a uniform shape: two concise sentences in body_text and (except on the final story slide) a separate hook of 5–7 words. Keep body_text to 25–31 words and body_text plus hook to 32–38 words. Sentence 1 answers the previous slide's hook and advances the story; sentence 2 adds one useful detail. The hook is a distinct, natural teaser that opens the next beat; it must not repeat the title or state a bare, unrelated question. The final story slide has two sentences totaling 30–36 words and an empty hook.
+- Explain every specialized term the first time it appears, in the same sentence using everyday words a teenager can understand. For example, explain “autosomal dominant” as “a trait can appear if someone inherits one changed copy of a gene,” and qualify claims if the evidence is uncertain. Prefer familiar language throughout; never assume the reader knows medical, scientific, historical, or business jargon.
+- Keep the voice curious, friendly, lively, and fun across every genre. Use vivid, specific verbs, relatable details, and a sense of discovery. Sound like an enthusiastic guide sharing something fascinating, not a textbook or detached summary. Let the facts carry the excitement; avoid hype, exclamation overload, and invented drama.
+- Every non-final story slide must end with its separate brief, natural, specific hook that opens a question or consequence the next slide will resolve. A completed fact or broad takeaway is not a suspenseful ending. Keep the tease grounded in evidence and gentle, never sensational.
+- The next slide must answer the previous hook in its first sentence, then add one new detail in its second and set up its own hook. Read each pair aloud as one continuous passage; reject premise recaps, repeated setup, and generic discovery announcements.
 - Give each slide a distinct story beat. Do not repeat the same mechanism, fact, or takeaway in new words. Vary sentence openings and use natural connective phrasing so the narrator sounds like one person continuing the thought.
-- The final story slide resolves the opening puzzle and has no teaser. The discussion card may ask a specific opinion question about an explained detail; the caption must not repeat that question.
+- The final story slide resolves the opening puzzle and has no hook. The discussion card may ask a specific opinion question about an explained detail; the caption must not repeat that question.
 - Before returning, verify every tease is answered by the immediately following slide, every non-final story slide has a forward pull, and the final story slide pays off the opening. Rewrite any reset, backtrack, missing payoff, or bland ending.`;
 
 const TOPIC_SIMILARITY_STOP_WORDS = new Set(['about', 'after', 'again', 'also', 'among', 'because', 'before', 'being', 'could', 'during', 'every', 'from', 'have', 'into', 'just', 'more', 'most', 'other', 'over', 'same', 'some', 'such', 'than', 'that', 'their', 'there', 'these', 'they', 'this', 'those', 'through', 'under', 'very', 'what', 'when', 'where', 'which', 'while', 'with', 'without', 'would', 'your', 'story', 'topic', 'carousel', 'really', 'actually']);
@@ -924,22 +924,22 @@ ${TOPIC_RESPECT_RULES}
 STORY PLAN — identify one compelling puzzle, the answer supported by research, and a sequence of distinct discoveries that resolves it without padding.
 ${CAROUSEL_NARRATIVE_RULES}
 
-Use everyday words and short, natural sentences. Address an intelligent reader with no specialist background. Explain necessary terms in plain language. Avoid textbook phrasing, fact dumps, repeated setup, and transitions like “this is important because” unless the next sentence makes the consequence concrete. Keep the narration fluid: vary sentence openings, use natural connective phrasing, and let each slide pick up the thought where the last one left it. Do not make every slide independently self-contained; continuity matters more than repeating context the reader already has. Put all visible narration, including the final tease, in body_text; do not create a separate hook field. Keep claims within the evidence, qualify uncertainty, and never invent scenes, motives, dialogue, causes, or outcomes. Treat the topic as a claim to check, not an established fact. Correct unsupported premises gently.
+Use everyday words and short, natural sentences. Address an intelligent reader with no specialist background. Explain every necessary term in plain language the first time it appears. Avoid textbook phrasing, fact dumps, repeated setup, and transitions like “this is important because” unless the next sentence makes the consequence concrete. Keep the narration fluid: vary sentence openings, use natural connective phrasing, and let each slide pick up the thought where the last one left it. Do not make every slide independently self-contained; continuity matters more than repeating context the reader already has. Put the two explanatory sentences in body_text and the short teaser in hook. Keep claims within the evidence, qualify uncertainty, and never invent scenes, motives, dialogue, causes, or outcomes. Treat the topic as a claim to check, not an established fact. Correct unsupported premises gently.
 
 FINAL FORMAT — follow this template literally:
 - Return 5–7 objects in slides[], including the cover. discussionSlide is a separate object and is not counted in those 5–7.
 - Object 1 is the cover: title has 4–8 words; body_text is empty.
 - Every object from slides[1] onward is a story slide and MUST have a visible, non-empty title of 1–4 words in its title field. Do not omit the title, leave it blank, or put it into body_text.
-- Every non-final story slide has exactly two short sentences in body_text, 30–36 words total. Sentence 1 directly answers the tease at the end of the previous slide and advances the story. Sentence 2 gives one concrete new detail and ends with a brief, natural teaser that leads to the next slide. The teaser is part of sentence 2, not a third sentence or a detached question.
-- The final story slide also has exactly two short sentences, 28–36 words total, and resolves the opening question without another tease.
-- Give every slide one distinct story beat. Do not repeat the same fact or explain more than one new idea per slide. Keep the voice lively, warm, and curious; use simple English and grounded specifics, without hype or invented drama. Write English text in Latin script; do not append unrelated symbols or foreign-script characters.
+- Every non-final story slide has exactly two short sentences in body_text, 25–31 words total, plus a separate 5–7 word hook. Sentence 1 directly answers the previous slide's hook and advances the story. Sentence 2 gives one concrete new detail; the hook then leaves a specific, supported point unresolved for the next slide.
+- The final story slide has exactly two short sentences, 30–36 words total, and hook must be empty. It resolves the opening question without another tease.
+- Give every slide one distinct story beat. Do not repeat the same fact or explain more than one new idea per slide. Keep the voice curious, friendly, lively, and fun; use simple English, grounded specifics, and a warm sense of discovery without hype or invented drama. Write English text in Latin script; do not append unrelated symbols or foreign-script characters.
 - discussionSlide is the final card and has its own clear title and one specific opinion question tied to an explained detail.
 - Keep all required JSON fields and use the exact object shape shown below. Do not return commentary or markdown.
 
 Before returning, silently review the story beat by beat, remove repeated information, apply the shared continuity and suspense checks above, and confirm the discussion question is specific to the story. Ensure the narration reads aloud smoothly, every sentence is clear on first read, and every claim is supported. Tighten anything dull, repetitive, disjointed, or overconfident.
 
-Return only JSON in this shape:
-{"slides":[{"slide_number":1,"title":"...","body_text":"","bg_type":"gradient-purple","image_query":"2-4 concrete visual words"}],"discussionSlide":{"title":"Your Take","body_text":"One specific, conversational question? Let me know in the comments!","bg_type":"gradient-purple","image_query":"2-4 concrete visual words"}}`;
+Return only JSON in this shape. This is a structure example: replace every bracketed placeholder with actual content and never output square brackets. Include a non-empty hook on every non-final story slide; use an empty hook for the cover and final story slide:
+{"slides":[{"slide_number":1,"title":"[4–8 word cover title]","body_text":"","hook":"","bg_type":"gradient-purple","image_query":"2–4 concrete visual words"},{"slide_number":2,"title":"[1–4 word title]","body_text":"[First short explanatory sentence.] [Second short explanatory sentence.]","hook":"[5–7 word teaser]","bg_type":"gradient-purple","image_query":"[2–4 visual words]"},{"slide_number":3,"title":"[1–4 word title]","body_text":"[First short explanatory sentence.] [Second short explanatory sentence.]","hook":"[5–7 word teaser]","bg_type":"gradient-purple","image_query":"[2–4 visual words]"},{"slide_number":4,"title":"[1–4 word title]","body_text":"[First short explanatory sentence.] [Second short explanatory sentence.]","hook":"[5–7 word teaser]","bg_type":"gradient-purple","image_query":"[2–4 visual words]"},{"slide_number":5,"title":"[1–4 word final title]","body_text":"[First sentence resolves the previous teaser.] [Second sentence completes the payoff.]","hook":"","bg_type":"gradient-purple","image_query":"[2–4 visual words]"}],"discussionSlide":{"title":"Your Take","body_text":"[One specific, conversational opinion question tied to a slide detail.]","bg_type":"gradient-purple","image_query":"[2–4 visual words]"}}`;
     const data = await generateStructuredJson(systemInstruction, JSON.stringify({ topic, genre, researchSources: sources }), 0.8, {
         thinkingLevel: 'medium',
         timeoutMs: 90000,
@@ -1001,7 +1001,9 @@ EDIT PROTOCOL:
 When the requested edit changes story copy, keep the edited story coherent and retain the same framework used for first-draft generation:
 ${CAROUSEL_NARRATIVE_RULES}
 
-Use simple language; explain a technical term briefly if it must remain. Put all slide copy, including the ending tease, in one body_text field. Never create a separate hook or transition field.
+REVISION OUTPUT OVERRIDE: This edit endpoint has no hook field in its JSON schema. For edited story slides, preserve the same compact structure by placing the two short explanatory sentences and the 5–7 word teaser together in body_text; the final story slide has no teaser. This output-format override applies only to edits. For first-time generation, return the separate hook field required above.
+
+Use simple language; explain a technical term briefly if it must remain.
 
 ${TOPIC_RESPECT_RULES}
 
