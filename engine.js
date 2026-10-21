@@ -29,7 +29,6 @@ const SCRIPT_RESPONSE_SCHEMA = {
         slides: {
             type: 'array',
             minItems: 5,
-            maxItems: 7,
             items: {
                 type: 'object',
                 properties: {
@@ -498,7 +497,7 @@ const TOPIC_RESPECT_RULES = `SAFETY AND RESPECT — apply to every topic and gen
 
 const CAROUSEL_NARRATIVE_RULES = `Use this same story framework for every genre. Genre may change the subject vocabulary and emotional register, but never the level of suspense, continuity, or narrative quality.
 - Write one connected narration split across slides, not separate mini-articles. Keep every slide in the same story and move forward from the knowledge already established.
-- FORMAT IS MANDATORY: Return 5–7 objects in the slides array, including the cover. The discussion card is a separate discussionSlide object and is not counted in that array. Every slides[] object must include title, body_text, and hook fields. Titles are never blank; empty body_text or hook values are allowed only where the rules below specify them.
+- FORMAT IS MANDATORY: Return at least 5 objects in the slides array, including the cover. Five to seven is a useful default for a focused story, not a limit: add as many story slides as needed to cover the creator's full brief clearly, with no fixed maximum. The discussion card is a separate discussionSlide object and is not counted in that array. Every slides[] object must include title, body_text, and hook fields. Titles are never blank; empty body_text or hook values are allowed only where the rules below specify them.
 - The first slides[] object is the cover: title is 4–8 words, body_text is empty, and hook is empty. Every following story object has a distinct 1–4 word title.
 - Every story slide has a uniform shape: two concise sentences in body_text and (except on the final story slide) a separate hook of 5–7 words. Keep body_text to 25–31 words and body_text plus hook to 32–38 words. Sentence 1 answers the previous slide's hook and advances the story; sentence 2 adds one useful detail. Write the hook as a complete, grammatical sentence, not a fragment or an unfinished question. Begin it with a context-appropriate connective that carries the narration forward (for example, “But,” “So,” or “Meanwhile”); vary the connective naturally rather than repeating one formula. End every hook with appropriate punctuation, usually a period. The hook must point to a specific next beat and must not repeat the title or state a bare, unrelated question. The final story slide has two sentences totaling 30–36 words and an empty hook.
 - Explain every specialized term the first time it appears, in the same sentence using everyday words a teenager can understand. For example, explain “autosomal dominant” as “a trait can appear if someone inherits one changed copy of a gene,” and qualify claims if the evidence is uncertain. Prefer familiar language throughout; never assume the reader knows medical, scientific, historical, or business jargon.
@@ -928,7 +927,7 @@ ${CAROUSEL_NARRATIVE_RULES}
 Use everyday words and short, natural sentences. Address an intelligent reader with no specialist background. Explain every necessary term in plain language the first time it appears. Avoid textbook phrasing, fact dumps, repeated setup, and transitions like “this is important because” unless the next sentence makes the consequence concrete. Keep the narration fluid: vary sentence openings, use natural connective phrasing, and let each slide pick up the thought where the last one left it. Do not make every slide independently self-contained; continuity matters more than repeating context the reader already has. Put the two explanatory sentences in body_text and the short teaser in hook. Keep claims within the evidence, qualify uncertainty, and never invent scenes, motives, dialogue, causes, or outcomes. Treat the topic as a claim to check, not an established fact. Correct unsupported premises gently.
 
 FINAL FORMAT — follow this template literally:
-- Return 5–7 objects in slides[], including the cover. discussionSlide is a separate object and is not counted in those 5–7.
+- Return at least 5 objects in slides[], including the cover. Five to seven is a default range for a focused story, not a cap; include additional story slides whenever they are needed to explain the requested topic fully. There is no fixed maximum. discussionSlide is a separate object and is not counted in the slide total.
 - Object 1 is the cover: title has 4–8 words; body_text is empty.
 - Every object from slides[1] onward is a story slide and MUST have a visible, non-empty title of 1–4 words in its title field. Do not omit the title, leave it blank, or put it into body_text.
 - Every non-final story slide has exactly two short sentences in body_text, 25–31 words total, plus a separate 5–7 word hook. Sentence 1 directly answers the previous slide's hook and advances the story. Sentence 2 gives one concrete new detail. Then write the hook as a complete 5–7 word sentence that starts with a natural connective, sets up a specific supported point for the next slide, and ends with punctuation. Do not use a bare question or unfinished clause.
@@ -939,7 +938,7 @@ FINAL FORMAT — follow this template literally:
 
 Before returning, silently review the story beat by beat, remove repeated information, apply the shared continuity and suspense checks above, and confirm the discussion question is specific to the story. Ensure the narration reads aloud smoothly, every sentence is clear on first read, and every claim is supported. Tighten anything dull, repetitive, disjointed, or overconfident.
 
-Return only JSON in this shape. This is a structure example: replace every bracketed placeholder with actual content and never output square brackets. Include a non-empty hook on every non-final story slide; use an empty hook for the cover and final story slide:
+Return only JSON using this object shape. The five slides below are an illustration, not a required total: include all slide objects needed to cover the topic, with no fixed maximum. Replace every bracketed placeholder with actual content and never output square brackets. Include a non-empty hook on every non-final story slide; use an empty hook for the cover and final story slide:
 {"slides":[{"slide_number":1,"title":"[4–8 word cover title]","body_text":"","hook":"","bg_type":"gradient-purple","image_query":"2–4 concrete visual words"},{"slide_number":2,"title":"[1–4 word title]","body_text":"[First short explanatory sentence.] [Second short explanatory sentence.]","hook":"[Complete 5–7 word teaser sentence with a natural connective and ending punctuation.]","bg_type":"gradient-purple","image_query":"[2–4 visual words]"},{"slide_number":3,"title":"[1–4 word title]","body_text":"[First short explanatory sentence.] [Second short explanatory sentence.]","hook":"[Complete 5–7 word teaser sentence with a natural connective and ending punctuation.]","bg_type":"gradient-purple","image_query":"[2–4 visual words]"},{"slide_number":4,"title":"[1–4 word title]","body_text":"[First short explanatory sentence.] [Second short explanatory sentence.]","hook":"[Complete 5–7 word teaser sentence with a natural connective and ending punctuation.]","bg_type":"gradient-purple","image_query":"[2–4 visual words]"},{"slide_number":5,"title":"[1–4 word final title]","body_text":"[First sentence resolves the previous teaser.] [Second sentence completes the payoff.]","hook":"","bg_type":"gradient-purple","image_query":"[2–4 visual words]"}],"discussionSlide":{"title":"Your Take","body_text":"[One specific, conversational opinion question tied to a slide detail.]","bg_type":"gradient-purple","image_query":"[2–4 visual words]"}}`;
     const data = await generateStructuredJson(systemInstruction, JSON.stringify({ topic, genre, researchSources: sources }), 0.8, {
         thinkingLevel: 'medium',
@@ -947,7 +946,7 @@ Return only JSON in this shape. This is a structure example: replace every brack
         onRetry,
         responseSchema: SCRIPT_RESPONSE_SCHEMA,
     });
-    if (!data || !Array.isArray(data.slides) || data.slides.length < 5 || data.slides.length > 7
+    if (!data || !Array.isArray(data.slides) || data.slides.length < 5
         || data.slides.some(slide => !slide || typeof slide !== 'object'
             || typeof slide.title !== 'string' || typeof slide.body_text !== 'string'
             || typeof slide.bg_type !== 'string' || typeof slide.image_query !== 'string')) {
@@ -1025,7 +1024,7 @@ EDIT PROTOCOL:
 When the requested edit changes story copy, keep the edited story coherent and retain the same framework used for first-draft generation:
 ${CAROUSEL_NARRATIVE_RULES}
 
-REVISION OUTPUT OVERRIDE: This edit endpoint has no hook field in its JSON schema. For edited story slides, preserve the same compact structure by placing the two short explanatory sentences and the 5–7 word teaser together in body_text; the final story slide has no teaser. The 5–7 slide count above applies only to first-time generation. Follow-up edits may return any number of slides needed to fulfill an explicit request to add slides; there is no fixed maximum. Keep the cover first, the discussion card last, and number every slide consecutively.
+REVISION OUTPUT OVERRIDE: This edit endpoint has no hook field in its JSON schema. For edited story slides, preserve the same compact structure by placing the two short explanatory sentences and the 5–7 word teaser together in body_text; the final story slide has no teaser. The 5–7 default range above is guidance for focused first-time generation, not a cap. Follow-up edits may return any number of slides needed to fulfill an explicit request to add slides; there is no fixed maximum. Keep the cover first, the discussion card last, and number every slide consecutively.
 
 Use simple language; explain a technical term briefly if it must remain.
 
