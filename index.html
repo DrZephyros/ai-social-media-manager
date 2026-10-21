@@ -821,6 +821,9 @@
     .followup-submit:disabled { opacity: .55; cursor: wait; }
     .followup-submit .spinner { border-color: rgba(7,16,24,.28); border-top-color: #071018; }
     #followup-status { min-height: 1.2em; color: var(--muted); font-size: .82rem; }
+    #followup-status:empty { display: none; }
+    #followup-status.is-loading { display: flex; align-items: center; justify-content: center; gap: .75rem; min-height: 58px; padding: .8rem 1rem; border: 1px solid transparent; border-radius: 12px; background: linear-gradient(rgba(14,16,25,.96), rgba(14,16,25,.96)) padding-box, var(--instagram-gradient) border-box; color: rgba(255,255,255,.88); font-size: .9rem; font-weight: 650; text-align: center; }
+    #followup-status .instagram-dot-spinner { width: 24px; height: 24px; flex-basis: 24px; }
 
     .research-sources {
       border: 1px solid rgba(0,229,255,0.16);
@@ -2482,12 +2485,15 @@
       }
       if (!currentScript.length) return;
 
-      syncPreviewEdits();
       btnFollowup.disabled = true;
       btnFollowup.setAttribute('aria-busy', 'true');
       btnFollowup.innerHTML = '<span class="spinner" aria-hidden="true"></span>Applying edit…';
-      followupStatus.innerHTML = '<span class="spinner" aria-hidden="true"></span>Updating the story and caption…';
+      const addingSlides = /\b(?:add|insert|create|include|append)\b[\s\S]{0,100}\bslides?\b|\b(?:more|additional|extra)\s+slides?\b|\b(?:new|another)\s+slide\b/i.test(instruction);
+      followupStatus.classList.add('is-loading');
+      followupStatus.innerHTML = `<span class="instagram-dot-spinner" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>${addingSlides ? 'Researching the new angle and updating your slides…' : 'Revising your slides and caption…'}</span>`;
       try {
+        await new Promise(resolve => requestAnimationFrame(resolve));
+        syncPreviewEdits();
         const headers = await getAuthHeaders();
         if (!headers.Authorization) {
           openAccountDialog();
@@ -2514,6 +2520,7 @@
           return prior?.bg_image ? { ...slide, bg_image: prior.bg_image } : slide;
         });
         currentSources = Array.isArray(result.sources) ? result.sources : currentSources;
+        renderResearchSources(currentSources);
         await Promise.all(currentScript.map(async slide => {
           if (slide.bg_image || !slide.image_query) return;
           try {
@@ -2537,6 +2544,7 @@
         followupStatus.textContent = error.message || 'Could not apply that edit.';
         refreshGenerationQuota();
       } finally {
+        followupStatus.classList.remove('is-loading');
         btnFollowup.disabled = false;
         btnFollowup.removeAttribute('aria-busy');
         btnFollowup.textContent = 'Apply follow-up edit';

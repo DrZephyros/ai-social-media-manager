@@ -379,7 +379,7 @@ app.post('/api/followup', async (req, res) => {
     if (genre !== null && genre !== undefined && (typeof genre !== 'string' || !genre.trim() || genre.length > 120)) return res.status(400).json({ error: 'Niche must be 120 characters or fewer.' });
     const safeGenre = typeof genre === 'string' && genre.trim() ? genre.trim() : null;
     if (typeof followUp !== 'string' || !followUp.trim() || followUp.length > 2000) return res.status(400).json({ error: 'Enter an edit request up to 2,000 characters.' });
-    if (!Array.isArray(slides) || slides.length < 4 || slides.length > 30
+    if (!Array.isArray(slides) || slides.length < 4
         || slides.some(slide => !slide || typeof slide.title !== 'string' || typeof slide.body_text !== 'string'
             || slide.title.length > 300 || slide.body_text.length > 5000)) {
         return res.status(400).json({ error: 'The current carousel data is invalid. Generate a fresh carousel and try again.' });
@@ -399,10 +399,11 @@ app.post('/api/followup', async (req, res) => {
             url: String(source?.url || '').slice(0, 1000),
             claims: Array.isArray(source?.claims) ? source.claims.slice(0, 4).map(claim => String(claim).slice(0, 3000)) : [],
         }));
-        const revisedSlides = await reviseCarousel(topic.trim(), safeGenre, slides, safeSources, followUp.trim());
+        const revision = await reviseCarousel(topic.trim(), safeGenre, slides, safeSources, followUp.trim());
+        const revisedSlides = revision.slides;
         const caption = await generateCaption(topic.trim(), revisedSlides, safeGenre);
         latestScript = revisedSlides;
-        res.json({ slides: revisedSlides, caption, sources: safeSources });
+        res.json({ slides: revisedSlides, caption, sources: revision.sources });
     } catch (error) {
         console.error('Carousel follow-up failed:', error);
         if (reservation?.reservationId) await releaseGeneration(auth.user.uid, reservation.reservationId).catch(() => {});
