@@ -1765,6 +1765,87 @@
     let totalSlides  = 5;
     let currentScript = [];
     let currentSources = [];
+    const CAROUSEL_DRAFT_KEY = 'ai-social-carousel-draft-v1';
+    let draftSaveTimer = 0;
+
+    function saveCarouselDraft() {
+      if (!currentScript.length) return;
+      const draft = {
+        version: 1,
+        savedAt: Date.now(),
+        topic: topicInput.value.trim(),
+        mode: topicStartMode,
+        genre: getGenre(),
+        slides: currentScript,
+        sources: currentSources,
+        caption: captionBox.value,
+        currentSlide,
+      };
+      try { localStorage.setItem(CAROUSEL_DRAFT_KEY, JSON.stringify(draft)); }
+      catch (error) { console.warn('Could not save the carousel draft in this browser:', error.message); }
+    }
+
+    function scheduleCarouselDraftSave() {
+      window.clearTimeout(draftSaveTimer);
+      draftSaveTimer = window.setTimeout(saveCarouselDraft, 180);
+    }
+
+    function restoreCarouselDraft() {
+      let draft;
+      try { draft = JSON.parse(localStorage.getItem(CAROUSEL_DRAFT_KEY) || 'null'); }
+      catch { return; }
+      if (!draft || draft.version !== 1 || !Array.isArray(draft.slides) || !draft.slides.length) return;
+
+      currentScript = draft.slides;
+      currentSources = Array.isArray(draft.sources) ? draft.sources : [];
+      currentSlide = Math.min(Number(draft.currentSlide) || 0, currentScript.length - 1);
+      topicInput.value = typeof draft.topic === 'string' ? draft.topic : '';
+      captionBox.value = typeof draft.caption === 'string' ? draft.caption : '';
+      setTopicStartMode(draft.mode === 'brainstorm' ? 'brainstorm' : 'manual');
+
+      const matchingGenre = GENRES.find(item => item.label === draft.genre && item.label !== 'Other');
+      const genreOption = matchingGenre
+        ? genreOptions.querySelector(`[data-label="${CSS.escape(matchingGenre.label)}"]`)
+        : draft.genre ? genreOptions.querySelector('[data-label="Other"]') : null;
+      genreOptions.querySelectorAll('.genre-option').forEach(option => option.setAttribute('aria-selected', String(option === genreOption)));
+      if (matchingGenre) {
+        selectedGenre = matchingGenre.label;
+        isCustomGenre = false;
+        genreSearch.value = `${matchingGenre.icon} ${matchingGenre.label}`;
+        customGenreInput.value = '';
+        customGenreRow.classList.remove('visible');
+      } else if (draft.genre) {
+        selectedGenre = null;
+        isCustomGenre = true;
+        genreSearch.value = 'Other';
+        customGenreInput.value = String(draft.genre);
+        customGenreRow.classList.add('visible');
+      } else {
+        selectedGenre = null;
+        isCustomGenre = false;
+        genreSearch.value = '';
+        customGenreInput.value = '';
+        customGenreRow.classList.remove('visible');
+      }
+
+      renderPhonePreview(currentScript, true);
+      buildRenderGrid(currentScript);
+      renderResearchSources(currentSources);
+      refreshHashtagChips(captionBox.value);
+      const firstLine = captionBox.value.split('\n').find(line => line.trim() && !line.trim().startsWith('#')) || '';
+      const captionPreview = document.getElementById('ig-caption-preview');
+      if (captionPreview) captionPreview.innerHTML = `<strong>g0wtham.exe</strong> ${escapeHtml(firstLine)}`;
+      outputSection.classList.add('visible');
+      controls.classList.add('has-generated');
+      postGenerateActions.classList.add('visible');
+      btnRegenerate.classList.add('visible');
+      document.getElementById('tab-sources').disabled = false;
+      document.getElementById('tab-preview').disabled = false;
+      updateActionAvailability();
+      showWorkspaceTab('preview-panel', false);
+      setStatus('Restored your saved carousel. You can continue editing or download it.');
+    }
+
     const slideUndoStack = [];
     const slideRedoStack = [];
     let restoringSlideHistory = false;
@@ -1804,6 +1885,7 @@
       } finally {
         restoringSlideHistory = false;
       }
+      scheduleCarouselDraftSave();
       return true;
     }
 
@@ -2318,6 +2400,7 @@
               previewEl.innerHTML = `<strong>g0wtham.exe</strong> ${firstLine}`;
             }
           }
+          saveCarouselDraft();
 
           outputSection.classList.add('visible');
           controls.classList.add('has-generated');
@@ -2406,6 +2489,7 @@
         slide.body_text = event.target.innerText.replace(/\r\n?/g, '\n');
         slide.hook = '';
       }
+      scheduleCarouselDraftSave();
       clearTimeout(renderGridUpdateTimer);
       renderGridUpdateTimer = setTimeout(() => buildRenderGrid(currentScript), 150);
     });
@@ -2420,6 +2504,7 @@
         slide.body_text = event.target.innerText.replace(/\r\n?/g, '\n').trim();
         slide.hook = '';
       }
+      scheduleCarouselDraftSave();
       clearTimeout(renderGridUpdateTimer);
       renderPhonePreview(currentScript, true);
       buildRenderGrid(currentScript);
@@ -2437,10 +2522,10 @@
     }
 
     navPrev.addEventListener('click', () => {
-      if (currentSlide > 0) { currentSlide--; updateCarousel(); }
+      if (currentSlide > 0) { currentSlide--; updateCarousel(); saveCarouselDraft(); }
     });
     navNext.addEventListener('click', () => {
-      if (currentSlide < totalSlides - 1) { currentSlide++; updateCarousel(); }
+      if (currentSlide < totalSlides - 1) { currentSlide++; updateCarousel(); saveCarouselDraft(); }
     });
 
     // Touch/mouse swipe inside phone
@@ -2655,6 +2740,7 @@
         const firstLine = captionBox.value.split('\n').find(line => line.trim() && !line.trim().startsWith('#')) || '';
         const preview = document.getElementById('ig-caption-preview');
         if (preview) preview.innerHTML = `<strong>g0wtham.exe</strong> ${escapeHtml(firstLine)}`;
+        saveCarouselDraft();
         followupPrompt.value = '';
         followupStatus.textContent = 'Edit applied. Review your updated slides and caption.';
         refreshGenerationQuota();
@@ -2700,7 +2786,10 @@
         }
       });
       buildRenderGrid(currentScript);
+      scheduleCarouselDraftSave();
     }
+
+    captionBox.addEventListener('input', scheduleCarouselDraftSave);
 
     async function downloadSlides(button) {
       const authHeaders = await getAuthHeaders();
@@ -2786,6 +2875,8 @@
         document.head.appendChild(s);
       });
     }
+
+    restoreCarouselDraft();
 
   </script>
 </body>
