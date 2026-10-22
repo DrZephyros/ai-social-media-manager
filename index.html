@@ -1765,6 +1765,72 @@
     let totalSlides  = 5;
     let currentScript = [];
     let currentSources = [];
+    const slideUndoStack = [];
+    const slideRedoStack = [];
+    let restoringSlideHistory = false;
+
+    function copySlideDeckForHistory(slides = currentScript) {
+      return slides.map(slide => ({ ...slide }));
+    }
+
+    function recordSlideUndoState(slides = currentScript) {
+      if (!slides.length) return;
+      slideUndoStack.push(copySlideDeckForHistory(slides));
+      if (slideUndoStack.length > 100) slideUndoStack.shift();
+      slideRedoStack.length = 0;
+    }
+
+    function restoreSlideHistory(fromStack, toStack, focusTarget = null) {
+      if (!fromStack.length) return false;
+      toStack.push(copySlideDeckForHistory());
+      currentScript = fromStack.pop();
+      currentSlide = Math.min(currentSlide, Math.max(0, currentScript.length - 1));
+      restoringSlideHistory = true;
+      try {
+        renderPhonePreview(currentScript, true);
+        buildRenderGrid(currentScript);
+        if (focusTarget) {
+          const editor = igTrack.querySelector(`.editable-slide-text[data-slide-index="${focusTarget.index}"][data-slide-field="${focusTarget.field}"]`);
+          if (editor) {
+            editor.focus();
+            const range = document.createRange();
+            range.selectNodeContents(editor);
+            range.collapse(false);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+          }
+        }
+      } finally {
+        restoringSlideHistory = false;
+      }
+      return true;
+    }
+
+    igTrack.addEventListener('beforeinput', event => {
+      if (restoringSlideHistory) return;
+      if (event.inputType === 'historyUndo' || event.inputType === 'historyRedo') {
+        event.preventDefault();
+        const editor = event.target.closest?.('.editable-slide-text');
+        const focusTarget = editor ? { index: editor.dataset.slideIndex, field: editor.dataset.slideField } : null;
+        restoreSlideHistory(event.inputType === 'historyUndo' ? slideUndoStack : slideRedoStack, event.inputType === 'historyUndo' ? slideRedoStack : slideUndoStack, focusTarget);
+        return;
+      }
+      if (event.target.closest?.('.editable-slide-text') && event.inputType !== 'insertCompositionText') recordSlideUndoState();
+    });
+
+    document.addEventListener('keydown', event => {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
+      const key = event.key.toLowerCase();
+      if (key !== 'z' && key !== 'y') return;
+      const editor = event.target.closest?.('.editable-slide-text');
+      if (!editor && (event.target.matches?.('input, textarea, select') || event.target.isContentEditable)) return;
+      if (!currentScript.length) return;
+      event.preventDefault();
+      const focusTarget = editor ? { index: editor.dataset.slideIndex, field: editor.dataset.slideField } : null;
+      const undo = key === 'z' && !event.shiftKey;
+      restoreSlideHistory(undo ? slideUndoStack : slideRedoStack, undo ? slideRedoStack : slideUndoStack, focusTarget);
+    });
 
     function setStatus(msg, spinner = false) {
       statusEl.innerHTML = spinner ? `<span class="spinner"></span>${msg}` : msg;
@@ -2130,21 +2196,38 @@
         return;
       }
 
+      const hadPreviousCarousel = currentScript.length > 0;
+      const restorePreviousCarousel = errorMessage => {
+        if (!hadPreviousCarousel) return;
+        renderPhonePreview(currentScript, true);
+        buildRenderGrid(currentScript);
+        outputSection.classList.add('visible');
+        controls.classList.add('has-generated');
+        postGenerateActions.classList.add('visible');
+        btnRegenerate.classList.add('visible');
+        document.getElementById('tab-sources').disabled = false;
+        document.getElementById('tab-preview').disabled = false;
+        followupStatus.textContent = `${errorMessage} Your previous carousel is still available.`;
+        showWorkspaceTab('preview-panel', false);
+      };
+
       btnGenerate.disabled = true;
       showWorkspaceTab('topic-panel', false);
-      document.getElementById('tab-sources').disabled = true;
-      document.getElementById('tab-preview').disabled = true;
-      outputSection.classList.remove('visible');
-      igTrack.innerHTML = '';
-      igDots.innerHTML  = '';
-      hashtagChips.innerHTML = '';
-      captionBox.value  = '';
-      btnRegenerate.classList.remove('visible');
-      postGenerateActions.classList.remove('visible');
-      currentSources = [];
-      researchSourcesPanel.hidden = true;
-      researchSourcesList.replaceChildren();
-      researchSourcesNote.textContent = '';
+      if (!hadPreviousCarousel) {
+        document.getElementById('tab-sources').disabled = true;
+        document.getElementById('tab-preview').disabled = true;
+        outputSection.classList.remove('visible');
+        igTrack.innerHTML = '';
+        igDots.innerHTML  = '';
+        hashtagChips.innerHTML = '';
+        captionBox.value  = '';
+        btnRegenerate.classList.remove('visible');
+        postGenerateActions.classList.remove('visible');
+        currentSources = [];
+        researchSourcesPanel.hidden = true;
+        researchSourcesList.replaceChildren();
+        researchSourcesNote.textContent = '';
+      }
       setStatus('Searching free web sources, then writing your story...', true);
 
       let evtSource;
@@ -2153,6 +2236,7 @@
           btnGenerate.disabled = false;
           openAccountDialog();
           setStatus('Create an account or sign in before generating.');
+          restorePreviousCarousel('Sign in before generating.');
           return;
         }
         fetch('/api/generation-ticket', { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify({ topic, genre }) })
@@ -2164,7 +2248,12 @@
           }).catch(error => {
           setStatus(`❌ ${error.message}`);
           btnGenerate.disabled = false;
+          restorePreviousCarousel(`Generation failed: ${error.message}`);
         });
+      }).catch(error => {
+        btnGenerate.disabled = false;
+        setStatus(`❌ ${error.message || 'Could not start generation.'}`);
+        restorePreviousCarousel(`Generation failed: ${error.message || 'Could not start generation.'}`);
       });
 
       function attachGenerationStream(evtSource) {
@@ -2177,6 +2266,7 @@
           setStatus('❌ Error: ' + payload.error);
           evtSource.close();
           btnGenerate.disabled = false;
+          restorePreviousCarousel(`Generation failed: ${payload.error}`);
           window.setTimeout(refreshGenerationQuota, 500);
           return;
         }
@@ -2192,6 +2282,7 @@
         if (payload.done && payload.script) {
           refreshGenerationQuota();
           evtSource.close();
+          if (currentScript.length) recordSlideUndoState();
           currentScript = payload.script;
           currentSources = Array.isArray(payload.sources) ? payload.sources : [];
           renderResearchSources(currentSources);
@@ -2244,6 +2335,7 @@
         setStatus('❌ Connection error. Try again.');
         evtSource.close();
         btnGenerate.disabled = false;
+          restorePreviousCarousel('Connection error.');
       };
       }
     });
@@ -2319,6 +2411,7 @@
     });
 
     igTrack.addEventListener('blur', event => {
+      if (restoringSlideHistory) return;
       if (!event.target.matches('.editable-slide-text')) return;
       const slide = currentScript[Number(event.target.dataset.slideIndex)];
       const field = event.target.dataset.slideField;
@@ -2356,16 +2449,31 @@
       if (wrap.dataset.swipeReady === 'true') return;
       wrap.dataset.swipeReady = 'true';
       let startX = 0;
+      let startedOnEditableText = false;
 
-      wrap.addEventListener('mousedown', e => { startX = e.clientX; });
+      wrap.addEventListener('mousedown', e => {
+        startX = e.clientX;
+        startedOnEditableText = Boolean(e.target.closest?.('.editable-slide-text'));
+      });
       wrap.addEventListener('mouseup', e => {
+        if (startedOnEditableText || window.getSelection()?.toString()) {
+          startedOnEditableText = false;
+          return;
+        }
         const diff = startX - e.clientX;
         if (diff > 30 && currentSlide < totalSlides - 1) { currentSlide++; updateCarousel(); }
         if (diff < -30 && currentSlide > 0)               { currentSlide--; updateCarousel(); }
       });
 
-      wrap.addEventListener('touchstart', e => { startX = e.touches[0].clientX; }, { passive: true });
+      wrap.addEventListener('touchstart', e => {
+        startX = e.touches[0].clientX;
+        startedOnEditableText = Boolean(e.target.closest?.('.editable-slide-text'));
+      }, { passive: true });
       wrap.addEventListener('touchend', e => {
+        if (startedOnEditableText) {
+          startedOnEditableText = false;
+          return;
+        }
         const diff = startX - e.changedTouches[0].clientX;
         if (diff > 30 && currentSlide < totalSlides - 1) { currentSlide++; updateCarousel(); }
         if (diff < -30 && currentSlide > 0)               { currentSlide--; updateCarousel(); }
@@ -2514,6 +2622,7 @@
         if (!res.ok) throw new Error(result.error || `Update failed (${res.status}).`);
 
         const previousSlides = currentScript;
+        if (previousSlides.length) recordSlideUndoState();
         currentScript = result.slides.map((slide, index) => {
           const prior = previousSlides.find(item => item.image_query && item.image_query === slide.image_query)
             || (previousSlides.length === result.slides.length ? previousSlides[index] : null);
