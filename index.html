@@ -2504,7 +2504,7 @@
           #render-grid .slide-card[data-mood="gold"] .slide-card-bg::after { background: linear-gradient(to bottom, rgba(80,60,0,0.1) 0%, rgba(60,40,0,0.3) 30%, rgba(30,20,0,0.75) 65%, rgba(10,5,0,0.95) 100%); }
           #render-grid .slide-content { position: relative; z-index: 2; flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 1.5rem 2.35rem; min-height: 0; overflow: hidden; }
           #render-grid .slide-main { width: 100%; min-width: 0; }
-          #render-grid .slide-title { font-size: 2.6rem; font-weight: 900; line-height: 1.12; color: #fff; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 1.05rem; text-shadow: 0 2px 8px rgba(0,0,0,0.6); overflow-wrap: break-word; }
+          #render-grid .slide-title { font-size: 2.6rem; font-weight: 900; line-height: 1.12; color: #fff; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 1.05rem; text-shadow: 0 2px 8px rgba(0,0,0,0.6); overflow-wrap: normal; word-break: normal; hyphens: none; }
           #render-grid .slide-title .highlight { color: var(--cyan); }
           #render-grid .slide-body { font-size: 1.35rem; line-height: 1.45; color: rgba(255,255,255,0.88); font-weight: 500; text-shadow: 0 1px 4px rgba(0,0,0,0.5); overflow-wrap: break-word; }
           #render-grid .slide-hook { display: inline; color: inherit; font: inherit; line-height: inherit; text-shadow: inherit; overflow-wrap: inherit; }
@@ -2546,16 +2546,25 @@
         if (!title || !main || !content) return;
         main.style.transform = '';
         main.style.transformOrigin = 'center center';
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        const measureLongestWord = () => {
+          const titleStyle = getComputedStyle(title);
+          context.font = `${titleStyle.fontWeight} ${titleStyle.fontSize} ${titleStyle.fontFamily}`;
+          const letterSpacing = Number.parseFloat(titleStyle.letterSpacing) || 0;
+          const words = title.innerText.trim().toLocaleUpperCase().split(/\s+/);
+          return Math.max(0, ...words.map(word => context.measureText(word).width + Math.max(0, word.length - 1) * letterSpacing));
+        };
         let fontSize = card.dataset.cover === 'true' ? 48 : 42;
         title.style.fontSize = `${fontSize}px`;
-        while (fontSize > 24 && (title.scrollHeight > content.clientHeight * 0.42 || title.scrollWidth > title.clientWidth + 1)) {
+        while (fontSize > 20 && (title.scrollHeight > content.clientHeight * 0.42 || measureLongestWord() > title.clientWidth + 1)) {
           fontSize -= 1;
           title.style.fontSize = `${fontSize}px`;
         }
         let bodySize = 21.6;
         if (body) body.style.fontSize = `${bodySize}px`;
         const fits = () => main.scrollHeight <= content.clientHeight + 1
-          && title.scrollWidth <= title.clientWidth + 1;
+          && measureLongestWord() <= title.clientWidth + 1;
         while (body && bodySize > 14 && !fits()) {
           bodySize -= 0.5;
           body.style.fontSize = `${bodySize}px`;
