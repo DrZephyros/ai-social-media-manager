@@ -640,6 +640,9 @@ VIRAL TOPIC AND HOOK PRINCIPLES:
 - No prompt can guarantee virality. Aim for the signals behind strong social posts: instant comprehension, emotional or practical relevance, novelty in service of relevance, curiosity that sustains attention, and a payoff worth saving or sharing.
 - Choose a proven story shape that suits ${randomMode ? 'the subject' : 'this niche'}: a surprising documented detail that matters to people; a common belief corrected by evidence; a real mystery with competing explanations; a consequential decision and its fallout; a rivalry or relationship under pressure; a hidden cause or mechanism; a meaningful contradiction; or a practical insight with a clear payoff. Do not force every story into mystery or controversy.
 - Make the subject immediately understandable and concrete. Prefer a named person, place, object, behavior, event, decision, or everyday moment over an abstract trend.
+- The returned topic is the brief the carousel writer will receive. It must contain enough context to write accurately without guessing. A catchy title alone is not a topic brief.
+- State the concrete event, action, discovery, or question in the hook itself. For a decision story, name what the person actually chose and what was at stake; never use a vague phrase such as “Cleopatra's fatal gamble” without saying what she did. For an unfamiliar subject, identify what it is in plain language.
+- Use the angle to add the essential context the hook cannot fit: what happened, when or where if needed for clarity, and why it matters. The angle must clarify the hook, not restate it in equally vague words.
 - Open a fair curiosity gap the carousel can actually close. The hook should make the audience want one specific answer; later slides must deliver it promptly.
 - Privately compare distinct candidates for one-second clarity, relevance to ${randomMode ? 'a general audience' : 'the chosen audience'}, novelty, emotional or practical stakes, evidence quality, and payoff. Choose the strongest combination; do not expose the scoring.
 - Make the hook concise, memorable, and easy to repeat or send to someone. Use a specific contrast, consequence, puzzle, or reveal where it fits. Do not rely on a generic shock phrase or a question with no satisfying answer.
@@ -667,9 +670,9 @@ ${genre === 'History & Hidden Facts' ? `HISTORICAL ACCURACY CHECK:
 - If a surprising detail is uncertain, choose another documented detail. Curiosity must come from the evidence, not an unsupported claim.
 ` : ''}
 
-Privately develop several candidates, then reject any that fail the audience pull, three-second friend, or evidence checks. Select the strongest accurate subject-hook combination for ${randomMode ? 'a general audience' : 'this niche'}. ${randomMode ? 'Explore any subject area freely, and do not default to famous viral oddities. In particular, avoid retelling the 1904 Olympic marathon story involving poison, stimulants, dogs, or a stolen car; it has already been overused.' : 'Never borrow a familiar trend from another genre; derive the idea from this niche’s subject matter.'} Then return exactly one record. The hook must name the subject, be under 15 words, use no first-person creator voice, and describe the subject rather than a method used to discover it.
+Privately develop several candidates, then reject any that fail the audience pull, three-second friend, or evidence checks. Select the strongest accurate subject-hook combination for ${randomMode ? 'a general audience' : 'this niche'}. ${randomMode ? 'Explore any subject area freely, and do not default to famous viral oddities. In particular, avoid retelling the 1904 Olympic marathon story involving poison, stimulants, dogs, or a stolen car; it has already been overused.' : 'Never borrow a familiar trend from another genre; derive the idea from this niche’s subject matter.'} Then return exactly one record. Make the hook a concise, self-contained topic statement that names the actual action, event, discovery, or question—not just a person plus a dramatic adjective. Keep it under 20 words and use no first-person creator voice. The angle must add the missing factual context and explain the specific stakes or significance in one clear sentence. A reader who sees the hook and angle together should know exactly what the carousel will explain.
 
-Return only JSON: {"subject":"specific subject", "subject_type":"one allowed type", "angle":"specific accurate angle", "hook":"final hook"}.`;
+Return only JSON: {"subject":"specific event, action, discovery, or question", "subject_type":"one allowed type", "angle":"one-sentence context explaining what happened and why it matters", "hook":"clear, self-contained topic statement naming the specific event or action"}.`;
 
     for (let attempt = 0; attempt < 3; attempt++) {
         const remainingMs = brainstormDeadline - Date.now();
@@ -681,7 +684,7 @@ Return only JSON: {"subject":"specific subject", "subject_type":"one allowed typ
         let responseText;
         try {
             responseText = await generateAIContent(
-                `${generatePrompt}${avoidInstruction}${attempt === 0 ? '' : `\n\nYour last draft failed validation. Start over with a different, more specific subject${randomMode ? ' for a general audience' : ' in the selected niche'}.`}`,
+                `${generatePrompt}${avoidInstruction}${attempt === 0 ? '' : `\n\nYour last draft failed validation. Start over with a different, more specific topic. State the actual event or action and its stakes; do not return a vague, title-like phrase.${randomMode ? ' Choose a subject for a general audience' : ' Stay within the selected niche'}.`}`,
                 'Create one original topic record.',
                 attempt === 0 ? 0.65 : 0.4,
                 { thinkingLevel: 'none', timeoutMs: requestTimeoutMs, maxRetries: 1, maxRetryTimeMs: Math.max(requestTimeoutMs, Math.min(65000, remainingMs - 10000)), model: AI_MODEL },
@@ -722,7 +725,8 @@ Return only JSON: {"subject":"specific subject", "subject_type":"one allowed typ
             subjectPresent: subject.length > 0,
             anglePresent: angle.length > 0,
             hookLength: hook.length < 120,
-            hookWordCount: hook.split(/\s+/).filter(Boolean).length < 15,
+            hookWordCount: hook.split(/\s+/).filter(Boolean).length < 20,
+            angleLength: angle.length <= 350,
             noJargon: !containsJargon(hook),
             noCreatorMeta: !CREATOR_META_LANGUAGE.test(combined),
             noExcludedSubject: !excluded,
@@ -750,8 +754,9 @@ Return only JSON: {"subject":"specific subject", "subject_type":"one allowed typ
                 recentTopics.splice(12);
                 continue;
             }
-            console.log(`Generated ${randomMode ? 'unrestricted' : 'on-genre'} hook${genre ? ` for ${JSON.stringify(genre)}` : ''}:`, hook);
-            return randomMode ? { topic: hook, lane: topicLane } : hook;
+            const topic = `${hook} — ${angle}`;
+            console.log(`Generated ${randomMode ? 'unrestricted' : 'on-genre'} topic${genre ? ` for ${JSON.stringify(genre)}` : ''}:`, topic);
+            return randomMode ? { topic, lane: topicLane } : topic;
         }
     }
 
