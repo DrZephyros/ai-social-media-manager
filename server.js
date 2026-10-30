@@ -18,6 +18,12 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.static(__dirname));
 
+app.get('/api/version', (_req, res) => {
+    const commit = process.env.VERCEL_GIT_COMMIT_SHA;
+    const version = commit ? commit.slice(0, 7) : 'local';
+    res.set('Cache-Control', 'no-store, max-age=0').json({ version });
+});
+
 const supabaseUrl = process.env.SUPABASE_URL?.trim();
 const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY?.trim();
 const generationTicketSecret = process.env.GENERATION_TICKET_SECRET?.trim() || supabaseSecretKey;

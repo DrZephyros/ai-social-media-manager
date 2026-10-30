@@ -897,6 +897,7 @@
     .app-loading-title { margin: 0; color: #fff; font-size: clamp(1.5rem, 5vw, 2rem); font-weight: 900; letter-spacing: -.045em; }
     .app-loading-title span { color: transparent; background: var(--instagram-gradient); background-clip: text; -webkit-background-clip: text; }
     .app-loading-caption { margin: .65rem 0 1.15rem; color: rgba(255,255,255,.62); font-size: .92rem; }
+    .app-version-footer { padding: 1.5rem 1rem 1.2rem; color: rgba(230,239,245,.42); font-size: .68rem; letter-spacing: .04em; text-align: center; }
     .app-loading-dots { display: flex; gap: .38rem; }
     .app-loading-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--instagram-gradient); animation: app-loading-bounce .9s ease-in-out infinite alternate; }
     .app-loading-dots i:nth-child(2) { animation-delay: .16s; }
@@ -2901,6 +2902,15 @@
 
     restoreCarouselDraft();
 
+    fetch('/api/version', { cache: 'no-store' })
+      .then(response => response.ok ? response.json() : Promise.reject(new Error('Version unavailable')))
+      .then(data => {
+        const version = document.getElementById('app-version');
+        if (version && typeof data.version === 'string') version.textContent = data.version;
+      })
+      .catch(() => {});
+
   </script>
+  <footer class="app-version-footer">Version <span id="app-version">…</span></footer>
 </body>
 </html>
