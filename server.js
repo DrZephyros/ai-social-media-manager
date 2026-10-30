@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { readFileSync } from 'fs';
 import { generateTopic, generateScript, generateCaption, reviseCarousel } from './engine.js';
 import axios from 'axios';
 import FormData from 'form-data';
@@ -18,10 +19,10 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.static(__dirname));
 
+const appVersion = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version;
+
 app.get('/api/version', (_req, res) => {
-    const commit = process.env.VERCEL_GIT_COMMIT_SHA;
-    const version = commit ? commit.slice(0, 7) : 'local';
-    res.set('Cache-Control', 'no-store, max-age=0').json({ version });
+    res.set('Cache-Control', 'no-store, max-age=0').json({ version: appVersion });
 });
 
 const supabaseUrl = process.env.SUPABASE_URL?.trim();
