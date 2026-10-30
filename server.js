@@ -32,7 +32,10 @@ function createSupabaseClient() {
 const ipWindows = new Map();
 const IP_WINDOW_MS = 60 * 60 * 1000;
 const IP_MAX_GENERATIONS = 5;
-const PREMIUM_EMAILS = new Set(['gowthamsanjay2028@gmail.com']);
+const PREMIUM_EMAILS = new Set([
+    'gowthamsanjay2028@gmail.com',
+    'rudrauv26@gmail.com',
+]);
 
 function isPremiumUser(user) {
     return PREMIUM_EMAILS.has(String(user?.email || '').trim().toLowerCase());
