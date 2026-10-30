@@ -1239,7 +1239,7 @@
         <button class="action-btn btn-download" id="btn-download-top">⬇️ Download Slides</button>
         <button class="action-btn btn-copy" id="btn-copy-top">📋 Copy Caption</button>
       </div>
-      <button class="action-btn btn-download" id="btn-mobile-save" type="button" hidden>Save ZIP to phone</button>
+      <a class="action-btn btn-download" id="btn-mobile-save" hidden>Download ZIP to phone</a>
       <p class="mobile-download-hint" id="mobile-download-hint" role="status" aria-live="polite" hidden></p>
     </div>
     <!-- Instagram preview and editable caption -->
@@ -2797,34 +2797,7 @@
 
     captionBox.addEventListener('input', scheduleCarouselDraftSave);
 
-    let pendingMobileZip = null;
-    let pendingMobileFilename = '';
-    async function saveZipToMobile() {
-      if (!pendingMobileZip) return;
-      const file = new File([pendingMobileZip], pendingMobileFilename, { type: 'application/zip' });
-      try {
-        if (navigator.share && navigator.canShare?.({ files: [file] })) {
-          await navigator.share({ files: [file], title: pendingMobileFilename });
-          mobileDownloadHint.textContent = 'Choose “Save to Files” or a download destination in your phone’s share menu.';
-          return;
-        }
-        const url = URL.createObjectURL(pendingMobileZip);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = pendingMobileFilename;
-        link.rel = 'noopener';
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        mobileDownloadHint.textContent = 'Your browser should now offer to save the ZIP. Check Downloads or Files.';
-        window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
-      } catch (error) {
-        if (error.name === 'AbortError') return;
-        mobileDownloadHint.textContent = `Could not open the phone’s save menu: ${error.message || 'unknown error'}. Try your browser’s share or download menu.`;
-      }
-    }
-
-    btnMobileSave.addEventListener('click', saveZipToMobile);
+    let pendingMobileZipUrl = '';
 
     async function downloadSlides(button) {
       const authHeaders = await getAuthHeaders();
@@ -2889,10 +2862,13 @@
           || window.matchMedia('(pointer: coarse)').matches
           || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
         if (isMobileBrowser) {
-          pendingMobileZip = content;
-          pendingMobileFilename = filename;
+          if (pendingMobileZipUrl) URL.revokeObjectURL(pendingMobileZipUrl);
+          pendingMobileZipUrl = URL.createObjectURL(content);
+          btnMobileSave.href = pendingMobileZipUrl;
+          btnMobileSave.download = filename;
+          btnMobileSave.rel = 'noopener';
           btnMobileSave.hidden = false;
-          mobileDownloadHint.textContent = 'Your ZIP is ready. Tap below to open your phone’s share or save menu.';
+          mobileDownloadHint.textContent = 'Your ZIP is ready. Tap Download ZIP to phone; if it opens a preview, use your browser’s Share or Save option.';
           mobileDownloadHint.hidden = false;
         } else {
           const url = URL.createObjectURL(content);
